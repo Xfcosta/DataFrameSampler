@@ -65,8 +65,6 @@ target/
 *.csv
 *.obj
 
-examples/plot/*
-data
 
 *RData
 *Rhistory
@@ -74,9 +72,7 @@ data
 EDeN.Rproj
 .Rproj.user
 *.swp
-examples/model_comparison/models/
-working_examples/
 testenv*
 examples
 .pytest_cache/
-eden/_version.py
+
