@@ -16,7 +16,8 @@ Options:
   -d, --output_model_filename PATH
                                   Path to model to save.
   -f, --vectorizing_columns_dict_filename PATH
-                                  Path to vectorizing_columns_dict.
+                                  Path to vectorizing_columns_dict serialized
+                                  in YAML.
   -n, --n_samples INTEGER RANGE   Number of samples to generate. If 0 then
                                   generate the same number of samples as there
                                   are in input. Default is 100.  [x>=0]
