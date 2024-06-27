@@ -17,6 +17,10 @@ import seaborn as sns
 import yaml
 import sys
 
+def yaml_save(obj, fname='data.txt'):
+    with open(fname, "w") as fh:  
+        yaml.dump(obj, fh)
+
 def yaml_load(fname='data.txt'):
     with open(fname, "r") as fh:
         python_object = yaml.load(fh, Loader=yaml.SafeLoader)
