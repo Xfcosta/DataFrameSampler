@@ -27,4 +27,4 @@ Options:
   -h, --help                      Show this message and exit.
 ```
 
-See accompanying IPython notebook [here](link)
+See accompanying IPython notebook [here](https://github.com/Xfcosta/DataFrameSampler/blob/main/dataframe_sampler_notebook.ipynb)
