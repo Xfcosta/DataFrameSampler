@@ -32,6 +32,7 @@ See accompanying IPython notebook [here](https://github.com/Xfcosta/DataFrameSam
 
 ### Installation
 ```
+pip install git+https://github.com/Xfcosta/DataFrameSampler.git
+cd DataFrameSampler
 pip install -r requirements.txt
-
 ```
