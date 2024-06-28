@@ -1,5 +1,5 @@
 from collections import defaultdict
-from scipy.sparse.csr import csr_matrix
+from scipy.sparse import csr_matrix
 from scipy.spatial.distance import pdist, squareform
 from scipy.stats import entropy
 from scipy.stats import rankdata
