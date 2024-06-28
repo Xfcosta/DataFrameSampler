@@ -16,7 +16,7 @@ The new instance is then decoded to the original space by randomly sampling valu
 Example:
 Consider a data frame with two columns: one containing the name of individuals and one containing the age of the corresponding individual.
 We use the age column to map the names to numerical values. Let's consider histograms with 10 bins, so that each bin represents a decade.
-When we generate a sample we start by sampling at random an individual, let's say Bob of 40 years of age. We then consider 2 neighbors, let's say Kevin, 30, and John, 50. The difference between John and Kevin is 20. We apply the same difference to Bob and we identify the bin associated with 60. We sample in the 60 bin and select Michael. So the sampler outputs a new indivdual Michael, 60.
+When we generate a sample we start by sampling at random an individual, let's say Bob of 40 years of age. We then consider 2 neighbors, let's say Kevin, 30, i.e. bin 3, and John, 50, i.e. bin 5. The difference between the encoding of John and Kevin is 2. We apply the same difference to Bob and we identify the bin 6. We sample in the 6th bin and select Michael (one of the many names associated with the bin 6) and we select an age of 64 (one of the possible ages on bin 6). The sampler outputs therefore the new indivdual: Michael, 64.
 
 
 ### How to use the program
