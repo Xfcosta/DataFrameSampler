@@ -29,3 +29,9 @@ Options:
 ```
 
 See accompanying IPython notebook [here](https://github.com/Xfcosta/DataFrameSampler/blob/main/dataframe_sampler_notebook.ipynb)
+
+### Installation
+```
+pip install -r requirements.txt
+
+```
