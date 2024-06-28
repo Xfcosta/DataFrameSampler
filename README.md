@@ -28,9 +28,13 @@ Options:
   -h, --help                      Show this message and exit.
 ```
 
-See accompanying IPython notebook [here](https://github.com/Xfcosta/DataFrameSampler/blob/main/dataframe_sampler_notebook.ipynb)
+### How to use the library
+
+See accompanying IPython notebook [here](https://github.com/Xfcosta/DataFrameSampler/blob/main/dataframe_sampler_notebook.ipynb).
+
 
 ### Installation
+
 ```
 pip install git+https://github.com/Xfcosta/DataFrameSampler.git
 cd DataFrameSampler
