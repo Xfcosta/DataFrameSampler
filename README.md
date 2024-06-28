@@ -47,6 +47,22 @@ Options:
   -h, --help                      Show this message and exit.
 ```
 
+Note:  An example of a vectorizing_columns_dict serialised in YAML is as follows:
+```
+city:
+- country_id
+personName:
+- age
+- country_id
+```
+which corresponds to the python dictionary:
+```
+vectorizing_columns_dict = {
+    'personName': ['age', 'country_id'],  # Use 'age' and 'country_id' to vectorize 'personName'
+    'city': ['country_id']                # Use 'country_id' to vectorize 'city'
+}
+```
+
 ### How to use the library
 
 See accompanying IPython notebook [here](https://github.com/Xfcosta/DataFrameSampler/blob/main/dataframe_sampler_notebook.ipynb).
