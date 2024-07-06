@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/820970105.svg)](https://zenodo.org/doi/10.5281/zenodo.12669007)
+
 # DataFrameSampler
 The program dataframe_sampler can generate a CSV file similar to the one given in input.
 
