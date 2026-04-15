@@ -6,6 +6,7 @@ from src.dataframe_sampler import cli as _cli
 from src.dataframe_sampler import encoding as _encoding
 from src.dataframe_sampler import io as _io
 from src.dataframe_sampler import knn as _knn
+from src.dataframe_sampler import llm as _llm
 from src.dataframe_sampler import metrics as _metrics
 from src.dataframe_sampler import neighbours as _neighbours
 from src.dataframe_sampler import sampler as _sampler
@@ -19,6 +20,7 @@ sys.modules.setdefault("dataframe_sampler.cli", _cli)
 sys.modules.setdefault("dataframe_sampler.encoding", _encoding)
 sys.modules.setdefault("dataframe_sampler.io", _io)
 sys.modules.setdefault("dataframe_sampler.knn", _knn)
+sys.modules.setdefault("dataframe_sampler.llm", _llm)
 sys.modules.setdefault("dataframe_sampler.metrics", _metrics)
 sys.modules.setdefault("dataframe_sampler.neighbours", _neighbours)
 sys.modules.setdefault("dataframe_sampler.sampler", _sampler)

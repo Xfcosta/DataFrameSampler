@@ -3,6 +3,7 @@ import sys
 import click
 
 from .io import read_dataframe
+from .llm import suggest_sampler_config_with_openai
 from .sampler import ConcreteDataFrameSampler
 from .utils import yaml_load
 from .vectorizer import EMBEDDING_METHODS
@@ -74,8 +75,16 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     type=click.Path(exists=True),
     help="Path to embedding-method options serialized in YAML.",
 )
-@click.version_option("0.3.0", "--version", "-v")
+@click.option(
+    "--auto_config",
+    "-A",
+    is_flag=True,
+    help="Use OpenAI to choose omitted vectorizing columns, sampled columns, embedding method, and KNN backend.",
+)
+@click.version_option("0.4.0", "--version", "-v")
+@click.pass_context
 def dataframe_sampler_main(
+    ctx,
     input_filename,
     output_filename,
     input_model_filename,
@@ -90,6 +99,7 @@ def dataframe_sampler_main(
     knn_backend_kwargs_filename,
     embedding_method,
     embedding_kwargs_filename,
+    auto_config,
 ):
     """
     Generate a dataframe file similar to the input CSV or Parquet file.
@@ -103,6 +113,24 @@ def dataframe_sampler_main(
     )
     knn_backend_kwargs = yaml_load(fname=knn_backend_kwargs_filename) if knn_backend_kwargs_filename else None
     embedding_kwargs = yaml_load(fname=embedding_kwargs_filename) if embedding_kwargs_filename else None
+    df = read_dataframe(input_filename) if input_filename else None
+
+    if auto_config:
+        if df is None:
+            raise click.UsageError("--auto_config requires --input_filename so the dataframe can be profiled.")
+        if input_model_filename:
+            raise click.UsageError("--auto_config cannot be combined with --input_model_filename.")
+
+        llm_config = suggest_sampler_config_with_openai(df)
+        if vectorizing_columns_dict is None:
+            vectorizing_columns_dict = llm_config["vectorizing_columns_dict"]
+        if sampled_columns is None:
+            sampled_columns = llm_config["sampled_columns"]
+        if _is_default_parameter(ctx, "embedding_method"):
+            embedding_method = llm_config["embedding_method"]
+        if _is_default_parameter(ctx, "knn_backend"):
+            knn_backend = llm_config["knn_backend"]
+        click.echo("Auto configuration: %s" % llm_config["notes"], err=True)
 
     if input_model_filename:
         sampler = ConcreteDataFrameSampler().load(input_model_filename)
@@ -120,7 +148,6 @@ def dataframe_sampler_main(
         )
 
     if input_filename:
-        df = read_dataframe(input_filename)
         sampler.fit(df)
         sampler.save(output_model_filename)
         if n_samples == 0:
@@ -136,3 +163,7 @@ def main():
         dataframe_sampler_main.main(["--help"])
     else:
         dataframe_sampler_main()
+
+
+def _is_default_parameter(ctx, parameter_name):
+    return ctx.get_parameter_source(parameter_name) == click.core.ParameterSource.DEFAULT

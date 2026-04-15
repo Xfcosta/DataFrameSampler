@@ -49,6 +49,13 @@ Parquet data input/output is optional:
 pip install ".[parquet]"
 ```
 
+OpenAI-powered automatic configuration is optional:
+
+```bash
+pip install ".[llm]"
+export OPENAI_API_KEY="..."
+```
+
 Optional approximate-nearest-neighbor backends are installed only when needed:
 
 ```bash
@@ -104,6 +111,9 @@ Options:
   --embedding_kwargs_filename PATH
                                   Path to embedding-method options serialized
                                   in YAML.
+  -A, --auto_config               Use OpenAI to choose omitted vectorizing
+                                  columns, sampled columns, embedding method,
+                                  and KNN backend.
   -v, --version                   Show the version and exit.
   -h, --help                      Show this message and exit.
 ```
@@ -408,6 +418,92 @@ dataframe-sampler \
   --embedding_kwargs_filename embedding_kwargs.yaml
 ```
 
+## LLM Auto Configuration
+
+DataFrameSampler includes an optional helper that asks an OpenAI model to inspect
+a dataframe profile and recommend:
+
+- `vectorizing_columns_dict`
+- `sampled_columns`
+- `embedding_method`
+- `knn_backend`
+- short rationales for the recommendations
+
+Install the optional dependency and set the API key:
+
+```bash
+pip install ".[llm]"
+export OPENAI_API_KEY="..."
+```
+
+Python example:
+
+```python
+import pandas as pd
+from dataframe_sampler import (
+    ConcreteDataFrameSampler,
+    suggest_sampler_config_with_openai,
+)
+
+df = pd.read_csv("input.csv")
+
+config = suggest_sampler_config_with_openai(
+    df,
+    model="gpt-4o-mini",
+)
+
+print(config["vectorizing_columns_dict"])
+print(config["embedding_method"])
+print(config["notes"])
+
+sampler = ConcreteDataFrameSampler(
+    n_bins=10,
+    n_neighbours=5,
+    vectorizing_columns_dict=config["vectorizing_columns_dict"],
+    sampled_columns=config["sampled_columns"],
+    embedding_method=config["embedding_method"],
+    knn_backend="sklearn",
+    random_state=42,
+)
+
+sampler.fit(df)
+generated_df = sampler.sample(n_samples=len(df))
+```
+
+CLI auto mode:
+
+```bash
+dataframe-sampler \
+  -A \
+  --input_filename input.csv \
+  --output_filename generated.csv \
+  --n_samples 100 \
+  --random_state 42
+```
+
+`-A` only fills options that the user did not specify. For example, if
+`--embedding_method pca`, `--knn_backend exact`, `-c`, or `-f` are provided,
+those explicit values are kept and the LLM recommendation is ignored for those
+fields.
+
+For just the mapping:
+
+```python
+from dataframe_sampler import suggest_vectorizing_columns_with_openai
+
+vectorizing_columns_dict = suggest_vectorizing_columns_with_openai(df)
+```
+
+The helper sends a compact dataframe profile to the OpenAI API: column names,
+dtypes, missing counts, unique counts, examples, and simple numeric summaries.
+It does not send the full dataframe by default. Review the generated
+configuration before using it, especially on sensitive or high-stakes datasets.
+
+LLM-facing usage guidance is also available in:
+
+- `docs/llm_skill.md`
+- `docs/vectorizing_columns_prompt.md`
+
 ## KNN Backends
 
 DataFrameSampler builds mutual-neighbor chains in the latent bin space. The
@@ -486,6 +582,7 @@ The implementation lives under `src/dataframe_sampler/`:
 
 - `knn.py`: exact and optional approximate nearest-neighbor backends
 - `io.py`: CSV and Parquet dataframe input/output helpers
+- `llm.py`: optional OpenAI-assisted sampler configuration
 - `vectorizer.py`: dataframe-to-numeric vectorization
 - `encoding.py`: bin encoding and decoding
 - `neighbours.py`: mutual-neighbor estimation and probabilities

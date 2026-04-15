@@ -2,6 +2,12 @@ from .cli import dataframe_sampler_main
 from .encoding import ColumnDataFrameEncoderDecoder, DataFrameEncoderDecoder
 from .io import read_dataframe, write_dataframe
 from .knn import SUPPORTED_KNN_BACKENDS, find_nearest_neighbours
+from .llm import (
+    LLM_VECTORISING_COLUMNS_SYSTEM_PROMPT,
+    profile_dataframe_for_llm,
+    suggest_sampler_config_with_openai,
+    suggest_vectorizing_columns_with_openai,
+)
 from .metrics import (
     compute_symmetrized_kullback_leibler_divergence,
     compute_symmetrized_kullback_leibler_divergence_single,
@@ -33,6 +39,7 @@ __all__ = [
     "NearestMutualNeighboursProbabilityEstimator",
     "NearestMutualNeighboursSampler",
     "ProbabilityEstimator",
+    "LLM_VECTORISING_COLUMNS_SYSTEM_PROMPT",
     "compute_symmetrized_kullback_leibler_divergence",
     "compute_symmetrized_kullback_leibler_divergence_single",
     "dataframe_sampler_main",
@@ -40,7 +47,10 @@ __all__ = [
     "is_numerical_column_type",
     "make_2d_grid",
     "make_embedding_method",
+    "profile_dataframe_for_llm",
     "read_dataframe",
+    "suggest_sampler_config_with_openai",
+    "suggest_vectorizing_columns_with_openai",
     "write_dataframe",
     "SUPPORTED_KNN_BACKENDS",
     "yaml_load",
@@ -48,4 +58,4 @@ __all__ = [
     "__version__",
 ]
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"

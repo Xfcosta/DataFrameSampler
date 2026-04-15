@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 from click.testing import CliRunner
 
+import dataframe_sampler.cli as cli_module
 from dataframe_sampler import (
     ColumnDataFrameEncoderDecoder,
     ConcreteDataFrameSampler,
@@ -11,7 +12,9 @@ from dataframe_sampler import (
     NearestMutualNeighboursEstimator,
     dataframe_sampler_main,
     find_nearest_neighbours,
+    profile_dataframe_for_llm,
     read_dataframe,
+    suggest_sampler_config_with_openai,
     write_dataframe,
 )
 
@@ -372,6 +375,57 @@ def test_vectorizer_rejects_unknown_embedding_string():
         vectorizer.fit_transform(df)
 
 
+def test_profile_dataframe_for_llm_describes_columns():
+    df = make_mixed_dataframe()
+
+    profile = profile_dataframe_for_llm(df)
+
+    assert profile["row_count"] == len(df)
+    assert "age" in profile["numeric_columns"]
+    assert "band" in profile["categorical_columns"]
+    assert any(column["name"] == "band" for column in profile["columns"])
+
+
+def test_suggest_sampler_config_with_openai_uses_structured_response():
+    class FakeResponse:
+        output_text = """
+        {
+          "recommendations": [
+            {
+              "column": "band",
+              "helper_columns": ["age", "score", "not_a_column"],
+              "rationale": "Age and score define the band semantics.",
+              "confidence": 0.9
+            }
+          ],
+          "sampled_columns": ["age", "band", "score"],
+          "embedding_method": "pca",
+          "knn_backend": "sklearn",
+          "notes": "Use PCA for the numeric helper space."
+        }
+        """
+
+    class FakeResponses:
+        def create(self, **kwargs):
+            assert kwargs["model"] == "fake-model"
+            assert kwargs["text"]["format"]["type"] == "json_schema"
+            return FakeResponse()
+
+    class FakeClient:
+        responses = FakeResponses()
+
+    config = suggest_sampler_config_with_openai(
+        make_mixed_dataframe(),
+        model="fake-model",
+        client=FakeClient(),
+    )
+
+    assert config["vectorizing_columns_dict"] == {"band": ["age", "score"]}
+    assert config["sampled_columns"] == ["age", "band", "score"]
+    assert config["embedding_method"] == "pca"
+    assert config["knn_backend"] == "sklearn"
+
+
 def test_concrete_dataframe_sampler_accepts_pca_embedding_method():
     df = make_mixed_dataframe()
     sampler = ConcreteDataFrameSampler(
@@ -423,3 +477,89 @@ def test_cli_requires_input_or_model():
 
     assert result.exit_code != 0
     assert "Provide --input_filename" in result.output
+
+
+def test_cli_auto_config_fills_omitted_sampler_options(tmp_path, monkeypatch):
+    input_csv = tmp_path / "input.csv"
+    output_csv = tmp_path / "generated.csv"
+    make_mixed_dataframe().to_csv(input_csv, index=False)
+
+    def fake_auto_config(df):
+        assert list(df.columns) == ["age", "band", "score"]
+        return {
+            "vectorizing_columns_dict": {"band": ["age", "score"]},
+            "sampled_columns": ["age", "band", "score"],
+            "embedding_method": "pca",
+            "knn_backend": "sklearn",
+            "recommendations": [],
+            "notes": "Fake auto config.",
+        }
+
+    monkeypatch.setattr(cli_module, "suggest_sampler_config_with_openai", fake_auto_config)
+    result = CliRunner().invoke(
+        dataframe_sampler_main,
+        [
+            "-A",
+            "-i",
+            str(input_csv),
+            "-o",
+            str(output_csv),
+            "-n",
+            "5",
+            "--random_state",
+            "12",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Fake auto config." in result.output
+    assert len(pd.read_csv(output_csv)) == 5
+
+
+def test_cli_auto_config_preserves_user_specified_options(tmp_path, monkeypatch):
+    input_csv = tmp_path / "input.csv"
+    output_csv = tmp_path / "generated.csv"
+    make_mixed_dataframe().to_csv(input_csv, index=False)
+
+    vectorizing_yaml = tmp_path / "vectorizing.yaml"
+    vectorizing_yaml.write_text("band:\n- age\n")
+
+    def fake_auto_config(df):
+        return {
+            "vectorizing_columns_dict": {"band": ["score"]},
+            "sampled_columns": ["band"],
+            "embedding_method": "pca",
+            "knn_backend": "sklearn",
+            "recommendations": [],
+            "notes": "Fake auto config.",
+        }
+
+    monkeypatch.setattr(cli_module, "suggest_sampler_config_with_openai", fake_auto_config)
+    result = CliRunner().invoke(
+        dataframe_sampler_main,
+        [
+            "-A",
+            "-i",
+            str(input_csv),
+            "-o",
+            str(output_csv),
+            "-f",
+            str(vectorizing_yaml),
+            "-c",
+            "age",
+            "-c",
+            "band",
+            "--embedding_method",
+            "mds",
+            "--knn_backend",
+            "exact",
+            "-n",
+            "5",
+            "--random_state",
+            "13",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    generated = pd.read_csv(output_csv)
+    assert list(generated.columns) == ["age", "band"]
