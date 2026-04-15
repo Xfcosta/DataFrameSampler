@@ -99,6 +99,9 @@ Options:
   --n_bins INTEGER RANGE          Number of bins.
   --n_neighbours INTEGER RANGE    Number of neighbours.
   -c, --sampled_columns TEXT      Selected columns to generate.
+  --anonymize_columns TEXT        Sensitive columns to replace with
+                                  OpenAI-generated surrogate values before
+                                  fitting.
   --random_state INTEGER          Optional random seed for reproducible output.
   --knn_backend [exact|sklearn|pynndescent|hnswlib|annoy]
                                   KNN backend used for neighbour search.
@@ -503,6 +506,63 @@ LLM-facing usage guidance is also available in:
 
 - `docs/llm_skill.md`
 - `docs/vectorizing_columns_prompt.md`
+
+## Sensitive-Value Replacement Before Sampling
+
+DataFrameSampler can optionally replace selected sensitive columns before the
+sampler is fitted. This is the recommended order when generated rows must avoid
+exact source identifiers:
+
+```text
+original dataframe
+  -> replace sensitive values with OpenAI-generated surrogates
+  -> fit DataFrameSampler on the surrogate dataframe
+  -> generate rows from the surrogate dataframe
+  -> check generated rows for overlap with original sensitive values
+```
+
+CLI example:
+
+```bash
+dataframe-sampler \
+  --input_filename input.csv \
+  --output_filename generated.csv \
+  --anonymize_columns personName \
+  --anonymize_columns email \
+  --n_samples 1000
+```
+
+Python example:
+
+```python
+from dataframe_sampler import (
+    ConcreteDataFrameSampler,
+    anonymize_columns_with_openai,
+    assert_no_value_overlap,
+)
+
+anon_df, report = anonymize_columns_with_openai(
+    dataframe=df,
+    source_dataframe=df,
+    columns=["personName", "email"],
+)
+
+sampler = ConcreteDataFrameSampler(
+    n_bins=10,
+    n_neighbours=5,
+    knn_backend="sklearn",
+    random_state=42,
+)
+sampler.fit(anon_df)
+generated_df = sampler.sample(n_samples=len(df))
+
+assert_no_value_overlap(df, generated_df, ["personName", "email"])
+```
+
+This feature performs sensitive-value substitution with exact and normalized
+overlap checks. It is not differential privacy, k-anonymity, l-diversity, or a
+guarantee against linkage attacks. It only protects selected columns from exact
+source-value reuse.
 
 ## KNN Backends
 

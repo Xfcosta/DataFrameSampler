@@ -1,0 +1,51 @@
+\section{Planned Experiments}
+
+This section is a stub for the empirical evaluation. The planned evaluation
+will compare generated and source data along three axes.
+
+\subsection{Distributional Similarity}
+
+For numeric columns, planned metrics include univariate summary statistics,
+histogram overlap, Wasserstein distance, and pairwise correlation differences.
+For categorical columns, planned metrics include category coverage, frequency
+divergence, and rare-category retention.
+
+\subsection{Downstream Predictive Utility}
+
+For supervised datasets, we plan to train predictive models on generated data
+and evaluate them on held-out real data. This train-on-synthetic, test-on-real
+protocol will provide a practical measure of whether generated samples preserve
+useful predictive structure.
+
+\subsection{Ablations}
+
+Planned ablations include:
+
+\begin{itemize}
+  \item frequency encoding versus helper-column embedding for categorical
+  columns;
+  \item PCA, MDS, and nonlinear embedding choices;
+  \item exact versus approximate nearest-neighbour backends;
+  \item mutual-neighbour sampling with and without fallback edges.
+\end{itemize}
+
+\subsection{Datasets}
+
+Candidate datasets include small public mixed-type tabular datasets and the
+example datasets distributed with the project notebook. Any reported results
+will clearly distinguish demonstration datasets from benchmark datasets.
+
+\begin{table}[t]
+\centering
+\caption{Planned evaluation summary. Values are placeholders.}
+\label{tab:planned-evaluation}
+\begin{tabular}{lll}
+\toprule
+Dataset & Task & Metrics \\
+\midrule
+Heart & Classification & Accuracy, distribution shift \\
+Billionaires & Mixed-type generation & Marginals, correlations \\
+Synthetic correlated & Sanity check & Correlation retention \\
+\bottomrule
+\end{tabular}
+\end{table}

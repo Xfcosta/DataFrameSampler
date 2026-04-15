@@ -1,0 +1,32 @@
+\section{Implementation}
+
+DataFrameSampler is implemented as a Python package with a \texttt{src/}
+layout. The public library entry point is \texttt{ConcreteDataFrameSampler},
+which wires together the vectorizer, encoder/decoder, and latent sampler. A
+command-line interface exposes the same functionality for CSV and Parquet
+files.
+
+The implementation is organized into focused modules:
+
+\begin{itemize}
+  \item \texttt{vectorizer.py}: numeric conversion and categorical
+  vectorization;
+  \item \texttt{encoding.py}: bin encoding and bin-level decoding;
+  \item \texttt{neighbours.py}: mutual-neighbour estimation and probability
+  estimation;
+  \item \texttt{knn.py}: exact, scikit-learn, and optional approximate
+  nearest-neighbour backends;
+  \item \texttt{sampler.py}: high-level dataframe sampling API;
+  \item \texttt{io.py}: CSV and Parquet dataframe I/O;
+  \item \texttt{llm.py}: optional OpenAI-assisted configuration.
+\end{itemize}
+
+Optional dependencies are imported lazily. For example, Parquet support requires
+an installed engine such as PyArrow, and the LLM auto-configuration mode
+requires the OpenAI Python package and an \texttt{OPENAI\_API\_KEY} environment
+variable. Approximate nearest-neighbour backends are also optional.
+
+The command-line interface supports explicit user configuration and automatic
+configuration. Explicit user parameters take precedence over LLM-generated
+recommendations. This is intended to make automated configuration useful while
+keeping the user in control of high-impact choices.

@@ -1,0 +1,23 @@
+\section{Discussion}
+
+DataFrameSampler is designed for transparency and ease of use rather than for
+formal generative modelling optimality. Its bin-level decoder can emit exact
+source values, which makes the generated output unsuitable as a privacy
+mechanism. This limitation should be explicit in any application of the tool.
+
+The method also depends on the quality of the latent representation. If
+categorical values are represented only by frequency, semantically unrelated
+categories with similar frequencies can become indistinguishable. Helper-column
+embeddings address this limitation when meaningful numeric context exists, but
+they also require appropriate configuration. The optional LLM-assisted mode is
+intended to reduce configuration burden, not to replace user review.
+
+Approximate nearest-neighbour backends improve scalability, but can alter the
+local graph used by the sampler. For this reason, exact and scikit-learn
+backends remain useful baselines, especially for small datasets and experiments
+where reproducibility is more important than throughput.
+
+Future work includes more systematic evaluation, privacy-aware decoding
+strategies, constraint-aware sampling, and stronger model serialization
+formats. The current fitted model is serialized with pickle, which should only
+be loaded from trusted sources.

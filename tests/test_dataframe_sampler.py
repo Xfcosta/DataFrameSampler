@@ -10,6 +10,8 @@ from dataframe_sampler import (
     DataFrameEncoderDecoder,
     DataFrameVectorizer,
     NearestMutualNeighboursEstimator,
+    anonymize_columns_with_openai,
+    assert_no_value_overlap,
     dataframe_sampler_main,
     find_nearest_neighbours,
     profile_dataframe_for_llm,
@@ -38,6 +40,16 @@ def make_mixed_dataframe():
                 "senior",
             ],
             "score": [3, 4, 5, 10, 11, 12, 17, 18, 19, 24, 25, 26],
+        }
+    )
+
+
+def make_sensitive_dataframe():
+    return pd.DataFrame(
+        {
+            "personName": ["Alice Smith", "Bob Jones", "Alice Smith", "Dana Ray"],
+            "age": [21, 35, 21, 48],
+            "score": [3, 10, 3, 17],
         }
     )
 
@@ -205,6 +217,87 @@ def test_cli_fits_and_generates_csv(tmp_path):
     assert len(generated) == 6
     assert list(generated.columns) == ["age", "band", "score"]
     assert model_file.exists()
+
+
+def test_anonymize_columns_with_openai_replaces_before_sampling_values():
+    class FakeResponse:
+        output_text = """
+        {
+          "replacements": [
+            {"original": "Alice Smith", "replacement": "Nora Vale"},
+            {"original": "Bob Jones", "replacement": "Milo Stone"},
+            {"original": "Dana Ray", "replacement": "Iris Lane"}
+          ]
+        }
+        """
+
+    class FakeResponses:
+        def create(self, **kwargs):
+            assert kwargs["text"]["format"]["type"] == "json_schema"
+            return FakeResponse()
+
+    class FakeClient:
+        responses = FakeResponses()
+
+    df = make_sensitive_dataframe()
+    anonymized, report = anonymize_columns_with_openai(
+        df,
+        columns=["personName"],
+        client=FakeClient(),
+    )
+
+    assert report["columns"] == ["personName"]
+    assert anonymized["personName"].tolist() == ["Nora Vale", "Milo Stone", "Nora Vale", "Iris Lane"]
+    assert_no_value_overlap(df, anonymized, ["personName"])
+
+
+def test_assert_no_value_overlap_rejects_original_values():
+    df = make_sensitive_dataframe()
+
+    with pytest.raises(ValueError, match="overlap"):
+        assert_no_value_overlap(df, df.copy(), ["personName"])
+
+
+def test_cli_anonymizes_before_fit_and_checks_generated_output(tmp_path, monkeypatch):
+    input_csv = tmp_path / "input.csv"
+    output_csv = tmp_path / "generated.csv"
+    make_sensitive_dataframe().to_csv(input_csv, index=False)
+
+    def fake_anonymize(dataframe, source_dataframe, columns):
+        anonymized = dataframe.copy()
+        anonymized["personName"] = anonymized["personName"].map(
+            {
+                "Alice Smith": "Nora Vale",
+                "Bob Jones": "Milo Stone",
+                "Dana Ray": "Iris Lane",
+            }
+        )
+        return anonymized, {"columns": columns}
+
+    monkeypatch.setattr(cli_module, "anonymize_columns_with_openai", fake_anonymize)
+    result = CliRunner().invoke(
+        dataframe_sampler_main,
+        [
+            "-i",
+            str(input_csv),
+            "-o",
+            str(output_csv),
+            "--anonymize_columns",
+            "personName",
+            "-n",
+            "4",
+            "--n_bins",
+            "3",
+            "--n_neighbours",
+            "2",
+            "--random_state",
+            "14",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    generated = pd.read_csv(output_csv)
+    assert_no_value_overlap(make_sensitive_dataframe(), generated, ["personName"])
 
 
 def test_sample_to_file_uses_extension_based_csv_writer(tmp_path):

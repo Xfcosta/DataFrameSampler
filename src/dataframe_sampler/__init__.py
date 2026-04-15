@@ -1,3 +1,4 @@
+from .anonymization import anonymize_columns_with_openai, assert_no_value_overlap
 from .cli import dataframe_sampler_main
 from .encoding import ColumnDataFrameEncoderDecoder, DataFrameEncoderDecoder
 from .io import read_dataframe, write_dataframe
@@ -39,6 +40,8 @@ __all__ = [
     "NearestMutualNeighboursProbabilityEstimator",
     "NearestMutualNeighboursSampler",
     "ProbabilityEstimator",
+    "anonymize_columns_with_openai",
+    "assert_no_value_overlap",
     "LLM_VECTORISING_COLUMNS_SYSTEM_PROMPT",
     "compute_symmetrized_kullback_leibler_divergence",
     "compute_symmetrized_kullback_leibler_divergence_single",
@@ -58,4 +61,4 @@ __all__ = [
     "__version__",
 ]
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"

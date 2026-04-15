@@ -113,6 +113,37 @@ sampler = ConcreteDataFrameSampler(
 Review the generated configuration before using it on sensitive or high-stakes
 data.
 
+## Sensitive-Value Replacement Before Sampling
+
+When the user asks to anonymize sensitive columns, replace those values before
+fitting the sampler:
+
+```python
+from dataframe_sampler import anonymize_columns_with_openai, assert_no_value_overlap
+
+anon_df, report = anonymize_columns_with_openai(
+    dataframe=df,
+    source_dataframe=df,
+    columns=["personName", "email"],
+)
+
+sampler.fit(anon_df)
+generated_df = sampler.sample(n_samples=len(df))
+assert_no_value_overlap(df, generated_df, ["personName", "email"])
+```
+
+CLI:
+
+```bash
+dataframe-sampler \
+  --input_filename input.csv \
+  --output_filename generated.csv \
+  --anonymize_columns personName \
+  --anonymize_columns email
+```
+
+This is surrogate value replacement, not a formal privacy guarantee.
+
 ## CLI Auto Mode
 
 The CLI can ask OpenAI to fill omitted configuration values:

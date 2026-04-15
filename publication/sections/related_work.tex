@@ -1,0 +1,28 @@
+\section{Related Work}
+
+Synthetic tabular data generation has been studied using a range of approaches,
+including probabilistic graphical models, copulas, nearest-neighbour resampling,
+and deep generative models. Deep architectures such as CTGAN and related
+methods have shown that adversarial and neural density models can capture
+complex dependencies in mixed-type tabular data \cite{xu2019ctgan}. Broader
+software systems for synthetic data generation provide practical interfaces for
+training, sampling, and evaluating such models \cite{patki2016sdv}.
+
+DataFrameSampler occupies a different point in the design space. Rather than
+training a large generative model, it uses discretization, local neighbour
+relationships, and bin-level decoding. This makes the method comparatively
+simple and transparent, while limiting the strength of claims that can be made
+about distributional fidelity or privacy.
+
+The method is also related to classical interpolation and oversampling
+approaches such as SMOTE \cite{chawla2002smote}, which create new examples by
+operating in a feature space defined by local neighbours. DataFrameSampler uses
+a related local-neighbour intuition, but applies it to a discretized latent
+representation of entire dataframe rows and decodes generated bins back to
+observed mixed-type values.
+
+Finally, the package relies on standard dimensionality reduction and
+nearest-neighbour search components from the Python scientific computing
+ecosystem, including scikit-learn \cite{pedregosa2011scikit}. Optional
+approximate-nearest-neighbour backends such as NN-Descent, HNSW, and Annoy can
+be used for larger datasets \cite{dong2011efficient,malkov2018hnsw,bernhardsson2015annoy}.

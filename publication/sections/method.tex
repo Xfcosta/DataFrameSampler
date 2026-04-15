@@ -1,0 +1,72 @@
+\section{Method}
+
+\subsection{Column Vectorization}
+
+Let $D$ be an input dataframe with $m$ rows and $d$ columns. Numeric columns are
+converted to floating point values and missing values are imputed with the
+column median. For a non-numeric column $c$, DataFrameSampler supports two
+vectorization strategies.
+
+If no helper columns are provided, each category is represented by its empirical
+frequency. If helper columns are provided, each row receives a helper vector
+$h_i \in \mathbb{R}^{k}$ constructed from the selected numeric helper columns.
+An embedding function
+\[
+  f: \mathbb{R}^{k} \rightarrow \mathbb{R}
+\]
+maps each helper vector to a scalar used to discretize column $c$. In the
+implementation, $f$ may be selected from several scikit-learn reducers,
+including PCA, MDS, Kernel PCA, Isomap, locally linear embedding, and related
+methods. Users may also supply custom objects implementing a scikit-learn-like
+\texttt{fit\_transform}, \texttt{fit}/\texttt{transform}, or \texttt{transform}
+interface.
+
+\subsection{Discretization And Decoding}
+
+After vectorization, each column is discretized into up to $b$ bins using a
+one-dimensional binning procedure. Each row $x_i$ is encoded as an integer
+latent vector
+\[
+  z_i \in \{0, \ldots, b-1\}^{d}.
+\]
+For every column and bin, the encoder stores the original observed values that
+fell into that bin. Decoding a generated latent vector therefore consists of
+sampling original values from the selected bins. If a generated bin is empty,
+the implementation searches for the nearest non-empty bin in that column.
+
+\subsection{Neighbour-Based Latent Sampling}
+
+Let $Z = \{z_i\}_{i=1}^{m}$ be the encoded latent matrix. DataFrameSampler builds
+a nearest-neighbour graph in this latent space. By default, only mutual
+nearest-neighbour relationships are retained. If a row has no mutual neighbours,
+a nearest-neighbour fallback is used to preserve sampleability.
+
+To generate a new latent row, the sampler selects an anchor row $z_a$, a
+neighbour $z_b$ of that anchor, and a neighbour $z_c$ of $z_b$. It then forms
+\[
+  \tilde{z} = z_a + \alpha (z_c - z_b),
+\]
+where $\alpha$ is sampled from a configured interpolation range. The generated
+latent vector is rounded to integer bin indexes, clipped to valid ranges, and
+decoded back to the original dataframe space.
+
+\subsection{LLM-Assisted Configuration}
+
+Choosing helper columns for categorical vectorization can require semantic
+knowledge of column roles. The package therefore includes an optional
+OpenAI-assisted mode. The helper sends a compact dataframe profile to an LLM,
+including column names, dtypes, missing counts, unique counts, examples, and
+basic numeric summaries. The model returns a structured configuration
+containing candidate helper columns, sampled columns, an embedding method, and a
+nearest-neighbour backend. The command-line flag \texttt{-A} fills only options
+that the user did not explicitly specify.
+
+\subsection{Sensitive-Value Replacement}
+
+For workflows involving direct identifiers, the package can replace selected
+sensitive columns before fitting the sampler. In this mode, OpenAI-generated
+surrogate values are inserted into the original dataframe, exact and normalized
+overlap with the source values is checked, and the sampler is then fit on the
+surrogate dataframe. Generated samples are checked again against the original
+source values. This procedure reduces exact identifier re-emission in selected
+columns, but it is not a formal privacy guarantee.

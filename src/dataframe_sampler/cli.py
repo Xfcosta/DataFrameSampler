@@ -2,6 +2,7 @@ import sys
 
 import click
 
+from .anonymization import anonymize_columns_with_openai, assert_no_value_overlap
 from .io import read_dataframe
 from .llm import suggest_sampler_config_with_openai
 from .sampler import ConcreteDataFrameSampler
@@ -50,6 +51,11 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     help="Number of neighbours.",
 )
 @click.option("--sampled_columns", "-c", multiple=True, help="Selected columns to generate.")
+@click.option(
+    "--anonymize_columns",
+    multiple=True,
+    help="Sensitive columns to replace with OpenAI-generated surrogate values before fitting.",
+)
 @click.option("--random_state", type=int, help="Optional random seed for reproducible output.")
 @click.option(
     "--knn_backend",
@@ -81,7 +87,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     is_flag=True,
     help="Use OpenAI to choose omitted vectorizing columns, sampled columns, embedding method, and KNN backend.",
 )
-@click.version_option("0.4.0", "--version", "-v")
+@click.version_option("0.5.0", "--version", "-v")
 @click.pass_context
 def dataframe_sampler_main(
     ctx,
@@ -94,6 +100,7 @@ def dataframe_sampler_main(
     n_bins,
     n_neighbours,
     sampled_columns,
+    anonymize_columns,
     random_state,
     knn_backend,
     knn_backend_kwargs_filename,
@@ -108,6 +115,7 @@ def dataframe_sampler_main(
         raise click.UsageError("Provide --input_filename to fit a model or --input_model_filename to load one.")
 
     sampled_columns = list(sampled_columns) if len(sampled_columns) else None
+    anonymize_columns = list(anonymize_columns)
     vectorizing_columns_dict = (
         yaml_load(fname=vectorizing_columns_dict_filename) if vectorizing_columns_dict_filename else None
     )
@@ -148,6 +156,14 @@ def dataframe_sampler_main(
         )
 
     if input_filename:
+        source_df = df
+        if anonymize_columns:
+            df, anonymization_report = anonymize_columns_with_openai(
+                dataframe=df,
+                source_dataframe=source_df,
+                columns=anonymize_columns,
+            )
+            click.echo("Anonymized columns before fitting: %s" % ", ".join(anonymization_report["columns"]), err=True)
         sampler.fit(df)
         sampler.save(output_model_filename)
         if n_samples == 0:
@@ -155,7 +171,9 @@ def dataframe_sampler_main(
     elif n_samples == 0:
         raise click.UsageError("--n_samples=0 requires --input_filename so the input row count is known.")
 
-    sampler.sample_to_file(n_samples=n_samples, filename=output_filename)
+    generated_df = sampler.sample_to_file(n_samples=n_samples, filename=output_filename)
+    if input_filename and anonymize_columns:
+        assert_no_value_overlap(source_df, generated_df, anonymize_columns)
 
 
 def main():
