@@ -8,11 +8,30 @@ complex dependencies in mixed-type tabular data \cite{xu2019ctgan}. Broader
 software systems for synthetic data generation provide practical interfaces for
 training, sampling, and evaluating such models \cite{patki2016sdv}.
 
+The planned empirical comparison separates simple transparent baselines from
+model-based competitors. Simple baselines include row bootstrap sampling,
+independent column-wise sampling, copula-style numeric modelling with empirical
+categorical sampling, and supervised oversampling methods such as SMOTE or
+SMOTENC when a target label is present. Model-based competitors include common
+Synthetic Data Vault families such as GaussianCopula, CTGAN, TVAE, and
+CopulaGAN. This separation is important for the paper's claim: the relevant
+question is not only whether DataFrameSampler wins a single fidelity metric, but
+whether it offers a useful trade-off among ease of use, inspectability,
+distributional similarity, and configuration burden.
+
 DataFrameSampler occupies a different point in the design space. Rather than
 training a large generative model, it uses discretization, local neighbour
 relationships, and bin-level decoding. This makes the method comparatively
 simple and transparent, while limiting the strength of claims that can be made
 about distributional fidelity or privacy.
+
+Privacy-preserving synthetic data and statistical disclosure control address a
+stronger problem than this paper claims to solve. Differential privacy,
+formal de-identification, and regulated clinical data release require explicit
+privacy definitions, threat models, and disclosure-risk evaluation. The
+sensitive-value replacement layer in DataFrameSampler is therefore positioned
+only as a safeguard against exact re-use of selected values, not as a formal
+privacy-preserving generator.
 
 The method is also related to classical interpolation and oversampling
 approaches such as SMOTE \cite{chawla2002smote}, which create new examples by

@@ -1,0 +1,147 @@
+import numpy as np
+import pandas as pd
+
+from experiments.metrics import (
+    anonymization_safeguard_metrics,
+    categorical_similarity,
+    classification_scores,
+    dependence_similarity,
+    downstream_utility_scores,
+    inspectability_metrics,
+    numeric_similarity,
+    practicality_metrics,
+    regression_scores,
+    theils_u,
+)
+
+
+def make_real_and_synthetic():
+    real = pd.DataFrame(
+        {
+            "age": [20, 30, 40, 50],
+            "income": [10.0, 20.0, 30.0, 40.0],
+            "segment": ["a", "a", "b", "rare"],
+            "region": ["north", "north", "south", "west"],
+        }
+    )
+    synthetic = pd.DataFrame(
+        {
+            "age": [22, 31, 39, 48],
+            "income": [11.0, 21.0, 31.0, 39.0],
+            "segment": ["a", "b", "b", "new"],
+            "region": ["north", "south", "south", "west"],
+        }
+    )
+    return real, synthetic
+
+
+def test_numeric_similarity_reports_todo_metrics():
+    real, synthetic = make_real_and_synthetic()
+
+    metrics = numeric_similarity(real, synthetic, columns=["age"])
+
+    assert list(metrics["column"]) == ["age"]
+    assert metrics.loc[0, "mean_abs_error"] == 0.0
+    assert metrics.loc[0, "std_abs_error"] >= 0.0
+    assert 0.0 <= metrics.loc[0, "ks_statistic"] <= 1.0
+    assert metrics.loc[0, "wasserstein_distance"] >= 0.0
+    assert 0.0 <= metrics.loc[0, "histogram_overlap"] <= 1.0
+
+
+def test_categorical_similarity_reports_todo_metrics():
+    real, synthetic = make_real_and_synthetic()
+
+    metrics = categorical_similarity(real, synthetic, columns=["segment"], rare_threshold=0.26)
+
+    assert list(metrics["column"]) == ["segment"]
+    assert 0.0 <= metrics.loc[0, "total_variation_distance"] <= 1.0
+    assert 0.0 <= metrics.loc[0, "jensen_shannon_divergence"] <= 1.0
+    assert 0.0 <= metrics.loc[0, "category_coverage"] <= 1.0
+    assert 0.0 <= metrics.loc[0, "rare_category_preservation"] <= 1.0
+
+
+def test_dependence_similarity_reports_mixed_association_difference():
+    real, synthetic = make_real_and_synthetic()
+
+    metrics = dependence_similarity(real, synthetic, columns=["age", "income", "segment"])
+
+    assert metrics["real_association"].shape == (3, 3)
+    assert metrics["synthetic_association"].shape == (3, 3)
+    assert metrics["mean_abs_association_difference"] >= 0.0
+    assert metrics["max_abs_association_difference"] >= 0.0
+    assert 0.0 <= theils_u(real["segment"], real["region"]) <= 1.0
+
+
+def test_downstream_classification_and_regression_scores():
+    classification = classification_scores(
+        [0, 1, 1, 0],
+        [0, 1, 0, 0],
+        [0.1, 0.8, 0.4, 0.2],
+    )
+    regression = regression_scores([1.0, 2.0, 3.0], [1.0, 2.5, 2.5])
+    utility = downstream_utility_scores(
+        train_on_synthetic_test_on_real=classification,
+        train_on_real_test_on_real={"accuracy": 1.0},
+        train_on_bootstrap_test_on_real={"accuracy": 0.75},
+    )
+
+    assert set(["accuracy", "f1", "roc_auc", "brier_score"]).issubset(classification)
+    assert set(["mae", "rmse", "r2"]).issubset(regression)
+    assert utility["evaluation"].tolist() == [
+        "train_on_synthetic_test_on_real",
+        "train_on_real_test_on_real",
+        "train_on_bootstrap_test_on_real",
+    ]
+
+
+def test_inspectability_and_practicality_metrics():
+    traces = [
+        {
+            "anchor": 1,
+            "neighbour": 2,
+            "second_neighbour": 3,
+            "anchor_bins": [0],
+            "neighbour_bins": [1],
+            "second_neighbour_bins": [2],
+            "generated_bins": [1],
+            "decoded_bins": {"age": 1},
+        },
+        {"anchor": 1},
+    ]
+
+    inspectability = inspectability_metrics(traces)
+    practicality = practicality_metrics(
+        configuration={"n_bins": 10, "vectorizing_columns_dict": {"name": ["age"]}},
+        python_code="sampler.fit(df)\ngenerated = sampler.sample(10)\n",
+        cli_command="dataframe-sampler -i input.csv -o output.csv -n 10",
+        fit_seconds=0.5,
+        sample_seconds=0.2,
+        peak_memory_mb=128.0,
+    ).to_dict()
+
+    assert inspectability["trace_completeness_rate"] == 0.5
+    assert inspectability["average_trace_size"] == np.mean([8, 1])
+    assert practicality["configuration_choices"] == 2
+    assert practicality["lines_of_python"] == 2
+    assert practicality["cli_command_length"] == 7
+
+
+def test_anonymization_safeguard_metrics_counts_overlap_and_collisions():
+    source = pd.DataFrame({"name": ["Alice Smith", "Bob Jones", "Alice Smith"]})
+    candidate = pd.DataFrame({"name": ["Nora Vale", "Bob Jones", "Iris Lane"]})
+    report = {
+        "mappings": {
+            "name": {
+                "Alice Smith": "Nora Vale",
+                "Bob Jones": "Bob Jones",
+            }
+        }
+    }
+
+    metrics = anonymization_safeguard_metrics(source, candidate, ["name"], replacement_report=report)
+
+    assert metrics.loc[0, "exact_source_overlap_count"] == 1
+    assert metrics.loc[0, "normalized_source_overlap_count"] == 1
+    assert metrics.loc[0, "replacement_collision_count"] == 1
+    assert metrics.loc[0, "repeated_value_consistency_rate"] == 1.0
+    assert metrics.loc[0, "manual_review_required"] == True

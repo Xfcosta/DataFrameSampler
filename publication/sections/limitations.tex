@@ -1,0 +1,34 @@
+\section{Limitations}
+
+The current evidence supports a scoped practical-use claim, not a broad claim
+of synthetic-data superiority. DataFrameSampler should be evaluated as a simple
+and inspectable generator for examples, tests, demonstrations, and exploratory
+workflows. It should not be presented as a clinical simulator, a regulated
+statistical disclosure-control method, or a replacement for validated
+domain-specific synthetic-data systems.
+
+The anonymization layer does not provide differential privacy, formal
+de-identification, $k$-anonymity, HIPAA compliance, GDPR compliance, or
+protection against linkage attacks. It checks exact and normalized reuse of
+selected source values after replacement and generation. Columns that are not
+selected for replacement may still emit observed source values because the
+decoder samples from values observed in the fitted data. Because sampling is
+based on nearest-neighbour chains, very small datasets or highly distinctive
+rows may also make generated rows close to particular source records. This
+memorization risk must be considered separately from exact identifier
+replacement.
+
+The LLM-assisted configuration mode is a convenience interface. It can reduce
+the burden of choosing vectorization columns, sampled columns, embedding
+methods, and nearest-neighbour backends, but its recommendations remain
+heuristic. Opaque column names, coded values, missing domain context, or poor
+examples can produce weak configurations. User review is therefore part of the
+intended workflow.
+
+Finally, the method's behaviour depends on the quality of the latent
+representation and neighbour graph. High-cardinality categorical columns, sparse
+bins, rare categories, weak helper columns, or approximate-neighbour errors may
+produce implausible rows. These cases should be treated as boundary conditions
+for the final claim rather than hidden as implementation details.
+
+\input{tables/limitations_scope}

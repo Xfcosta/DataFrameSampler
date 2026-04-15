@@ -18,7 +18,9 @@ The implementation is organized into focused modules:
   nearest-neighbour backends;
   \item \texttt{sampler.py}: high-level dataframe sampling API;
   \item \texttt{io.py}: CSV and Parquet dataframe I/O;
-  \item \texttt{llm.py}: optional OpenAI-assisted configuration.
+  \item \texttt{llm.py}: optional OpenAI-assisted configuration;
+  \item \texttt{anonymization.py}: optional LLM-generated surrogate replacement
+  for selected sensitive columns.
 \end{itemize}
 
 Optional dependencies are imported lazily. For example, Parquet support requires
@@ -30,3 +32,18 @@ The command-line interface supports explicit user configuration and automatic
 configuration. Explicit user parameters take precedence over LLM-generated
 recommendations. This is intended to make automated configuration useful while
 keeping the user in control of high-impact choices.
+
+The anonymization layer is exposed through both the Python API and the command
+line. In Python, users call \texttt{anonymize\_columns\_with\_openai} to obtain
+an anonymized dataframe and a replacement report before constructing the
+sampler. In the CLI, the \texttt{--anonymize\_columns} option can be supplied
+multiple times. When present, these replacements are performed before
+\texttt{fit}; the generated output is then checked with
+\texttt{assert\_no\_value\_overlap} before being saved.
+
+The LLM configuration path is intentionally inspectable. The helper returns
+ordinary Python data structures rather than hidden state, and the CLI reports
+which options were filled automatically. This allows users to combine
+automation with manual constraints, for example by explicitly choosing the
+sampled columns while allowing the model to propose helper columns for
+categorical vectorization.

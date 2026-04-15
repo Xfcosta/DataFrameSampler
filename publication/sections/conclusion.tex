@@ -4,8 +4,15 @@ This paper stub introduced DataFrameSampler, a lightweight package for
 generating mixed-type tabular samples through vectorization, discretization,
 local neighbour sampling, and bin-level decoding. The implementation provides a
 practical Python API and CLI, configurable embedding and nearest-neighbour
-backends, CSV/Parquet I/O, and optional LLM-assisted configuration.
+backends, CSV/Parquet I/O, optional LLM-assisted configuration, and
+sensitive-value replacement before sampling.
+
+The central argument is that simple and inspectable generation has value in its
+own right. For business and medical software workflows, a human-understandable
+mechanism can be preferable when the goal is to create examples for testing,
+demonstration, training, and exploratory modelling under explicit governance
+constraints.
 
 The next step is to complete the empirical evaluation and characterize where
 the method is useful, where it fails, and how its configuration choices affect
-distributional fidelity and downstream utility.
+distributional fidelity, downstream utility, and ease of review.

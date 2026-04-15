@@ -1,18 +1,19 @@
 \section{Introduction}
 
-Tabular datasets remain a central representation in scientific computing,
-business analytics, health informatics, and machine learning. In many practical
-settings, developers and analysts need data that resembles an existing table in
-order to test software, benchmark downstream workflows, or demonstrate tools.
-However, direct reuse of the original data may be undesirable because of
-privacy, licensing, operational, or convenience constraints.
+Tabular datasets remain a central representation in business analytics, health
+informatics, scientific computing, and machine learning. In many practical
+settings, developers, analysts, and data stewards need examples that resemble an
+existing table in order to test software, benchmark downstream workflows,
+demonstrate tools, or train users. However, direct reuse of the original data
+may be undesirable because of privacy, licensing, operational, governance, or
+convenience constraints.
 
 DataFrameSampler is a small Python package designed for this pragmatic setting.
-Its goal is not to provide formal privacy guarantees, but to offer a simple
-mechanism for generating dataframe-shaped samples that preserve some of the
-local structure of the input table. The package accepts pandas dataframes, CSV
-files, or Parquet files, and produces generated samples with the same column
-interface.
+Its goal is not to provide formal privacy guarantees or compete with large
+generative models on maximum fidelity. Instead, it aims to make synthetic
+example creation simple, inspectable, and easy to explain to non-specialist
+stakeholders. The package accepts pandas dataframes, CSV files, or Parquet
+files, and produces generated samples with the same column interface.
 
 The central idea is to represent each row in a discretized latent bin-space.
 Numeric columns are discretized directly. Non-numeric columns are first mapped
@@ -22,20 +23,66 @@ sampling local neighbour chains and applying a difference vector observed among
 neighbours. The resulting latent row is then decoded by sampling original
 observed values from corresponding bins.
 
+This mechanism is deliberately transparent. A generated row can be traced back
+to an anchor row, neighbouring rows, bin-level movements, and decoded column
+bins. This is valuable in settings such as business reporting and medical data
+engineering, where users often need to justify why synthetic examples look the
+way they do, detect failure modes, and explain the behaviour of a tool to
+reviewers. Trust here is not treated as a claim that the data are private or
+statistically optimal; it is treated as a property of being understandable,
+auditable, and constrained by explicit configuration.
+
 The current software also includes engineering features intended to make the
 method usable in modern data workflows: selectable embedding algorithms from
 scikit-learn, exact and approximate nearest-neighbour backends, optional OpenAI
-assisted configuration, and extension-based CSV/Parquet serialization.
+assisted configuration, an anonymization layer for selected sensitive columns,
+and extension-based CSV/Parquet serialization.
+
+Two usability problems are especially important for this style of sampler.
+First, users must decide which numeric columns should be used to vectorize each
+non-numeric column. This choice is often semantic rather than purely
+statistical: for example, a job title may be better represented by compensation,
+seniority, and department than by unrelated numeric identifiers. DataFrameSampler
+therefore includes an optional LLM-assisted mode that profiles the dataframe and
+returns a structured configuration for vectorization, sampling, embedding, and
+nearest-neighbour search. Second, some source tables contain direct identifiers
+that should not be offered to the sampler at all. For these cases, selected
+columns can be replaced with generated surrogate values before fitting, so the
+sampling procedure operates on the anonymized table rather than on the original
+identifiers.
+
+In business settings, this makes the library suitable for producing example
+customer, transaction, operations, or reporting data for application testing and
+workflow demonstrations. In medical and health-informatics settings, the same
+design can support software integration tests, training notebooks, dashboard
+mock-ups, and reproducible demonstrations where real patient records should not
+be used directly. These uses still require local governance review: the
+anonymization layer is a safeguard against exact reuse of selected values, not a
+formal de-identification or privacy-preserving release mechanism.
 
 The contributions of this work-in-progress paper are:
 
 \begin{itemize}
-  \item a concise description of latent bin-space sampling for mixed-type
-  dataframe generation;
+  \item a concise description of latent bin-space sampling as a simple and
+  human-auditable mechanism for mixed-type dataframe generation;
   \item an open-source Python implementation with a command-line interface and
   library API;
   \item a configurable categorical vectorization mechanism based on helper
   columns and one-dimensional embeddings;
+  \item optional LLM-assisted configuration that proposes vectorization choices
+  from a dataframe profile while respecting user overrides;
+  \item a sensitive-value replacement layer that anonymizes selected columns
+  before fitting and checks generated outputs for exact source-value reuse;
   \item a planned evaluation protocol for comparing generated and source
   tables across distributional and predictive tasks.
 \end{itemize}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{what_context.pdf}
+\caption{Intended use context. The goal is not to release formally private
+clinical or business records, but to produce inspectable example tables for
+testing, dashboards, demonstrations, and notebooks under explicit governance
+constraints.}
+\label{fig:what-context}
+\end{figure*}

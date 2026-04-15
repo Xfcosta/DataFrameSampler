@@ -1,0 +1,26 @@
+\begin{table}
+\caption{Starter usability and runtime measurements. Memory is not yet instrumented.}
+\label{tab:usability-runtime}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{llrrlll}
+\toprule
+Dataset & Method & Fit s & Sample s & Commands/LOC & Memory & Tuning/config \\
+\midrule
+adult & DFS default & 1.871 & 5.315 & Notebook cell & Not measured & 1 config \\
+adult & DFS LLM-style & 0.489 & 6.137 & Notebook cell & Not measured & LLM-style dict \\
+adult & DFS manual & 0.563 & 5.070 & Notebook cell & Not measured & Manual helpers \\
+adult & Gaussian copula & 0.037 & 0.020 & Notebook cell & Not measured & None \\
+adult & Independent columns & 0.001 & 0.009 & Notebook cell & Not measured & None \\
+adult & Row bootstrap & 0.001 & 0.001 & Notebook cell & Not measured & None \\
+adult & Stratified columns & 0.004 & 0.480 & Notebook cell & Not measured & Target column \\
+titanic & DFS default & 0.254 & 2.161 & Notebook cell & Not measured & 1 config \\
+titanic & DFS LLM-style & 0.158 & 3.095 & Notebook cell & Not measured & LLM-style dict \\
+titanic & DFS manual & 0.134 & 2.469 & Notebook cell & Not measured & Manual helpers \\
+titanic & Gaussian copula & 0.024 & 0.030 & Notebook cell & Not measured & None \\
+titanic & Independent columns & 0.001 & 0.009 & Notebook cell & Not measured & None \\
+titanic & Row bootstrap & 0.000 & 0.002 & Notebook cell & Not measured & None \\
+titanic & Stratified columns & 0.005 & 0.361 & Notebook cell & Not measured & Target column \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}

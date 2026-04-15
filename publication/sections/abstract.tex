@@ -1,11 +1,16 @@
-Synthetic tabular data generation is often useful for testing pipelines,
-demonstrating software, and exploring modelling workflows when direct use of
-source data is inconvenient. This paper presents DataFrameSampler, a lightweight
-Python library for generating mixed-type tabular samples from pandas dataframes.
-The method maps numeric and categorical columns into a discretized latent
-bin-space, samples new latent rows by transferring differences along local
-neighbour chains, and decodes latent bins back into observed column values. The
-implementation supports configurable categorical vectorization, exact and
-approximate nearest-neighbour backends, CSV and Parquet data I/O, and optional
-LLM-assisted configuration. This manuscript is a work-in-progress stub and
+Synthetic tabular data generation is useful in business and medical workflows
+where teams need realistic examples for testing, demonstration, integration, and
+training, but cannot casually reuse source data. This paper presents
+DataFrameSampler, a lightweight Python library for generating mixed-type
+tabular samples from pandas dataframes with an emphasis on simplicity and
+human-auditable behaviour. The method maps numeric and categorical columns into
+a discretized latent bin-space, samples new latent rows by transferring
+differences along local neighbour chains, and decodes latent bins back into
+column values. Each generated example can therefore be explained in terms of
+nearby source rows, bin assignments, and a local difference operation, rather
+than as the opaque output of a large learned generator. The implementation
+supports configurable categorical vectorization, exact and approximate
+nearest-neighbour backends, CSV and Parquet data I/O, optional LLM-assisted
+configuration, and an anonymization layer that replaces selected sensitive
+values before generation. This manuscript is a work-in-progress stub and
 outlines the method, software interface, and planned empirical evaluation.

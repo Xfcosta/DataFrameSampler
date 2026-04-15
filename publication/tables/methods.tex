@@ -1,0 +1,20 @@
+\begin{table}
+\caption{Baseline and competitor method metadata.}
+\label{tab:methods}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{lllllll}
+\toprule
+Method & Package & Family & Mixed & Setup & Inspect. & Optional deps \\
+\midrule
+DFS default & DataFrameSampler & Latent bin-space sampler & Yes & Low & High & None \\
+DFS manual & DataFrameSampler & Latent bin-space sampler & Yes & Medium & High & None \\
+DFS LLM-style & DataFrameSampler & Latent bin-space sampler & Yes & Low/medium & High & OpenAI for live mode \\
+Row bootstrap & Experiment helper & Resampling & Yes & Low & Medium & None \\
+Independent columns & Experiment helper & Empirical marginals & Yes & Low & Medium & None \\
+Gaussian copula & Experiment helper & Copula + empirical categorical & Yes & Low & Medium & None \\
+Stratified columns & Experiment helper & Target-stratified empirical & Yes & Low & Medium & Target column \\
+SMOTENC & imbalanced-learn & Supervised oversampling & Yes & Medium & Medium & imbalanced-learn \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}

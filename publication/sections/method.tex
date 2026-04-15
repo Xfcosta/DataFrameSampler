@@ -50,23 +50,91 @@ where $\alpha$ is sampled from a configured interpolation range. The generated
 latent vector is rounded to integer bin indexes, clipped to valid ranges, and
 decoded back to the original dataframe space.
 
+The operation is intentionally simple to inspect. For a generated example, the
+user can identify the anchor row, the neighbour chain, the latent difference
+that was transferred, and the bins used during decoding. This is an important
+design choice for applied domains where generated examples may be shown to
+business users, clinicians, auditors, or software teams that need a concrete
+explanation rather than a black-box generation claim.
+
+\subsection{Generation Trace}
+
+For a generated row $\tilde{x}$, a trace is defined as the tuple
+\[
+  \tau(\tilde{x}) = (a, b, c, z_a, z_b, z_c, \tilde{z}, B),
+\]
+where $a$, $b$, and $c$ are the anchor and neighbour indexes, $z_a$, $z_b$, and
+$z_c$ are their latent bin vectors, $\tilde{z}$ is the generated latent vector,
+and $B$ records the per-column bins used for decoding. This trace is the object
+that supports the paper's inspectability claim: it connects an output row to a
+small number of source rows and a simple arithmetic operation.
+
+The operational procedure is:
+\begin{enumerate}
+  \item optionally replace selected sensitive columns and verify no exact or
+  normalized overlap with source values;
+  \item vectorize the dataframe and encode each column into bins;
+  \item build the nearest-neighbour graph, using fallback nearest neighbours
+  when mutual-neighbour search leaves a row isolated;
+  \item sample an anchor-neighbour chain and transfer a local latent difference;
+  \item clip and decode the generated bin vector into a dataframe row;
+  \item verify selected anonymized columns against the original source values
+  before returning or saving generated rows.
+\end{enumerate}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{how_pipeline.pdf}
+\caption{DataFrameSampler pipeline. The diagram exposes the intermediate
+objects that make the mechanism inspectable: selected sensitive-value
+replacement, vectorization, bin encoding, neighbour-chain sampling, decoding,
+and the generated-row trace.}
+\label{fig:how-pipeline}
+\end{figure*}
+
 \subsection{LLM-Assisted Configuration}
 
 Choosing helper columns for categorical vectorization can require semantic
 knowledge of column roles. The package therefore includes an optional
-OpenAI-assisted mode. The helper sends a compact dataframe profile to an LLM,
-including column names, dtypes, missing counts, unique counts, examples, and
-basic numeric summaries. The model returns a structured configuration
-containing candidate helper columns, sampled columns, an embedding method, and a
-nearest-neighbour backend. The command-line flag \texttt{-A} fills only options
-that the user did not explicitly specify.
+OpenAI-assisted mode that treats configuration as a structured recommendation
+task. The helper sends a compact dataframe profile to an LLM, including column
+names, dtypes, missing counts, unique counts, examples, and basic numeric
+summaries. The model returns a JSON-compatible configuration containing
+candidate helper columns, sampled columns, an embedding method, and a
+nearest-neighbour backend.
+
+The LLM is not part of the generative model itself. It is used only to reduce
+the friction of selecting a reasonable configuration. Explicit user choices
+take precedence over model recommendations. In the command-line interface, the
+\texttt{-A} flag asks the model to fill only those options that were not already
+specified by the user. In the Python API, the same helper returns a dictionary
+that can be inspected, edited, logged, or passed into the sampler.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{llm_configuration_flow.pdf}
+\caption{LLM-assisted configuration flow. The LLM receives a dataframe profile
+and proposes configuration fields, but explicit user overrides remain
+authoritative.}
+\label{fig:llm-configuration}
+\end{figure}
 
 \subsection{Sensitive-Value Replacement}
 
 For workflows involving direct identifiers, the package can replace selected
-sensitive columns before fitting the sampler. In this mode, OpenAI-generated
-surrogate values are inserted into the original dataframe, exact and normalized
-overlap with the source values is checked, and the sampler is then fit on the
-surrogate dataframe. Generated samples are checked again against the original
-source values. This procedure reduces exact identifier re-emission in selected
-columns, but it is not a formal privacy guarantee.
+sensitive columns before fitting the sampler. Let $S$ be the set of columns
+marked for replacement. For each $c \in S$, the implementation extracts the
+distinct non-null source values and asks an LLM to produce surrogate values of
+the same broad type, such as plausible names, organizations, or labels. The
+surrogate mapping is then applied to the dataframe before vectorization,
+discretization, neighbour construction, or sampling occurs.
+
+After replacement, the implementation checks that no generated surrogate value
+has exact or normalized string overlap with the original values in the selected
+columns. The sampler is then fit on the surrogate dataframe. Generated samples
+are checked again against the original source values before being returned or
+written to disk. This design ensures that the core sampler never needs to ingest
+the original sensitive values for those columns. The procedure reduces exact
+identifier re-emission in selected columns, but it is not a formal privacy
+guarantee and does not provide differential privacy, $k$-anonymity, or
+protection against linkage attacks.

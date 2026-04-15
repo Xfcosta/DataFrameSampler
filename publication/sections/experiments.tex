@@ -3,6 +3,25 @@
 This section is a stub for the empirical evaluation. The planned evaluation
 will compare generated and source data along three axes.
 
+\begin{table*}[t]
+\centering
+\caption{Claim-specific evidence plan. The table states what each paper claim
+requires before it can be made strongly.}
+\label{tab:claim-evidence}
+\scriptsize
+\begin{tabular}{@{}p{0.13\textwidth}p{0.14\textwidth}p{0.20\textwidth}p{0.20\textwidth}p{0.17\textwidth}@{}}
+\toprule
+Claim & Type & Primary evidence & Supporting or boundary evidence & Allowable conclusion \\
+\midrule
+Simplicity & Practical-use & Quick-start commands, lines of code, configuration steps & Runtime, dependency burden, tuning budget & Preferable when low setup cost matters \\
+Inspectability & Mechanism-supported & Row-level traces linking outputs to neighbour chains and bins & Failure cases where traces reveal implausible rows & Generated examples are auditable under the traced mechanism \\
+Utility & Regime-specific & Distributional similarity and train-on-synthetic, test-on-real results & Dataset descriptors, per-dataset differences, ablations & Useful in the studied regimes, not generally superior \\
+Safeguard & Boundary & Exact and normalized overlap checks for selected columns & Collision tests and non-selected-column reuse analysis & Reduces exact re-emission for selected values only \\
+LLM configuration & Practical-use & Valid configuration rate and override preservation & Manual/default comparisons and weak recommendation analysis & Reduces configuration burden when profiles are informative \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
 \subsection{Distributional Similarity}
 
 For numeric columns, planned metrics include univariate summary statistics,
@@ -26,26 +45,89 @@ Planned ablations include:
   columns;
   \item PCA, MDS, and nonlinear embedding choices;
   \item exact versus approximate nearest-neighbour backends;
-  \item mutual-neighbour sampling with and without fallback edges.
+  \item mutual-neighbour sampling with and without fallback edges;
+  \item manually specified configuration versus LLM-assisted configuration;
+  \item generation with and without sensitive-value replacement for selected
+  identifier columns.
 \end{itemize}
+
+\subsection{Usability And Safeguard Checks}
+
+The LLM-assisted configuration mode will be evaluated as a usability feature
+rather than as an independent modelling component. Planned checks include the
+rate at which returned configurations are syntactically valid, whether selected
+helper columns are type-compatible, and whether user overrides are preserved.
+For the anonymization layer, planned checks include exact source-value overlap
+in selected columns before and after generation, consistency of repeated
+surrogate mappings, and failure behaviour when the model proposes a replacement
+that collides with an original value.
+
+\subsection{Preliminary Baseline Comparisons}
+
+The current experiment scaffold includes Adult Census Income and Titanic as
+initial mixed-type datasets. For each dataset, we compare simple baselines
+against three DataFrameSampler configurations: default settings, a manual
+configuration, and a fixed LLM-style configuration recorded in the notebook for
+reproducibility. The LLM-style condition should be read as an experiment proxy
+for the kind of structured recommendation returned by the LLM interface; the
+notebooks do not call an external API during execution.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{baseline_similarity.pdf}
+\caption{Starter distributional and association metrics for DataFrameSampler
+configurations and simple baselines on Adult and Titanic. Lower is better for
+KS, total variation, and association difference; higher is better for histogram
+overlap. Row bootstrap is included as an important reference because it often
+preserves similarity metrics while directly reusing source rows.}
+\label{fig:baseline-similarity}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{distribution_dashboard.pdf}
+\caption{Distributional dashboard for the Titanic starter experiment using the
+manual DataFrameSampler configuration. The figure pairs numeric histogram
+overlap, categorical frequency comparison, and numeric correlation difference
+to make the similarity claim inspectable rather than dependent on a single
+score.}
+\label{fig:distribution-dashboard}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{configuration_competitors.pdf}
+\caption{Configuration competitors for DataFrameSampler. Default, manual, and
+LLM-style configurations expose the configuration burden that motivates the
+LLM-assisted interface. These preliminary results are not a claim that one
+configuration is generally best; they show that configuration choice changes
+distributional metrics, association preservation, and sampling time.}
+\label{fig:configuration-competitors}
+\end{figure*}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{utility_cost_frontier.pdf}
+\caption{Starter cost--similarity frontier. The composite score is only a
+visual summary of the already reported metrics; it is not used as a standalone
+claim of method superiority.}
+\label{fig:utility-cost-frontier}
+\end{figure}
+
+\input{tables/datasets}
+
+\input{tables/methods}
+
+\input{tables/distributional_similarity}
+
+\input{tables/usability_runtime}
+
+\input{tables/downstream_utility}
+
+\input{tables/ablations}
 
 \subsection{Datasets}
 
 Candidate datasets include small public mixed-type tabular datasets and the
 example datasets distributed with the project notebook. Any reported results
 will clearly distinguish demonstration datasets from benchmark datasets.
-
-\begin{table}[t]
-\centering
-\caption{Planned evaluation summary. Values are placeholders.}
-\label{tab:planned-evaluation}
-\begin{tabular}{lll}
-\toprule
-Dataset & Task & Metrics \\
-\midrule
-Heart & Classification & Accuracy, distribution shift \\
-Billionaires & Mixed-type generation & Marginals, correlations \\
-Synthetic correlated & Sanity check & Correlation retention \\
-\bottomrule
-\end{tabular}
-\end{table}

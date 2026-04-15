@@ -1,0 +1,7 @@
+data/raw/
+data/processed/*.csv
+results/*.csv
+../publication/tables/*.csv
+figures/*.png
+figures/*.svg
+*.log
