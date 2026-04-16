@@ -22,6 +22,9 @@ preparation helpers for the paper.
 - `numeric_projection.py`: fitted-sampler numeric transformations and
   original/generated/superimposed 2D projection plots. It uses UMAP when
   available and PCA as a fallback.
+- `predictive.py`: target-choice reporting and real-test predictive
+  comparisons between models trained on real rows and models trained on
+  synthetic rows generated from the real training split.
 - `notebooks/`: one notebook per dataset.
 - `data/raw/`: downloaded source files.
 - `data/processed/`: cleaned CSV files consumed by notebooks.
@@ -67,9 +70,10 @@ jupyter notebook experiments/notebooks/synthetic_controlled.ipynb
 The notebooks are intentionally thin. Each notebook selects a dataset key from
 `experiments/datasets.py`, displays the preprocessing and vectorization plans,
 plots pairwise features only after the configured sampler has reduced every
-column to its numeric representation, calls `run_configured_dataset_experiment`,
-and displays the returned profile, starter sample report, numeric projection
-triptych, and baseline comparison.
+column to its numeric representation, states the configured target column, calls
+`run_configured_dataset_experiment`, and displays the returned profile, starter
+sample report, numeric projection triptych, baseline comparison, and predictive
+target evaluation.
 To add another dataset, add a `DatasetExperimentConfig`, create a small
 notebook that changes `DATASET_NAME`, then rerun the table and figure helpers:
 
