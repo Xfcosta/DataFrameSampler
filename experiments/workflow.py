@@ -24,6 +24,7 @@ class ExperimentPaths:
 
 @dataclass(frozen=True)
 class SamplerRun:
+    sampler: Any
     generated: pd.DataFrame
     similarity_report: pd.DataFrame
     runtime: pd.DataFrame
@@ -181,6 +182,7 @@ def run_starter_sampler(
         runtime.to_csv(output_dir / f"{config.dataset_name}_runtime_start.csv", index=False)
 
     return SamplerRun(
+        sampler=sampler,
         generated=generated,
         similarity_report=report,
         runtime=runtime,

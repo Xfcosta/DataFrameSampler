@@ -87,7 +87,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     is_flag=True,
     help="Use OpenAI to choose omitted vectorizing columns, sampled columns, embedding method, and KNN backend.",
 )
-@click.version_option("0.5.0", "--version", "-v")
+@click.version_option("0.5.1", "--version", "-v")
 @click.pass_context
 def dataframe_sampler_main(
     ctx,

@@ -188,6 +188,18 @@ def test_concrete_dataframe_sampler_generates_requested_shape_and_columns():
     assert set(generated["band"]).issubset(set(df["band"]))
 
 
+def test_concrete_dataframe_sampler_transforms_rows_to_numeric_view():
+    df = make_mixed_dataframe()
+    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=1)
+
+    sampler.fit(df)
+    numeric = sampler.transform(df.head(3))
+
+    assert numeric.shape == (3, 3)
+    assert list(numeric.columns) == list(df.columns)
+    assert all(pd.api.types.is_numeric_dtype(numeric[column]) for column in numeric.columns)
+
+
 def test_concrete_dataframe_sampler_accepts_sklearn_knn_backend():
     df = make_mixed_dataframe()
     sampler = ConcreteDataFrameSampler(

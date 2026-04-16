@@ -200,6 +200,19 @@ class DataFrameSampler(object):
         self.sampler.fit(self.latent_data_mtx)
         return self
 
+    def transform(self, dataframe):
+        if self.latent_data_mtx is None:
+            raise ValueError("Sampler is not fit.")
+        if not isinstance(dataframe, pd.DataFrame):
+            raise TypeError("dataframe must be a pandas DataFrame.")
+        vectorizing_dataframe = self.dataframe_vectorizer.transform(dataframe)
+        if self.sampled_columns is not None:
+            missing_columns = [column for column in self.sampled_columns if column not in vectorizing_dataframe.columns]
+            if missing_columns:
+                raise ValueError("Unknown sampled columns: %s" % missing_columns)
+            vectorizing_dataframe = vectorizing_dataframe[self.sampled_columns]
+        return vectorizing_dataframe
+
     def sample(self, n_samples):
         if self.latent_data_mtx is None:
             raise ValueError("Sampler is not fit.")

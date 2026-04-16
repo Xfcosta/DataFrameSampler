@@ -183,8 +183,10 @@ sampler = ConcreteDataFrameSampler(
     knn_backend_kwargs=None,
     embedding_method="mds",
     embedding_kwargs=None,
+    numeric_decode_strategy="observed_bin",
 )
 sampler.fit(df)
+numeric_df = sampler.transform(df)
 generated_df = sampler.sample(n_samples=100)
 sampler.sample_to_file(n_samples=100, filename="generated.csv")
 sampler.sample_to_file(n_samples=100, filename="generated.parquet")
@@ -209,6 +211,21 @@ Arguments:
   dictionary of strings/objects, or a custom sklearn-like object.
 - `embedding_kwargs`: optional dictionary of keyword arguments passed to the
   selected embedding method. This can also be a dictionary keyed by column name.
+- `numeric_decode_strategy`: set to `observed_bin` to decode numeric columns
+  from observed values in generated bins, or `continuous` to keep generated
+  numeric latent values directly while still decoding categorical columns
+  through bins.
+
+After fitting, `sampler.transform(df)` returns the pure numerical representation
+that DataFrameSampler uses internally before bin encoding. This is useful for
+inspection, distance calculations, or dimensionality-reduction plots of original
+and generated rows in the same numeric space.
+
+For experiment notebooks, `experiments.numeric_projection` provides a reusable
+triptych plot that applies this numeric view to original and generated rows,
+projects both sets into the same two-dimensional space with UMAP when available
+or PCA as a fallback, and displays original-only, generated-only, and
+superimposed panels. See `docs/numeric_projection.md` for a focused example.
 
 Complete example:
 
