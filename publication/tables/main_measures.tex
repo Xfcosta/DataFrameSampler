@@ -1,0 +1,30 @@
+\begin{table*}
+\caption{Primary experiment measures. NN ratio compares synthetic-to-real nearest-neighbour distance with natural real-to-real nearest-neighbour distance; values below one indicate closer-than-natural synthetic rows. Discrimination accuracy near 0.5 is better. Utility lift is the change from adding synthetic rows to the real training set. Histogram overlap is higher-is-better and categorical JSD is lower-is-better.}
+\label{tab:main-measures}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{llrrrrrrr}
+\toprule
+Dataset & Method & NN ratio & NN close rate & Disc. acc. & Disc. privacy & Utility lift & Hist. overlap & Cat. JSD \\
+\midrule
+adult & DFS manual & 1.394 & 0.006 & 0.833 & 0.333 & -0.007 & 0.968 & 0.009 \\
+adult & Independent columns & 1.467 & 0.003 & 0.867 & 0.267 & -0.012 & 0.969 & 0.002 \\
+adult & Row bootstrap & 0.000 & 1.000 & 0.696 & 0.608 & 0.014 & 0.974 & 0.002 \\
+synthetic\_correlated\_helpers & DFS manual & 2.202 & 0.046 & 0.739 & 0.521 & 0.011 & 0.930 & 0.001 \\
+synthetic\_correlated\_helpers & Independent columns & 6.328 & 0.006 & 0.918 & 0.164 & -0.000 & 0.944 & 0.001 \\
+synthetic\_correlated\_helpers & Row bootstrap & 0.000 & 1.000 & 0.424 & 0.848 & 0.028 & 0.944 & 0.000 \\
+synthetic\_high\_cardinality & DFS manual & 1.149 & 0.036 & 0.612 & 0.776 & -0.006 & 0.935 & 0.014 \\
+synthetic\_high\_cardinality & Independent columns & 1.799 & 0.004 & 0.815 & 0.370 & -0.006 & 0.947 & 0.012 \\
+synthetic\_high\_cardinality & Row bootstrap & 0.000 & 1.000 & 0.436 & 0.873 & 0.006 & 0.960 & 0.007 \\
+synthetic\_rare\_categories & DFS manual & 1.610 & 0.044 & 0.676 & 0.648 & -0.006 & 0.948 & 0.001 \\
+synthetic\_rare\_categories & Independent columns & 2.213 & 0.038 & 0.724 & 0.552 & -0.073 & 0.950 & 0.001 \\
+synthetic\_rare\_categories & Row bootstrap & 0.000 & 1.000 & 0.403 & 0.806 & 0.072 & 0.951 & 0.002 \\
+synthetic\_sensitive\_identifier & DFS manual & 0.969 & 0.128 & 0.545 & 0.909 & 0.013 & 0.931 & 0.097 \\
+synthetic\_sensitive\_identifier & Independent columns & 1.007 & 0.056 & 0.545 & 0.909 & 0.000 & 0.954 & 0.100 \\
+synthetic\_sensitive\_identifier & Row bootstrap & 0.000 & 1.000 & 0.545 & 0.909 & 0.153 & 0.946 & 0.100 \\
+titanic & DFS manual & 4.229 & 0.000 & 0.949 & 0.102 & 0.000 & 0.944 & 0.002 \\
+titanic & Independent columns & 4.898 & 0.000 & 0.961 & 0.077 & 0.000 & 0.980 & 0.002 \\
+titanic & Row bootstrap & 0.000 & 0.000 & 0.421 & 0.842 & 0.000 & 0.972 & 0.001 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table*}

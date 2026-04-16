@@ -1,26 +1,54 @@
-\begin{table}
-\caption{Starter usability and runtime measurements. Memory is not yet instrumented.}
+\begin{table*}
+\caption{Starter usability, runtime, and traced Python allocation measurements. Peak MB is the maximum traced allocation peak observed during fit or sample, not total process RSS.}
 \label{tab:usability-runtime}
-\begin{adjustbox}{max width=\columnwidth}
-\begin{tabular}{llrrlll}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{llrrrrrll}
 \toprule
-Dataset & Method & Fit s & Sample s & Commands/LOC & Memory & Tuning/config \\
+Dataset & Method & Fit s & Sample s & Fit peak MB & Sample peak MB & Peak MB & Commands/LOC & Tuning/config \\
 \midrule
-adult & DFS default & 1.871 & 5.315 & Notebook cell & Not measured & 1 config \\
-adult & DFS LLM-style & 0.489 & 6.137 & Notebook cell & Not measured & LLM-style dict \\
-adult & DFS manual & 0.563 & 5.070 & Notebook cell & Not measured & Manual helpers \\
-adult & Gaussian copula & 0.037 & 0.020 & Notebook cell & Not measured & None \\
-adult & Independent columns & 0.001 & 0.009 & Notebook cell & Not measured & None \\
-adult & Row bootstrap & 0.001 & 0.001 & Notebook cell & Not measured & None \\
-adult & Stratified columns & 0.004 & 0.480 & Notebook cell & Not measured & Target column \\
-titanic & DFS default & 0.254 & 2.161 & Notebook cell & Not measured & 1 config \\
-titanic & DFS LLM-style & 0.158 & 3.095 & Notebook cell & Not measured & LLM-style dict \\
-titanic & DFS manual & 0.134 & 2.469 & Notebook cell & Not measured & Manual helpers \\
-titanic & Gaussian copula & 0.024 & 0.030 & Notebook cell & Not measured & None \\
-titanic & Independent columns & 0.001 & 0.009 & Notebook cell & Not measured & None \\
-titanic & Row bootstrap & 0.000 & 0.002 & Notebook cell & Not measured & None \\
-titanic & Stratified columns & 0.005 & 0.361 & Notebook cell & Not measured & Target column \\
+adult & DFS default & 1.641 & 22.916 & 121.321 & 1.336 & 121.321 & Notebook cell & 1 config \\
+adult & DFS LLM-style & 0.866 & 21.820 & 13.746 & 1.336 & 13.746 & Notebook cell & LLM-style dict \\
+adult & DFS manual & 1.029 & 18.100 & 13.730 & 1.336 & 13.730 & Notebook cell & Manual helpers \\
+adult & Gaussian copula & 0.200 & 0.073 & 0.763 & 0.529 & 0.763 & Notebook cell & None \\
+adult & Independent columns & 0.001 & 0.027 & 0.291 & 0.472 & 0.472 & Notebook cell & None \\
+adult & Row bootstrap & 0.001 & 0.002 & 0.578 & 0.250 & 0.578 & Notebook cell & None \\
+adult & Stratified columns & 0.006 & 1.277 & 0.973 & 1.119 & 1.119 & Notebook cell & Target column \\
+synthetic\_correlated\_helpers & DFS default & 0.126 & 0.923 & 7.167 & 0.223 & 7.167 & Notebook cell & 1 config \\
+synthetic\_correlated\_helpers & DFS LLM-style & 0.140 & 0.666 & 0.967 & 0.223 & 0.967 & Notebook cell & LLM-style dict \\
+synthetic\_correlated\_helpers & DFS manual & 0.125 & 0.727 & 0.958 & 0.223 & 0.958 & Notebook cell & Manual helpers \\
+synthetic\_correlated\_helpers & Gaussian copula & 0.038 & 0.028 & 0.127 & 0.129 & 0.129 & Notebook cell & None \\
+synthetic\_correlated\_helpers & Independent columns & 0.001 & 0.006 & 0.030 & 0.097 & 0.097 & Notebook cell & None \\
+synthetic\_correlated\_helpers & Row bootstrap & 0.000 & 0.001 & 0.062 & 0.060 & 0.062 & Notebook cell & None \\
+synthetic\_correlated\_helpers & Stratified columns & 0.003 & 0.170 & 0.126 & 0.271 & 0.271 & Notebook cell & Target column \\
+synthetic\_high\_cardinality & DFS default & 0.136 & 1.388 & 7.182 & 0.282 & 7.182 & Notebook cell & 1 config \\
+synthetic\_high\_cardinality & DFS LLM-style & 0.160 & 0.896 & 0.982 & 0.281 & 0.982 & Notebook cell & LLM-style dict \\
+synthetic\_high\_cardinality & DFS manual & 0.196 & 0.899 & 0.972 & 0.282 & 0.972 & Notebook cell & Manual helpers \\
+synthetic\_high\_cardinality & Gaussian copula & 0.033 & 0.024 & 0.131 & 0.144 & 0.144 & Notebook cell & None \\
+synthetic\_high\_cardinality & Independent columns & 0.001 & 0.008 & 0.035 & 0.115 & 0.115 & Notebook cell & None \\
+synthetic\_high\_cardinality & Row bootstrap & 0.000 & 0.001 & 0.071 & 0.068 & 0.071 & Notebook cell & None \\
+synthetic\_high\_cardinality & Stratified columns & 0.004 & 0.202 & 0.139 & 0.303 & 0.303 & Notebook cell & Target column \\
+synthetic\_rare\_categories & DFS default & 0.129 & 1.127 & 7.134 & 0.221 & 7.134 & Notebook cell & 1 config \\
+synthetic\_rare\_categories & DFS LLM-style & 0.194 & 0.983 & 0.940 & 0.221 & 0.940 & Notebook cell & LLM-style dict \\
+synthetic\_rare\_categories & DFS manual & 0.148 & 0.949 & 0.930 & 0.221 & 0.930 & Notebook cell & Manual helpers \\
+synthetic\_rare\_categories & Gaussian copula & 0.045 & 0.029 & 0.127 & 0.128 & 0.128 & Notebook cell & None \\
+synthetic\_rare\_categories & Independent columns & 0.001 & 0.011 & 0.030 & 0.102 & 0.102 & Notebook cell & None \\
+synthetic\_rare\_categories & Row bootstrap & 0.000 & 0.001 & 0.062 & 0.060 & 0.062 & Notebook cell & None \\
+synthetic\_rare\_categories & Stratified columns & 0.004 & 0.213 & 0.125 & 0.290 & 0.290 & Notebook cell & Target column \\
+synthetic\_sensitive\_identifier & DFS default & 0.134 & 1.641 & 7.166 & 0.285 & 7.166 & Notebook cell & 1 config \\
+synthetic\_sensitive\_identifier & DFS LLM-style & 0.170 & 1.124 & 0.969 & 0.286 & 0.969 & Notebook cell & LLM-style dict \\
+synthetic\_sensitive\_identifier & DFS manual & 0.165 & 0.918 & 0.960 & 0.286 & 0.960 & Notebook cell & Manual helpers \\
+synthetic\_sensitive\_identifier & Gaussian copula & 0.039 & 0.028 & 0.131 & 0.144 & 0.144 & Notebook cell & None \\
+synthetic\_sensitive\_identifier & Independent columns & 0.001 & 0.009 & 0.035 & 0.118 & 0.118 & Notebook cell & None \\
+synthetic\_sensitive\_identifier & Row bootstrap & 0.001 & 0.003 & 0.071 & 0.068 & 0.071 & Notebook cell & None \\
+synthetic\_sensitive\_identifier & Stratified columns & 0.004 & 0.322 & 0.140 & 0.316 & 0.316 & Notebook cell & Target column \\
+titanic & DFS default & 0.287 & 7.698 & 15.948 & 1.044 & 15.948 & Notebook cell & 1 config \\
+titanic & DFS LLM-style & 0.440 & 12.144 & 2.212 & 1.097 & 2.212 & Notebook cell & LLM-style dict \\
+titanic & DFS manual & 0.357 & 9.168 & 2.209 & 1.046 & 2.209 & Notebook cell & Manual helpers \\
+titanic & Gaussian copula & 0.092 & 0.089 & 0.287 & 0.446 & 0.446 & Notebook cell & None \\
+titanic & Independent columns & 0.001 & 0.017 & 0.095 & 0.389 & 0.389 & Notebook cell & None \\
+titanic & Row bootstrap & 0.001 & 0.001 & 0.188 & 0.225 & 0.225 & Notebook cell & None \\
+titanic & Stratified columns & 0.004 & 1.194 & 0.329 & 1.068 & 1.068 & Notebook cell & Target column \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
-\end{table}
+\end{table*}

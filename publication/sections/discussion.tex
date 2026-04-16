@@ -33,10 +33,10 @@ backends remain useful baselines, especially for small datasets and experiments
 where reproducibility is more important than throughput.
 
 The preliminary Adult and Titanic comparisons in
-Figures~\ref{fig:baseline-similarity} and
+Figures~\ref{fig:appendix-baseline-similarity} and
 \ref{fig:configuration-competitors}, together with the distribution dashboard
-in Figure~\ref{fig:distribution-dashboard} and the cost--similarity summary in
-Figure~\ref{fig:utility-cost-frontier}, illustrate why the paper should avoid
+in Figure~\ref{fig:distribution-dashboard} and the utility-lift cost summary in
+Figure~\ref{fig:appendix-utility-cost-frontier}, illustrate why the paper should avoid
 a single leaderboard claim. Row bootstrap is strong on several similarity
 metrics because it directly reuses source rows, but that behaviour is precisely
 what limits it as a synthetic example generator for governed workflows.
@@ -44,7 +44,8 @@ Independent column sampling can preserve univariate distributions while
 weakening association structure. DataFrameSampler configurations introduce a
 different trade-off: they are slower than the simplest baselines, but the
 generation mechanism remains inspectable and configuration choices visibly
-change the measured behaviour.
+change nearest-neighbour distance, discrimination, utility lift, and
+distribution-similarity behaviour.
 
 The intended use cases are therefore pragmatic: test fixtures, workflow
 demonstrations, training material, integration tests, dashboard prototypes, and

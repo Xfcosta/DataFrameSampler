@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
+
+from experiments.synthetic_data import SYNTHETIC_DATASETS, materialize_synthetic_datasets
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -10,6 +13,15 @@ EXPERIMENTS = ROOT / "experiments"
 RESULTS = EXPERIMENTS / "results"
 PROCESSED = EXPERIMENTS / "data" / "processed"
 TABLES = ROOT / "publication" / "tables"
+
+
+@dataclass(frozen=True)
+class DatasetTableMetadata:
+    key: str
+    name: str
+    domain: str
+    sensitive: str
+    rationale: str
 
 METHOD_METADATA = [
     {
@@ -96,64 +108,95 @@ METHOD_LABELS = {
     "stratified_columns": "Stratified columns",
 }
 
+DEFAULT_DATASETS = [
+    DatasetTableMetadata(
+        key="adult",
+        name="Adult Census Income",
+        domain="Census / income",
+        sensitive="None selected",
+        rationale="Generic mixed-type benchmark",
+    ),
+    DatasetTableMetadata(
+        key="titanic",
+        name="Titanic",
+        domain="Passenger survival",
+        sensitive="None selected",
+        rationale="Small mixed-type smoke benchmark",
+    ),
+    *[
+        DatasetTableMetadata(
+            key=spec.key,
+            name=spec.name,
+            domain="Synthetic controlled",
+            sensitive=", ".join(spec.sensitive_columns) if spec.sensitive_columns else "None selected",
+            rationale=spec.rationale,
+        )
+        for spec in SYNTHETIC_DATASETS
+    ],
+]
 
-def main() -> None:
-    TABLES.mkdir(parents=True, exist_ok=True)
-    comparisons = load_comparisons()
-    write_dataset_table()
-    write_method_table()
-    write_distribution_table(comparisons)
-    write_downstream_table()
-    write_runtime_table(comparisons)
-    write_ablation_table()
-    write_limitations_table()
 
-
-def load_comparisons() -> pd.DataFrame:
-    frames = [pd.read_csv(path) for path in sorted(RESULTS.glob("*_baseline_comparison.csv"))]
+def load_comparisons(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    frames = [pd.read_csv(path) for path in sorted(Path(results_dir).glob("*_baseline_comparison.csv"))]
     if not frames:
         raise FileNotFoundError("No baseline comparison files found. Run the notebooks first.")
     data = pd.concat(frames, ignore_index=True)
     data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
+    for column in [
+        "fit_peak_memory_mb",
+        "sample_peak_memory_mb",
+        "peak_memory_mb",
+        "nn_distance_ratio",
+        "nn_suspiciously_close_rate",
+        "discrimination_accuracy",
+        "discrimination_privacy_score",
+        "utility_task",
+        "utility_real_score",
+        "utility_augmented_score",
+        "utility_lift",
+        "distribution_histogram_overlap",
+        "distribution_numeric_kl",
+        "distribution_categorical_jsd",
+        "distribution_similarity_score",
+    ]:
+        if column not in data:
+            data[column] = pd.NA
     return data
 
 
-def write_dataset_table() -> None:
+def write_dataset_table(
+    *,
+    processed_dir: str | Path = PROCESSED,
+    tables_dir: str | Path = TABLES,
+    dataset_metadata: list[DatasetTableMetadata] | None = None,
+) -> Path:
     rows = []
-    dataset_meta = {
-        "adult": {
-            "name": "Adult Census Income",
-            "domain": "Census / income",
-            "sensitive": "None selected",
-            "rationale": "Generic mixed-type benchmark",
-        },
-        "titanic": {
-            "name": "Titanic",
-            "domain": "Passenger survival",
-            "sensitive": "None selected",
-            "rationale": "Small mixed-type smoke benchmark",
-        },
-    }
-    for key, meta in dataset_meta.items():
-        df = pd.read_csv(PROCESSED / f"{key}.csv")
+    processed_path = Path(processed_dir)
+    for meta in dataset_metadata or DEFAULT_DATASETS:
+        df = pd.read_csv(processed_path / f"{meta.key}.csv")
         numeric = len(df.select_dtypes(include="number").columns)
         categorical = len(df.columns) - numeric
         rows.append(
             {
-                "Dataset": meta["name"],
-                "Domain": meta["domain"],
+                "Dataset": meta.name,
+                "Domain": meta.domain,
                 "Rows": len(df),
                 "Numeric": numeric,
                 "Categorical": categorical,
                 "Missing": int(df.isna().sum().sum()),
-                "Sensitive": meta["sensitive"],
-                "Rationale": meta["rationale"],
+                "Sensitive": meta.sensitive,
+                "Rationale": meta.rationale,
             }
         )
-    write_latex(pd.DataFrame(rows), TABLES / "datasets.tex", "Datasets used in the starter experiments.", "tab:datasets")
+    return write_latex(
+        pd.DataFrame(rows),
+        Path(tables_dir) / "datasets.tex",
+        "Datasets used in the starter experiments.",
+        "tab:datasets",
+    )
 
 
-def write_method_table() -> None:
+def write_method_table(*, tables_dir: str | Path = TABLES) -> Path:
     df = pd.DataFrame(METHOD_METADATA)
     df = df.rename(
         columns={
@@ -166,10 +209,10 @@ def write_method_table() -> None:
             "optional": "Optional deps",
         }
     )
-    write_latex(df, TABLES / "methods.tex", "Baseline and competitor method metadata.", "tab:methods")
+    return write_latex(df, Path(tables_dir) / "methods.tex", "Baseline and competitor method metadata.", "tab:methods")
 
 
-def write_distribution_table(comparisons: pd.DataFrame) -> None:
+def write_distribution_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = TABLES) -> Path:
     df = comparisons[
         [
             "dataset",
@@ -197,49 +240,100 @@ def write_distribution_table(comparisons: pd.DataFrame) -> None:
             "numeric_histogram_overlap": "Hist. overlap",
         }
     )
-    write_latex(
+    return write_latex(
         df,
-        TABLES / "distributional_similarity.tex",
+        Path(tables_dir) / "distributional_similarity.tex",
         "Starter distributional similarity results. Lower is better for KS, categorical TV, and association difference; higher is better for histogram overlap.",
         "tab:distributional-similarity",
         float_format="%.3f",
     )
 
 
-def write_downstream_table() -> None:
-    rows = [
-        {
-            "Evaluation": "Train synthetic, test real",
-            "Adult": "Planned",
-            "Titanic": "Planned",
-            "Baseline": "Compared with generated samples",
-            "Uncertainty": "Repeated splits planned",
-        },
-        {
-            "Evaluation": "Train real, test real",
-            "Adult": "Planned",
-            "Titanic": "Planned",
-            "Baseline": "Upper reference",
-            "Uncertainty": "Repeated splits planned",
-        },
-        {
-            "Evaluation": "Train bootstrap, test real",
-            "Adult": "Planned",
-            "Titanic": "Planned",
-            "Baseline": "Row bootstrap reference",
-            "Uncertainty": "Repeated splits planned",
-        },
-    ]
-    write_latex(
-        pd.DataFrame(rows),
-        TABLES / "downstream_utility.tex",
-        "Downstream utility table scaffold. Values remain planned until supervised evaluations are run.",
-        "tab:downstream-utility",
+def write_main_measure_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = TABLES) -> Path:
+    selected_methods = {
+        "dataframe_sampler_manual",
+        "row_bootstrap",
+        "independent_columns",
+    }
+    df = comparisons[comparisons["method"].isin(selected_methods)][
+        [
+            "dataset",
+            "method_label",
+            "nn_distance_ratio",
+            "nn_suspiciously_close_rate",
+            "discrimination_accuracy",
+            "discrimination_privacy_score",
+            "utility_lift",
+            "distribution_histogram_overlap",
+            "distribution_categorical_jsd",
+        ]
+    ].copy()
+    df = df.rename(
+        columns={
+            "dataset": "Dataset",
+            "method_label": "Method",
+            "nn_distance_ratio": "NN ratio",
+            "nn_suspiciously_close_rate": "NN close rate",
+            "discrimination_accuracy": "Disc. acc.",
+            "discrimination_privacy_score": "Disc. privacy",
+            "utility_lift": "Utility lift",
+            "distribution_histogram_overlap": "Hist. overlap",
+            "distribution_categorical_jsd": "Cat. JSD",
+        }
+    )
+    return write_latex(
+        df,
+        Path(tables_dir) / "main_measures.tex",
+        "Primary experiment measures. NN ratio compares synthetic-to-real nearest-neighbour distance with natural real-to-real nearest-neighbour distance; values below one indicate closer-than-natural synthetic rows. Discrimination accuracy near 0.5 is better. Utility lift is the change from adding synthetic rows to the real training set. Histogram overlap is higher-is-better and categorical JSD is lower-is-better.",
+        "tab:main-measures",
+        float_format="%.3f",
+        full_width=True,
     )
 
 
-def write_runtime_table(comparisons: pd.DataFrame) -> None:
-    df = comparisons[["dataset", "method_label", "fit_seconds", "sample_seconds"]].copy()
+def write_downstream_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = TABLES) -> Path:
+    df = comparisons[
+        [
+            "dataset",
+            "method_label",
+            "utility_task",
+            "utility_real_score",
+            "utility_augmented_score",
+            "utility_lift",
+        ]
+    ].copy()
+    df = df.rename(
+        columns={
+            "dataset": "Dataset",
+            "method_label": "Method",
+            "utility_task": "Task",
+            "utility_real_score": "Real train score",
+            "utility_augmented_score": "Augmented score",
+            "utility_lift": "Utility lift",
+        }
+    )
+    return write_latex(
+        df,
+        Path(tables_dir) / "downstream_utility.tex",
+        "Utility lift test. A baseline model is trained on real training data, then compared with a model trained on real plus generated rows and evaluated on held-out real rows.",
+        "tab:downstream-utility",
+        float_format="%.3f",
+        full_width=True,
+    )
+
+
+def write_runtime_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = TABLES) -> Path:
+    df = comparisons[
+        [
+            "dataset",
+            "method_label",
+            "fit_seconds",
+            "sample_seconds",
+            "fit_peak_memory_mb",
+            "sample_peak_memory_mb",
+            "peak_memory_mb",
+        ]
+    ].copy()
     setup_steps = {
         "DFS default": "1 config",
         "DFS manual": "Manual helpers",
@@ -250,7 +344,6 @@ def write_runtime_table(comparisons: pd.DataFrame) -> None:
         "Stratified columns": "Target column",
     }
     df["Commands/LOC"] = "Notebook cell"
-    df["Memory"] = "Not measured"
     df["Tuning/config"] = df["method_label"].map(setup_steps).fillna("Not recorded")
     df = df.rename(
         columns={
@@ -258,18 +351,131 @@ def write_runtime_table(comparisons: pd.DataFrame) -> None:
             "method_label": "Method",
             "fit_seconds": "Fit s",
             "sample_seconds": "Sample s",
+            "fit_peak_memory_mb": "Fit peak MB",
+            "sample_peak_memory_mb": "Sample peak MB",
+            "peak_memory_mb": "Peak MB",
         }
     )
-    write_latex(
+    return write_latex(
         df,
-        TABLES / "usability_runtime.tex",
-        "Starter usability and runtime measurements. Memory is not yet instrumented.",
+        Path(tables_dir) / "usability_runtime.tex",
+        "Starter usability, runtime, and traced Python allocation measurements. Peak MB is the maximum traced allocation peak observed during fit or sample, not total process RSS.",
         "tab:usability-runtime",
         float_format="%.3f",
+        full_width=True,
     )
 
 
-def write_ablation_table() -> None:
+def write_synthetic_dataset_table(
+    *,
+    tables_dir: str | Path = TABLES,
+) -> Path:
+    rows = [
+        {
+            "Dataset": spec.key.replace("synthetic_", ""),
+            "Controlled regime": spec.regime,
+            "Rows": spec.rows,
+            "Target": spec.target_column,
+            "Sensitive columns": ", ".join(spec.sensitive_columns) if spec.sensitive_columns else "None",
+            "Evidence role": spec.rationale,
+        }
+        for spec in SYNTHETIC_DATASETS
+    ]
+    return write_latex(
+        pd.DataFrame(rows),
+        Path(tables_dir) / "synthetic_controlled_datasets.tex",
+        "Controlled synthetic datasets used to isolate specific boundary regimes.",
+        "tab:synthetic-controlled-datasets",
+        full_width=True,
+    )
+
+
+def write_synthetic_results_table(
+    comparisons: pd.DataFrame,
+    *,
+    processed_dir: str | Path = PROCESSED,
+    results_dir: str | Path = RESULTS,
+    tables_dir: str | Path = TABLES,
+) -> Path:
+    synthetic_keys = {spec.key for spec in SYNTHETIC_DATASETS}
+    method_subset = {
+        "dataframe_sampler_manual",
+        "independent_columns",
+        "row_bootstrap",
+    }
+    df = comparisons[
+        comparisons["dataset"].isin(synthetic_keys) & comparisons["method"].isin(method_subset)
+    ][
+        [
+            "dataset",
+            "method_label",
+            "numeric_ks_statistic",
+            "categorical_total_variation",
+            "categorical_coverage",
+            "rare_category_preservation",
+            "mean_abs_association_difference",
+        ]
+    ].copy()
+    df["Sensitive overlap"] = df.apply(
+        lambda row: sensitive_overlap_count(
+            dataset_name=str(row["dataset"]),
+            method_label=str(row["method_label"]),
+            processed_dir=processed_dir,
+            results_dir=results_dir,
+        ),
+        axis=1,
+    )
+    df = df.rename(
+        columns={
+            "dataset": "Dataset",
+            "method_label": "Method",
+            "numeric_ks_statistic": "KS",
+            "categorical_total_variation": "Cat. TV",
+            "categorical_coverage": "Cat. coverage",
+            "rare_category_preservation": "Rare preserve",
+            "mean_abs_association_difference": "Assoc. diff.",
+        }
+    )
+    return write_latex(
+        df,
+        Path(tables_dir) / "synthetic_controlled_results.tex",
+        "Focused results for controlled synthetic regimes. Sensitive overlap counts exact reuse of patient identifiers in the controlled identifier dataset.",
+        "tab:synthetic-controlled-results",
+        float_format="%.3f",
+        full_width=True,
+    )
+
+
+def sensitive_overlap_count(
+    *,
+    dataset_name: str,
+    method_label: str,
+    processed_dir: str | Path = PROCESSED,
+    results_dir: str | Path = RESULTS,
+) -> str:
+    metadata = {spec.key: spec for spec in SYNTHETIC_DATASETS}
+    spec = metadata.get(dataset_name)
+    if spec is None or not spec.sensitive_columns:
+        return "n/a"
+    method_lookup = {value: key for key, value in METHOD_LABELS.items()}
+    method = method_lookup.get(method_label)
+    if method is None:
+        return "n/a"
+    real_path = Path(processed_dir) / f"{dataset_name}.csv"
+    generated_path = Path(results_dir) / f"{dataset_name}_{method}_generated.csv"
+    if not real_path.exists() or not generated_path.exists():
+        return "missing"
+    real = pd.read_csv(real_path)
+    generated = pd.read_csv(generated_path)
+    count = 0
+    for column in spec.sensitive_columns:
+        if column in real and column in generated:
+            source_values = set(real[column].dropna().astype(str))
+            count += int(generated[column].dropna().astype(str).isin(source_values).sum())
+    return str(count)
+
+
+def write_ablation_table(*, tables_dir: str | Path = TABLES) -> Path:
     rows = [
         {
             "Component": "Helper-column vectorization",
@@ -296,10 +502,15 @@ def write_ablation_table() -> None:
             "Claim status": "Not yet tested",
         },
     ]
-    write_latex(pd.DataFrame(rows), TABLES / "ablations.tex", "Ablation plan and current claim status.", "tab:ablations")
+    return write_latex(
+        pd.DataFrame(rows),
+        Path(tables_dir) / "ablations.tex",
+        "Ablation plan and current claim status.",
+        "tab:ablations",
+    )
 
 
-def write_limitations_table() -> None:
+def write_limitations_table(*, tables_dir: str | Path = TABLES) -> Path:
     rows = [
         {
             "Area": "Similarity",
@@ -326,9 +537,9 @@ def write_limitations_table() -> None:
             "Allowable scope": "Practical workflow claim only",
         },
     ]
-    write_latex(
+    return write_latex(
         pd.DataFrame(rows),
-        TABLES / "limitations_scope.tex",
+        Path(tables_dir) / "limitations_scope.tex",
         "Limitations and allowable conclusion scope under the current evidence.",
         "tab:limitations-scope",
     )
@@ -342,7 +553,8 @@ def write_latex(
     *,
     float_format: str | None = None,
     full_width: bool = False,
-) -> None:
+) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
     latex = dataframe.to_latex(
         index=False,
         escape=True,
@@ -359,6 +571,44 @@ def write_latex(
     path.write_text(latex)
     dataframe.to_csv(path.with_suffix(".csv"), index=False)
     print(path)
+    return path
+
+
+def generate_all_tables(
+    *,
+    results_dir: str | Path = RESULTS,
+    processed_dir: str | Path = PROCESSED,
+    tables_dir: str | Path = TABLES,
+    dataset_metadata: list[DatasetTableMetadata] | None = None,
+) -> list[Path]:
+    Path(tables_dir).mkdir(parents=True, exist_ok=True)
+    materialize_synthetic_datasets(processed_dir)
+    comparisons = load_comparisons(results_dir)
+    return [
+        write_dataset_table(
+            processed_dir=processed_dir,
+            tables_dir=tables_dir,
+            dataset_metadata=dataset_metadata,
+        ),
+        write_method_table(tables_dir=tables_dir),
+        write_main_measure_table(comparisons, tables_dir=tables_dir),
+        write_distribution_table(comparisons, tables_dir=tables_dir),
+        write_downstream_table(comparisons, tables_dir=tables_dir),
+        write_runtime_table(comparisons, tables_dir=tables_dir),
+        write_synthetic_dataset_table(tables_dir=tables_dir),
+        write_synthetic_results_table(
+            comparisons,
+            processed_dir=processed_dir,
+            results_dir=results_dir,
+            tables_dir=tables_dir,
+        ),
+        write_ablation_table(tables_dir=tables_dir),
+        write_limitations_table(tables_dir=tables_dir),
+    ]
+
+
+def main() -> None:
+    generate_all_tables()
 
 
 if __name__ == "__main__":

@@ -8,6 +8,8 @@ from experiments.metrics import (
     dependence_similarity,
     downstream_utility_scores,
     inspectability_metrics,
+    main_measure_report,
+    nearest_neighbor_distance_test,
     numeric_similarity,
     practicality_metrics,
     regression_scores,
@@ -145,3 +147,28 @@ def test_anonymization_safeguard_metrics_counts_overlap_and_collisions():
     assert metrics.loc[0, "replacement_collision_count"] == 1
     assert metrics.loc[0, "repeated_value_consistency_rate"] == 1.0
     assert metrics.loc[0, "manual_review_required"] == True
+
+
+def test_primary_measure_report_contains_four_experiment_measures():
+    real, synthetic = make_real_and_synthetic()
+    real["target"] = [0, 0, 1, 1]
+    synthetic["target"] = [0, 1, 1, 1]
+
+    report = main_measure_report(real, synthetic, target_column="target", random_state=1)
+
+    assert "nn_distance_ratio" in report
+    assert "discrimination_accuracy" in report
+    assert "utility_lift" in report
+    assert "distribution_histogram_overlap" in report
+    assert 0.0 <= report["distribution_histogram_overlap"] <= 1.0
+
+
+def test_nearest_neighbor_distance_test_compares_to_natural_distances():
+    real = pd.DataFrame({"x": [0.0, 1.0, 2.0, 3.0], "group": ["a", "a", "b", "b"]})
+    synthetic = pd.DataFrame({"x": [0.1, 2.9], "group": ["a", "b"]})
+
+    report = nearest_neighbor_distance_test(real, synthetic)
+
+    assert report["nn_synthetic_to_real_mean"] >= 0.0
+    assert report["nn_real_to_real_mean"] > 0.0
+    assert report["nn_distance_ratio"] >= 0.0

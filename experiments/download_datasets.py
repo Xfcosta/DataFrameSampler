@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from experiments.synthetic_data import materialize_synthetic_datasets
+
 
 ROOT = Path(__file__).resolve().parent
 RAW = ROOT / "data" / "raw"
@@ -102,6 +104,7 @@ def prepare_titanic() -> pd.DataFrame:
 def main() -> None:
     prepare_adult()
     prepare_titanic()
+    materialize_synthetic_datasets(PROCESSED)
 
 
 if __name__ == "__main__":

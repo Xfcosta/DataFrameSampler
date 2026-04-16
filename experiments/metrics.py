@@ -10,6 +10,9 @@ import numpy as np
 import pandas as pd
 from scipy.spatial.distance import jensenshannon
 from scipy.stats import chi2_contingency, ks_2samp, wasserstein_distance
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
     accuracy_score,
     brier_score_loss,
@@ -19,6 +22,10 @@ from sklearn.metrics import (
     r2_score,
     roc_auc_score,
 )
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import NearestNeighbors
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
 def numeric_similarity(
@@ -202,6 +209,209 @@ def histogram_overlap(real_values: np.ndarray, synthetic_values: np.ndarray, *, 
     return float(np.minimum(real_probs, synthetic_probs).sum())
 
 
+def nearest_neighbor_distance_test(
+    real: pd.DataFrame,
+    synthetic: pd.DataFrame,
+    *,
+    target_column: str | None = None,
+) -> dict[str, float]:
+    """Compare synthetic-to-real nearest distances with natural real-real distances."""
+    feature_real, feature_synthetic = _aligned_features(real, synthetic, target_column=target_column)
+    if len(feature_real) < 2 or len(feature_synthetic) == 0:
+        return {
+            "nn_synthetic_to_real_mean": np.nan,
+            "nn_real_to_real_mean": np.nan,
+            "nn_distance_ratio": np.nan,
+            "nn_suspiciously_close_rate": np.nan,
+        }
+
+    transformed = _fit_transform_features(feature_real, feature_synthetic)
+    real_matrix = transformed[: len(feature_real)]
+    synthetic_matrix = transformed[len(feature_real) :]
+
+    real_neighbours = NearestNeighbors(n_neighbors=2).fit(real_matrix)
+    real_distances, _ = real_neighbours.kneighbors(real_matrix)
+    natural_distances = real_distances[:, 1]
+
+    synthetic_neighbours = NearestNeighbors(n_neighbors=1).fit(real_matrix)
+    synthetic_distances, _ = synthetic_neighbours.kneighbors(synthetic_matrix)
+    synthetic_min = synthetic_distances[:, 0]
+
+    natural_mean = float(np.mean(natural_distances))
+    synthetic_mean = float(np.mean(synthetic_min))
+    threshold = float(np.quantile(natural_distances, 0.05))
+    return {
+        "nn_synthetic_to_real_mean": synthetic_mean,
+        "nn_real_to_real_mean": natural_mean,
+        "nn_distance_ratio": _safe_ratio_float(synthetic_mean, natural_mean),
+        "nn_suspiciously_close_rate": float(np.mean(synthetic_min < threshold)),
+    }
+
+
+def discrimination_test(
+    real: pd.DataFrame,
+    synthetic: pd.DataFrame,
+    *,
+    target_column: str | None = None,
+    random_state: int = 42,
+) -> dict[str, float]:
+    """Train a classifier to distinguish real rows from synthetic rows."""
+    feature_real, feature_synthetic = _aligned_features(real, synthetic, target_column=target_column)
+    if len(feature_real) < 4 or len(feature_synthetic) < 4:
+        return {
+            "discrimination_accuracy": np.nan,
+            "discrimination_roc_auc": np.nan,
+            "discrimination_privacy_score": np.nan,
+        }
+    data = pd.concat([feature_real, feature_synthetic], ignore_index=True)
+    labels = np.r_[np.ones(len(feature_real)), np.zeros(len(feature_synthetic))]
+    try:
+        train_x, test_x, train_y, test_y = train_test_split(
+            data,
+            labels,
+            test_size=0.3,
+            random_state=random_state,
+            stratify=labels,
+        )
+        model = Pipeline(
+            [
+                ("features", make_feature_preprocessor(train_x)),
+                (
+                    "classifier",
+                    RandomForestClassifier(
+                        n_estimators=100,
+                        min_samples_leaf=3,
+                        random_state=random_state,
+                        n_jobs=1,
+                    ),
+                ),
+            ]
+        )
+        model.fit(train_x, train_y)
+        predictions = model.predict(test_x)
+        probabilities = model.predict_proba(test_x)[:, 1]
+        accuracy = float(accuracy_score(test_y, predictions))
+        roc_auc = float(roc_auc_score(test_y, probabilities))
+    except ValueError:
+        return {
+            "discrimination_accuracy": np.nan,
+            "discrimination_roc_auc": np.nan,
+            "discrimination_privacy_score": np.nan,
+        }
+    return {
+        "discrimination_accuracy": accuracy,
+        "discrimination_roc_auc": roc_auc,
+        "discrimination_privacy_score": float(max(0.0, 1.0 - 2.0 * abs(accuracy - 0.5))),
+    }
+
+
+def utility_lift_test(
+    real: pd.DataFrame,
+    synthetic: pd.DataFrame,
+    *,
+    target_column: str | None,
+    random_state: int = 42,
+) -> dict[str, float | str]:
+    """Measure whether adding synthetic rows to real training data improves utility."""
+    if target_column is None or target_column not in real or target_column not in synthetic:
+        return {
+            "utility_task": "none",
+            "utility_real_score": np.nan,
+            "utility_augmented_score": np.nan,
+            "utility_lift": np.nan,
+        }
+    clean_real = real.dropna(subset=[target_column]).reset_index(drop=True)
+    clean_synthetic = synthetic.dropna(subset=[target_column]).reset_index(drop=True)
+    if len(clean_real) < 10 or len(clean_synthetic) == 0:
+        return {
+            "utility_task": "insufficient_data",
+            "utility_real_score": np.nan,
+            "utility_augmented_score": np.nan,
+            "utility_lift": np.nan,
+        }
+    target = clean_real[target_column]
+    task = _infer_prediction_task(target)
+    stratify = target if task == "classification" and target.nunique(dropna=True) > 1 else None
+    try:
+        real_train, real_test = train_test_split(
+            clean_real,
+            test_size=0.3,
+            random_state=random_state,
+            stratify=stratify,
+        )
+    except ValueError:
+        real_train, real_test = train_test_split(clean_real, test_size=0.3, random_state=random_state)
+
+    base_model = _make_predictive_model(task, real_train.drop(columns=[target_column]), random_state)
+    base_model.fit(real_train.drop(columns=[target_column]), real_train[target_column])
+    base_score = _score_predictive_model(
+        base_model,
+        real_test.drop(columns=[target_column]),
+        real_test[target_column],
+        task,
+    )
+
+    synthetic_aligned = clean_synthetic[real_train.columns.intersection(clean_synthetic.columns)].copy()
+    missing_columns = [column for column in real_train.columns if column not in synthetic_aligned]
+    for column in missing_columns:
+        synthetic_aligned[column] = pd.NA
+    synthetic_aligned = synthetic_aligned[real_train.columns]
+    augmented_train = pd.concat([real_train, synthetic_aligned], ignore_index=True)
+    augmented_model = _make_predictive_model(task, augmented_train.drop(columns=[target_column]), random_state)
+    augmented_model.fit(augmented_train.drop(columns=[target_column]), augmented_train[target_column])
+    augmented_score = _score_predictive_model(
+        augmented_model,
+        real_test.drop(columns=[target_column]),
+        real_test[target_column],
+        task,
+    )
+    return {
+        "utility_task": task,
+        "utility_real_score": base_score,
+        "utility_augmented_score": augmented_score,
+        "utility_lift": augmented_score - base_score,
+    }
+
+
+def distribution_similarity_test(real: pd.DataFrame, synthetic: pd.DataFrame) -> dict[str, float]:
+    """Aggregate feature-distribution similarity measures."""
+    numeric = numeric_similarity(real, synthetic)
+    categorical = categorical_similarity(real, synthetic)
+    numeric_overlap = _safe_dataframe_mean(numeric, "histogram_overlap")
+    numeric_kl = _mean_numeric_kl(real, synthetic)
+    categorical_jsd = _safe_dataframe_mean(categorical, "jensen_shannon_divergence")
+    categorical_tv = _safe_dataframe_mean(categorical, "total_variation_distance")
+    components = [
+        numeric_overlap,
+        1.0 - categorical_jsd if not np.isnan(categorical_jsd) else np.nan,
+        1.0 - categorical_tv if not np.isnan(categorical_tv) else np.nan,
+    ]
+    present = [value for value in components if not np.isnan(value)]
+    return {
+        "distribution_histogram_overlap": numeric_overlap,
+        "distribution_numeric_kl": numeric_kl,
+        "distribution_categorical_jsd": categorical_jsd,
+        "distribution_categorical_tv": categorical_tv,
+        "distribution_similarity_score": float(np.mean(present)) if present else np.nan,
+    }
+
+
+def main_measure_report(
+    real: pd.DataFrame,
+    synthetic: pd.DataFrame,
+    *,
+    target_column: str | None = None,
+    random_state: int = 42,
+) -> dict[str, float | str]:
+    """Compute the four primary measures used by the paper."""
+    report: dict[str, float | str] = {}
+    report.update(nearest_neighbor_distance_test(real, synthetic, target_column=target_column))
+    report.update(discrimination_test(real, synthetic, target_column=target_column, random_state=random_state))
+    report.update(utility_lift_test(real, synthetic, target_column=target_column, random_state=random_state))
+    report.update(distribution_similarity_test(real, synthetic))
+    return report
+
+
 def classification_scores(y_true, y_pred, y_proba=None, *, average: str = "weighted") -> dict[str, float]:
     """Return classification metrics used by downstream utility experiments."""
     scores = {
@@ -343,6 +553,44 @@ def distributional_similarity_report(real: pd.DataFrame, synthetic: pd.DataFrame
     }
 
 
+def make_feature_preprocessor(dataframe: pd.DataFrame) -> ColumnTransformer:
+    numeric_columns = [column for column in dataframe.columns if pd.api.types.is_numeric_dtype(dataframe[column])]
+    categorical_columns = [column for column in dataframe.columns if column not in numeric_columns]
+    return ColumnTransformer(
+        transformers=[
+            (
+                "numeric",
+                Pipeline(
+                    [
+                        ("imputer", SimpleImputer(strategy="median")),
+                        ("scaler", StandardScaler()),
+                    ]
+                ),
+                numeric_columns,
+            ),
+            (
+                "categorical",
+                Pipeline(
+                    [
+                        ("imputer", SimpleImputer(strategy="most_frequent")),
+                        ("encoder", _one_hot_encoder()),
+                    ]
+                ),
+                categorical_columns,
+            ),
+        ],
+        remainder="drop",
+        sparse_threshold=0.0,
+    )
+
+
+def _one_hot_encoder() -> OneHotEncoder:
+    try:
+        return OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+    except TypeError:
+        return OneHotEncoder(handle_unknown="ignore", sparse=False)
+
+
 def _common_numeric_columns(real: pd.DataFrame, synthetic: pd.DataFrame) -> list[str]:
     return [
         column
@@ -351,6 +599,98 @@ def _common_numeric_columns(real: pd.DataFrame, synthetic: pd.DataFrame) -> list
         and pd.api.types.is_numeric_dtype(real[column])
         and pd.api.types.is_numeric_dtype(synthetic[column])
     ]
+
+
+def _aligned_features(
+    real: pd.DataFrame,
+    synthetic: pd.DataFrame,
+    *,
+    target_column: str | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    columns = [column for column in real.columns if column in synthetic.columns and column != target_column]
+    return real[columns].reset_index(drop=True), synthetic[columns].reset_index(drop=True)
+
+
+def _fit_transform_features(real: pd.DataFrame, synthetic: pd.DataFrame) -> np.ndarray:
+    combined = pd.concat([real, synthetic], ignore_index=True)
+    if combined.shape[1] == 0:
+        return np.zeros((len(combined), 1))
+    transformed = make_feature_preprocessor(combined).fit_transform(combined)
+    if hasattr(transformed, "toarray"):
+        transformed = transformed.toarray()
+    return np.asarray(transformed, dtype=float)
+
+
+def _infer_prediction_task(target: pd.Series) -> str:
+    if not pd.api.types.is_numeric_dtype(target):
+        return "classification"
+    unique_count = target.nunique(dropna=True)
+    if unique_count <= max(20, int(len(target) * 0.05)):
+        return "classification"
+    return "regression"
+
+
+def _make_predictive_model(task: str, features: pd.DataFrame, random_state: int) -> Pipeline:
+    estimator = (
+        RandomForestClassifier(
+            n_estimators=100,
+            min_samples_leaf=3,
+            random_state=random_state,
+            n_jobs=1,
+        )
+        if task == "classification"
+        else RandomForestRegressor(
+            n_estimators=100,
+            min_samples_leaf=3,
+            random_state=random_state,
+            n_jobs=1,
+        )
+    )
+    return Pipeline([("features", make_feature_preprocessor(features)), ("model", estimator)])
+
+
+def _score_predictive_model(model: Pipeline, features: pd.DataFrame, target: pd.Series, task: str) -> float:
+    predictions = model.predict(features)
+    if task == "classification":
+        return float(f1_score(target, predictions, average="weighted", zero_division=0))
+    return float(r2_score(target, predictions))
+
+
+def _safe_dataframe_mean(dataframe: pd.DataFrame, column: str) -> float:
+    if dataframe.empty or column not in dataframe:
+        return np.nan
+    return float(dataframe[column].mean(skipna=True))
+
+
+def _safe_ratio_float(numerator: float, denominator: float) -> float:
+    if denominator == 0 or np.isnan(numerator) or np.isnan(denominator):
+        return np.nan
+    return float(numerator / denominator)
+
+
+def _mean_numeric_kl(real: pd.DataFrame, synthetic: pd.DataFrame, *, bins: int = 20) -> float:
+    values = []
+    for column in _common_numeric_columns(real, synthetic):
+        real_values = pd.to_numeric(real[column], errors="coerce").dropna().to_numpy(dtype=float)
+        synthetic_values = pd.to_numeric(synthetic[column], errors="coerce").dropna().to_numpy(dtype=float)
+        value = _histogram_kl(real_values, synthetic_values, bins=bins)
+        if not np.isnan(value):
+            values.append(value)
+    return float(np.mean(values)) if values else np.nan
+
+
+def _histogram_kl(real_values: np.ndarray, synthetic_values: np.ndarray, *, bins: int) -> float:
+    if len(real_values) == 0 or len(synthetic_values) == 0:
+        return np.nan
+    combined = np.concatenate([real_values, synthetic_values])
+    if np.nanmin(combined) == np.nanmax(combined):
+        return 0.0
+    real_hist, edges = np.histogram(real_values, bins=bins, range=(np.nanmin(combined), np.nanmax(combined)))
+    synthetic_hist, _ = np.histogram(synthetic_values, bins=edges)
+    epsilon = 1e-12
+    real_probs = (real_hist + epsilon) / (real_hist.sum() + epsilon * len(real_hist))
+    synthetic_probs = (synthetic_hist + epsilon) / (synthetic_hist.sum() + epsilon * len(synthetic_hist))
+    return float(np.sum(real_probs * np.log(real_probs / synthetic_probs)))
 
 
 def _common_categorical_columns(real: pd.DataFrame, synthetic: pd.DataFrame) -> list[str]:
@@ -497,4 +837,3 @@ def _repeated_value_consistency(mapping: Mapping[Any, Any]) -> float:
 
 def _normalize_value(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value).strip().lower())
-

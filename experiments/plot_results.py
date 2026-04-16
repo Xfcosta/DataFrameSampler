@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
+
+from experiments.synthetic_data import SYNTHETIC_DATASETS
 
 
 ROOT = Path(__file__).resolve().parent
@@ -32,9 +35,32 @@ METHOD_ORDER = [
 ]
 
 
-def load_comparisons() -> pd.DataFrame:
+@dataclass(frozen=True)
+class DistributionDashboardSpec:
+    dataset_name: str
+    generated_method: str
+    numeric_column: str
+    categorical_column: str
+    correlation_columns: list[str]
+    dataset_label: str | None = None
+    generated_label: str | None = None
+
+
+DEFAULT_DASHBOARD = DistributionDashboardSpec(
+    dataset_name="titanic",
+    generated_method="dataframe_sampler_manual",
+    numeric_column="age",
+    categorical_column="class",
+    correlation_columns=["survived", "pclass", "age", "sibsp", "parch", "fare"],
+    dataset_label="Titanic",
+    generated_label="manual DataFrameSampler",
+)
+
+
+def load_comparisons(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    results_path = Path(results_dir)
     frames = []
-    for path in sorted(RESULTS.glob("*_baseline_comparison.csv")):
+    for path in sorted(results_path.glob("*_baseline_comparison.csv")):
         frames.append(pd.read_csv(path))
     if not frames:
         raise FileNotFoundError("No *_baseline_comparison.csv files found. Run the notebooks first.")
@@ -48,15 +74,15 @@ def load_comparisons() -> pd.DataFrame:
     return data.sort_values(["dataset", "method_label"])
 
 
-def plot_baseline_similarity(data: pd.DataFrame) -> Path:
+def plot_baseline_similarity(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
     metrics = [
-        ("numeric_ks_statistic", "Numeric KS (lower)"),
-        ("categorical_total_variation", "Categorical TV (lower)"),
-        ("mean_abs_association_difference", "Association diff. (lower)"),
-        ("numeric_histogram_overlap", "Histogram overlap (higher)"),
+        ("nn_distance_ratio", "NN distance ratio (higher)"),
+        ("discrimination_accuracy", "Discrimination accuracy (near 0.5)"),
+        ("utility_lift", "Utility lift (higher)"),
+        ("distribution_similarity_score", "Distribution score (higher)"),
     ]
     datasets = list(data["dataset"].drop_duplicates())
-    fig, axes = plt.subplots(len(datasets), len(metrics), figsize=(14, 6.5), sharex=False)
+    fig, axes = plt.subplots(len(datasets), len(metrics), figsize=(14, max(6.5, 2.1 * len(datasets))), sharex=False)
     if len(datasets) == 1:
         axes = axes.reshape(1, -1)
 
@@ -70,25 +96,26 @@ def plot_baseline_similarity(data: pd.DataFrame) -> Path:
             if col_idx > 0:
                 ax.set_ylabel("")
                 ax.tick_params(axis="y", labelleft=False)
-    fig.suptitle("Distributional and association metrics for DataFrameSampler configurations and simple baselines")
+    fig.suptitle("Primary four-measure summary for DataFrameSampler configurations and simple baselines")
     fig.tight_layout()
-    FIGURES.mkdir(parents=True, exist_ok=True)
-    output = FIGURES / "baseline_similarity.pdf"
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "baseline_similarity.pdf"
     fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
     return output
 
 
-def plot_configuration_competitors(data: pd.DataFrame) -> Path:
+def plot_configuration_competitors(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
     subset = data[data["method"].str.startswith("dataframe_sampler_")].copy()
     metrics = [
-        ("numeric_ks_statistic", "Numeric KS (lower)"),
-        ("categorical_total_variation", "Categorical TV (lower)"),
-        ("mean_abs_association_difference", "Association diff. (lower)"),
+        ("nn_distance_ratio", "NN distance ratio (higher)"),
+        ("discrimination_accuracy", "Discrimination accuracy (near 0.5)"),
+        ("utility_lift", "Utility lift (higher)"),
         ("sample_seconds", "Sample seconds (lower)"),
     ]
     datasets = list(subset["dataset"].drop_duplicates())
-    fig, axes = plt.subplots(len(metrics), len(datasets), figsize=(10, 8), sharex=False)
+    fig, axes = plt.subplots(len(metrics), len(datasets), figsize=(max(10, 3.0 * len(datasets)), 8), sharex=False)
     if len(datasets) == 1:
         axes = axes.reshape(-1, 1)
 
@@ -100,16 +127,17 @@ def plot_configuration_competitors(data: pd.DataFrame) -> Path:
             ax.set_title(f"{dataset}: {title}")
             ax.grid(axis="y", alpha=0.25)
             ax.tick_params(axis="x", rotation=25)
-    fig.suptitle("DataFrameSampler configuration competitors")
+    fig.suptitle("DataFrameSampler configuration competitors on primary measures")
     fig.tight_layout()
-    FIGURES.mkdir(parents=True, exist_ok=True)
-    output = FIGURES / "configuration_competitors.pdf"
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "configuration_competitors.pdf"
     fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
     return output
 
 
-def plot_what_context() -> Path:
+def plot_what_context(figures_dir: str | Path = FIGURES) -> Path:
     fig, ax = plt.subplots(figsize=(11, 5.5))
     ax.axis("off")
     boxes = [
@@ -126,13 +154,15 @@ def plot_what_context() -> Path:
     add_arrow(ax, (0.86, 0.55), (0.86, 0.37))
     add_arrow(ax, (0.72, 0.24), (0.62, 0.24))
     ax.set_title("WHAT: intended use context for simple, inspectable tabular example generation", pad=14)
-    output = FIGURES / "what_context.pdf"
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "what_context.pdf"
     fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
     return output
 
 
-def plot_how_pipeline() -> Path:
+def plot_how_pipeline(figures_dir: str | Path = FIGURES) -> Path:
     fig, ax = plt.subplots(figsize=(13, 4.8))
     ax.axis("off")
     steps = [
@@ -158,13 +188,15 @@ def plot_how_pipeline() -> Path:
         fontsize=11,
     )
     ax.set_title("HOW: DataFrameSampler pipeline and explanation trace", pad=14)
-    output = FIGURES / "how_pipeline.pdf"
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "how_pipeline.pdf"
     fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
     return output
 
 
-def plot_llm_configuration_flow() -> Path:
+def plot_llm_configuration_flow(figures_dir: str | Path = FIGURES) -> Path:
     fig, ax = plt.subplots(figsize=(11, 5.2))
     ax.axis("off")
     boxes = [
@@ -180,34 +212,50 @@ def plot_llm_configuration_flow() -> Path:
     add_arrow(ax, (0.78, 0.56), (0.58, 0.29))
     add_arrow(ax, (0.47, 0.56), (0.47, 0.41))
     ax.set_title("LLM-assisted configuration flow", pad=14)
-    output = FIGURES / "llm_configuration_flow.pdf"
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "llm_configuration_flow.pdf"
     fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
     return output
 
 
-def plot_distribution_dashboard() -> Path:
-    real = pd.read_csv(ROOT / "data" / "processed" / "titanic.csv")
-    generated = pd.read_csv(RESULTS / "titanic_dataframe_sampler_manual_generated.csv")
+def plot_distribution_dashboard(
+    *,
+    data_dir: str | Path = ROOT / "data" / "processed",
+    results_dir: str | Path = RESULTS,
+    figures_dir: str | Path = FIGURES,
+    spec: DistributionDashboardSpec = DEFAULT_DASHBOARD,
+) -> Path:
+    real = pd.read_csv(Path(data_dir) / f"{spec.dataset_name}.csv")
+    generated = pd.read_csv(
+        Path(results_dir) / f"{spec.dataset_name}_{spec.generated_method}_generated.csv"
+    )
     fig, axes = plt.subplots(1, 3, figsize=(13, 4))
 
-    axes[0].hist(real["age"].dropna(), bins=20, alpha=0.55, label="real", density=True)
-    axes[0].hist(generated["age"].dropna(), bins=20, alpha=0.55, label="generated", density=True)
-    axes[0].set_title("Numeric: age")
+    axes[0].hist(real[spec.numeric_column].dropna(), bins=20, alpha=0.55, label="real", density=True)
+    axes[0].hist(
+        generated[spec.numeric_column].dropna(),
+        bins=20,
+        alpha=0.55,
+        label="generated",
+        density=True,
+    )
+    axes[0].set_title(f"Numeric: {spec.numeric_column}")
     axes[0].legend()
 
-    real_counts = real["class"].value_counts(normalize=True)
-    gen_counts = generated["class"].value_counts(normalize=True)
+    real_counts = real[spec.categorical_column].value_counts(normalize=True)
+    gen_counts = generated[spec.categorical_column].value_counts(normalize=True)
     categories = real_counts.index.union(gen_counts.index)
     x = range(len(categories))
     axes[1].bar([i - 0.18 for i in x], real_counts.reindex(categories, fill_value=0), width=0.36, label="real")
     axes[1].bar([i + 0.18 for i in x], gen_counts.reindex(categories, fill_value=0), width=0.36, label="generated")
     axes[1].set_xticks(list(x))
     axes[1].set_xticklabels(categories, rotation=25)
-    axes[1].set_title("Categorical: class")
+    axes[1].set_title(f"Categorical: {spec.categorical_column}")
     axes[1].legend()
 
-    numeric_cols = ["survived", "pclass", "age", "sibsp", "parch", "fare"]
+    numeric_cols = spec.correlation_columns
     diff = real[numeric_cols].corr(numeric_only=True) - generated[numeric_cols].corr(numeric_only=True)
     im = axes[2].imshow(diff, cmap="coolwarm", vmin=-1, vmax=1)
     axes[2].set_xticks(range(len(numeric_cols)))
@@ -217,35 +265,113 @@ def plot_distribution_dashboard() -> Path:
     axes[2].set_title("Correlation difference")
     fig.colorbar(im, ax=axes[2], fraction=0.046, pad=0.04)
 
-    fig.suptitle("Distributional similarity dashboard: Titanic, manual DataFrameSampler")
+    dataset_label = spec.dataset_label or spec.dataset_name
+    generated_label = spec.generated_label or spec.generated_method
+    fig.suptitle(f"Distributional similarity dashboard: {dataset_label}, {generated_label}")
     fig.tight_layout()
-    output = FIGURES / "distribution_dashboard.pdf"
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "distribution_dashboard.pdf"
     fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
     return output
 
 
-def plot_utility_cost_frontier(data: pd.DataFrame) -> Path:
+def plot_utility_cost_frontier(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
     frontier = data.copy()
-    frontier["similarity_score"] = (
-        (1 - frontier["numeric_ks_statistic"].clip(0, 1))
-        + frontier["numeric_histogram_overlap"].clip(0, 1)
-        + (1 - frontier["categorical_total_variation"].clip(0, 1))
-        + (1 - frontier["mean_abs_association_difference"].clip(0, 1))
-    ) / 4
     fig, ax = plt.subplots(figsize=(8.5, 5.5))
     for dataset, subset in frontier.groupby("dataset"):
-        ax.scatter(subset["sample_seconds"], subset["similarity_score"], label=dataset, s=70)
+        ax.scatter(subset["sample_seconds"], subset["utility_lift"], label=dataset, s=70)
         for _, row in subset.iterrows():
-            ax.annotate(str(row["method_label"]), (row["sample_seconds"], row["similarity_score"]), fontsize=7, alpha=0.85)
+            ax.annotate(str(row["method_label"]), (row["sample_seconds"], row["utility_lift"]), fontsize=7, alpha=0.85)
     ax.set_xscale("log")
     ax.set_xlabel("Sample time in seconds, log scale")
-    ax.set_ylabel("Composite similarity score, higher is better")
-    ax.set_title("Utility versus cost frontier for starter comparisons")
+    ax.set_ylabel("Utility lift on held-out real data")
+    ax.set_title("Utility-lift versus cost frontier for starter comparisons")
     ax.grid(alpha=0.25)
     ax.legend(title="Dataset")
     fig.tight_layout()
-    output = FIGURES / "utility_cost_frontier.pdf"
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "utility_cost_frontier.pdf"
+    fig.savefig(output, bbox_inches="tight")
+    plt.close(fig)
+    return output
+
+
+def plot_synthetic_controlled_similarity(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
+    synthetic_keys = [spec.key for spec in SYNTHETIC_DATASETS]
+    subset = data[
+        data["dataset"].isin(synthetic_keys)
+        & data["method"].isin(["dataframe_sampler_manual", "independent_columns", "row_bootstrap"])
+    ].copy()
+    if subset.empty:
+        raise FileNotFoundError("No synthetic controlled comparison rows found. Run the synthetic notebook first.")
+
+    metrics = [
+        ("nn_distance_ratio", "NN distance ratio"),
+        ("discrimination_accuracy", "Discrimination accuracy"),
+        ("utility_lift", "Utility lift"),
+    ]
+    datasets = list(subset["dataset"].drop_duplicates())
+    fig, axes = plt.subplots(len(datasets), len(metrics), figsize=(13.5, 9.0), sharex=False)
+    if len(datasets) == 1:
+        axes = axes.reshape(1, -1)
+
+    for row_idx, dataset in enumerate(datasets):
+        ds = subset[subset["dataset"] == dataset]
+        label = dataset.replace("synthetic_", "").replace("_", " ")
+        for col_idx, (metric, title) in enumerate(metrics):
+            ax = axes[row_idx, col_idx]
+            ax.bar(ds["method_label"].astype(str), ds[metric], color="#4C78A8")
+            ax.set_title(f"{label}: {title}")
+            ax.grid(axis="y", alpha=0.25)
+            ax.tick_params(axis="x", rotation=20)
+    fig.suptitle("Controlled synthetic regimes on primary measures")
+    fig.tight_layout()
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "synthetic_controlled_similarity.pdf"
+    fig.savefig(output, bbox_inches="tight")
+    plt.close(fig)
+    return output
+
+
+def plot_synthetic_category_stress(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
+    synthetic_keys = [spec.key for spec in SYNTHETIC_DATASETS]
+    subset = data[
+        data["dataset"].isin(synthetic_keys)
+        & data["method"].isin(
+            [
+                "dataframe_sampler_default",
+                "dataframe_sampler_manual",
+                "dataframe_sampler_llm_assisted",
+                "independent_columns",
+            ]
+        )
+    ].copy()
+    if subset.empty:
+        raise FileNotFoundError("No synthetic controlled comparison rows found. Run the synthetic notebook first.")
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.8), sharey=False)
+    for ax, metric, title in [
+        (axes[0], "categorical_coverage", "Category coverage"),
+        (axes[1], "rare_category_preservation", "Rare-category preservation"),
+    ]:
+        pivot = subset.pivot(index="dataset", columns="method_label", values=metric)
+        pivot = pivot.rename(index=lambda value: value.replace("synthetic_", "").replace("_", " "))
+        pivot.plot(kind="bar", ax=ax, width=0.82)
+        ax.set_title(title)
+        ax.set_xlabel("")
+        ax.set_ylim(0, 1.05)
+        ax.grid(axis="y", alpha=0.25)
+        ax.tick_params(axis="x", rotation=25)
+        ax.legend(fontsize=8)
+    fig.suptitle("Controlled categorical stress tests")
+    fig.tight_layout()
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "synthetic_category_stress.pdf"
     fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
     return output
@@ -270,17 +396,40 @@ def add_arrow(ax, start, end):
     ax.add_patch(FancyArrowPatch(start, end, arrowstyle="->", mutation_scale=14, linewidth=1.3, color="#333333"))
 
 
-def main() -> None:
-    data = load_comparisons()
+def generate_all_figures(
+    *,
+    results_dir: str | Path = RESULTS,
+    figures_dir: str | Path = FIGURES,
+    data_dir: str | Path = ROOT / "data" / "processed",
+    dashboard_spec: DistributionDashboardSpec = DEFAULT_DASHBOARD,
+) -> list[Path]:
+    data = load_comparisons(results_dir)
     outputs = [
-        plot_what_context(),
-        plot_how_pipeline(),
-        plot_distribution_dashboard(),
-        plot_baseline_similarity(data),
-        plot_configuration_competitors(data),
-        plot_utility_cost_frontier(data),
-        plot_llm_configuration_flow(),
+        plot_what_context(figures_dir),
+        plot_how_pipeline(figures_dir),
+        plot_distribution_dashboard(
+            data_dir=data_dir,
+            results_dir=results_dir,
+            figures_dir=figures_dir,
+            spec=dashboard_spec,
+        ),
+        plot_baseline_similarity(data, figures_dir),
+        plot_configuration_competitors(data, figures_dir),
+        plot_utility_cost_frontier(data, figures_dir),
+        plot_llm_configuration_flow(figures_dir),
     ]
+    if any(data["dataset"].isin([spec.key for spec in SYNTHETIC_DATASETS])):
+        outputs.extend(
+            [
+                plot_synthetic_controlled_similarity(data, figures_dir),
+                plot_synthetic_category_stress(data, figures_dir),
+            ]
+        )
+    return outputs
+
+
+def main() -> None:
+    outputs = generate_all_figures()
     for output in outputs:
         print(output)
 

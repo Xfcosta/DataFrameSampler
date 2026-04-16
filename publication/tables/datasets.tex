@@ -8,6 +8,10 @@ Dataset & Domain & Rows & Numeric & Categorical & Missing & Sensitive & Rational
 \midrule
 Adult Census Income & Census / income & 48842 & 6 & 9 & 6465 & None selected & Generic mixed-type benchmark \\
 Titanic & Passenger survival & 891 & 6 & 9 & 869 & None selected & Small mixed-type smoke benchmark \\
+Controlled correlated helpers & Synthetic controlled & 600 & 4 & 2 & 0 & None selected & Known numeric/categorical dependency structure \\
+Controlled high cardinality & Synthetic controlled & 600 & 4 & 3 & 0 & None selected & Stress category coverage and helper embeddings \\
+Controlled rare categories & Synthetic controlled & 600 & 4 & 2 & 0 & None selected & Measure rare-category preservation boundaries \\
+Controlled sensitive identifier & Synthetic controlled & 600 & 4 & 3 & 0 & patient\_id & Expose exact source-value reuse risk \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}

@@ -1,0 +1,16 @@
+\begin{table*}
+\caption{Controlled synthetic datasets used to isolate specific boundary regimes.}
+\label{tab:synthetic-controlled-datasets}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{llrlll}
+\toprule
+Dataset & Controlled regime & Rows & Target & Sensitive columns & Evidence role \\
+\midrule
+correlated\_helpers & Correlated numeric plus categorical helper columns & 600 & target & None & Known numeric/categorical dependency structure \\
+high\_cardinality & High-cardinality categorical column & 600 & target & None & Stress category coverage and helper embeddings \\
+rare\_categories & Known rare-category structure & 600 & target & None & Measure rare-category preservation boundaries \\
+sensitive\_identifier & Known sensitive identifier column & 600 & risk\_flag & patient\_id & Expose exact source-value reuse risk \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table*}

@@ -38,8 +38,10 @@ If evidence is missing, the claim must be weakened.
   - [ ] show examples of generated-row explanations;
   - [ ] measure how often generated rows have complete trace information.
 - [ ] Practical utility evidence:
-  - [ ] distributional similarity to source data;
-  - [ ] downstream train-on-synthetic, test-on-real utility where applicable;
+  - [x] nearest-neighbour distance test against natural real-real distances;
+  - [x] discrimination test for real-versus-synthetic distinguishability;
+  - [x] utility lift test from adding generated rows to real training data;
+  - [x] distribution similarity test using histogram overlap and divergence;
   - [ ] schema/interface preservation for software testing.
 - [x] Safeguard evidence:
   - [x] exact source-value overlap before and after anonymization;
@@ -70,10 +72,10 @@ If evidence is missing, the claim must be weakened.
 
 ### Boundary Evidence
 
-- [ ] Runtime and memory:
-  - [ ] fit time and sample time versus row count;
+- [x] Runtime and memory:
+  - [x] fit time and sample time versus row count;
   - [ ] exact KNN versus approximate KNN runtime;
-  - [ ] memory footprint for fitted sampler.
+  - [x] memory footprint for fitted sampler.
 - [ ] Dataset regimes:
   - [ ] small tables;
   - [ ] medium tables;
@@ -205,11 +207,11 @@ If evidence is missing, the claim must be weakened.
   - [x] Titanic;
   - [ ] Bank Marketing;
   - [ ] OpenML mixed-type classification datasets.
-- [ ] Synthetic controlled datasets:
-  - [ ] correlated numeric plus categorical helper columns;
-  - [ ] high-cardinality categorical column;
-  - [ ] known rare-category structure;
-  - [ ] known sensitive identifier column.
+- [x] Synthetic controlled datasets:
+  - [x] correlated numeric plus categorical helper columns;
+  - [x] high-cardinality categorical column;
+  - [x] known rare-category structure;
+  - [x] known sensitive identifier column.
 
 ## 6. Baselines
 
@@ -238,9 +240,41 @@ If evidence is missing, the claim must be weakened.
 - [ ] Competitor defaults with minimal tuning.
 - [ ] Competitor tuned under a fixed budget.
 
-## 7. Metrics
+## 7. Primary Metrics
 
-### Distributional Similarity
+The paper now treats four tests as the main measures. Lower-level
+distributional and downstream metrics remain supporting diagnostics.
+
+### Nearest-Neighbor Distance Test
+
+- [x] Minimal distance from each synthetic row to real rows.
+- [x] Natural nearest-neighbour distance inside the original real table.
+- [x] Ratio of synthetic-to-real distance against natural real-real distance.
+- [x] Suspiciously-close rate based on the lower tail of natural real-real
+  distances.
+
+### Discrimination Test
+
+- [x] Train a classifier to distinguish real from synthetic rows.
+- [x] Report discrimination accuracy.
+- [x] Report ROC AUC where possible.
+- [x] Report a chance-proximity privacy score derived from accuracy.
+
+### Utility Lift Test
+
+- [x] Train a model on real training data and evaluate on held-out real data.
+- [x] Train a model on real plus generated rows and evaluate on the same
+  held-out real data.
+- [x] Report the score difference as utility lift.
+
+### Distribution Similarity Test
+
+- [x] Numeric histogram overlap.
+- [x] Numeric histogram KL divergence.
+- [x] Categorical Jensen-Shannon divergence.
+- [x] Aggregate distribution similarity score.
+
+### Supporting Distributional Similarity
 
 - [x] Numeric:
   - [x] mean/standard deviation error;
@@ -257,7 +291,7 @@ If evidence is missing, the claim must be weakened.
   - [x] Cramer's V or Theil's U for categorical associations;
   - [x] mixed-type association matrix difference.
 
-### Downstream Utility
+### Supporting Downstream Utility
 
 - [x] Train-on-synthetic, test-on-real score.
 - [x] Train-on-real, test-on-real upper reference.
@@ -343,17 +377,20 @@ If evidence is missing, the claim must be weakened.
   - [ ] Generate a small business-like and medical-like table.
   - [ ] Show row-level traces for 5 generated examples.
   - [ ] Primary claim tested: human-auditable generation.
-- [ ] E3: Distributional similarity benchmark.
+- [ ] E3: Four-measure benchmark.
   - [ ] Run all simple baselines, DataFrameSampler variants, and feasible
   competitor methods on all selected datasets.
-  - [ ] Primary claim tested: generated data remains practically similar enough
-  for examples and demos.
-- [ ] E4: Downstream utility.
-  - [ ] Train simple models on generated data and test on real holdout data.
-  - [ ] Use logistic regression, random forest, and gradient boosting if
-  feasible.
-  - [ ] Supporting claim tested: generated data preserves useful modelling
-  structure in some regimes.
+  - [ ] Report nearest-neighbour distance, discrimination, utility lift, and
+  distribution similarity tests.
+  - [ ] Primary claim tested: generated data is plausible, not suspiciously
+  close, hard to distinguish when successful, and useful only when utility lift
+  is observed.
+- [ ] E4: Utility lift.
+  - [ ] Train simple models on real data with and without generated rows and
+  test on real holdout data.
+  - [ ] Use random forest by default and add other models if feasible.
+  - [ ] Supporting claim tested: generated data improves modelling utility in
+  some regimes without relying on overfitted copies.
 - [ ] E5: Anonymization safeguard.
   - [ ] Add sensitive columns to selected datasets or use existing identifier
   columns.

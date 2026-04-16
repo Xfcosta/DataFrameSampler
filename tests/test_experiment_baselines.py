@@ -108,6 +108,17 @@ def test_run_dataset_comparison_writes_simple_baseline_summary(tmp_path):
         "stratified_columns",
     }
     assert (tmp_path / "toy_baseline_comparison.csv").exists()
+    assert {
+        "fit_peak_memory_mb",
+        "sample_peak_memory_mb",
+        "peak_memory_mb",
+        "nn_distance_ratio",
+        "discrimination_accuracy",
+        "utility_lift",
+        "distribution_histogram_overlap",
+    }.issubset(summary.columns)
+    assert summary["peak_memory_mb"].notna().all()
+    assert (summary["peak_memory_mb"] >= 0).all()
     for method in summary["method"]:
         assert (tmp_path / f"toy_{method}_generated.csv").exists()
 

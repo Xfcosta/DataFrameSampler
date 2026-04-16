@@ -1,7 +1,11 @@
-\section{Planned Experiments}
+\section{Experiments}
 
-This section is a stub for the empirical evaluation. The planned evaluation
-will compare generated and source data along three axes.
+The empirical section reports only the subset of results needed to support the
+paper's main point: DataFrameSampler is useful when users need a simple,
+inspectable generator for mixed-type examples, not when they need an
+unqualified claim of synthetic-data superiority. The complete result tables,
+runtime and memory measurements, and controlled-regime figures are placed in
+Appendix~\ref{app:experiments}.
 
 \begin{table*}[t]
 \centering
@@ -15,54 +19,31 @@ Claim & Type & Primary evidence & Supporting or boundary evidence & Allowable co
 \midrule
 Simplicity & Practical-use & Quick-start commands, lines of code, configuration steps & Runtime, dependency burden, tuning budget & Preferable when low setup cost matters \\
 Inspectability & Mechanism-supported & Row-level traces linking outputs to neighbour chains and bins & Failure cases where traces reveal implausible rows & Generated examples are auditable under the traced mechanism \\
-Utility & Regime-specific & Distributional similarity and train-on-synthetic, test-on-real results & Dataset descriptors, per-dataset differences, ablations & Useful in the studied regimes, not generally superior \\
-Safeguard & Boundary & Exact and normalized overlap checks for selected columns & Collision tests and non-selected-column reuse analysis & Reduces exact re-emission for selected values only \\
+Utility & Regime-specific & Utility lift from adding generated rows to real training data & Distribution similarity and dataset descriptors & Useful only where lift is observed \\
+Safeguard & Boundary & Nearest-neighbour distance and discrimination tests & Exact identifier-overlap checks for selected columns & No formal privacy claim; suspicious closeness must be checked \\
 LLM configuration & Practical-use & Valid configuration rate and override preservation & Manual/default comparisons and weak recommendation analysis & Reduces configuration burden when profiles are informative \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-\subsection{Distributional Similarity}
+\subsection{Evaluation Focus}
 
-For numeric columns, planned metrics include univariate summary statistics,
-histogram overlap, Wasserstein distance, and pairwise correlation differences.
-For categorical columns, planned metrics include category coverage, frequency
-divergence, and rare-category retention.
+The evaluation uses Adult Census Income and Titanic as public mixed-type
+examples and four deterministic controlled datasets as boundary tests. For each
+dataset, we run DataFrameSampler with default, manual, and fixed LLM-style
+configurations, plus simple references: row bootstrap, independent columns,
+Gaussian-copula empirical sampling, and target-stratified column sampling where
+a target exists. The complete tables are deliberately separated from the main
+text so that the paper does not become a benchmark catalogue. The main summary
+uses four measures: a nearest-neighbour distance test, a discrimination test, a
+utility lift test, and a distribution similarity test. These tests deliberately
+separate three ideas that are often conflated: rows should not be suspiciously
+close to individual source rows, generated rows should not be trivially
+distinguishable from real rows, generated rows should improve a held-out
+real-data task if they are useful, and feature distributions should remain
+similar enough for example-data workflows.
 
-\subsection{Downstream Predictive Utility}
-
-For supervised datasets, we plan to train predictive models on generated data
-and evaluate them on held-out real data. This train-on-synthetic, test-on-real
-protocol will provide a practical measure of whether generated samples preserve
-useful predictive structure.
-
-\subsection{Ablations}
-
-Planned ablations include:
-
-\begin{itemize}
-  \item frequency encoding versus helper-column embedding for categorical
-  columns;
-  \item PCA, MDS, and nonlinear embedding choices;
-  \item exact versus approximate nearest-neighbour backends;
-  \item mutual-neighbour sampling with and without fallback edges;
-  \item manually specified configuration versus LLM-assisted configuration;
-  \item generation with and without sensitive-value replacement for selected
-  identifier columns.
-\end{itemize}
-
-\subsection{Usability And Safeguard Checks}
-
-The LLM-assisted configuration mode will be evaluated as a usability feature
-rather than as an independent modelling component. Planned checks include the
-rate at which returned configurations are syntactically valid, whether selected
-helper columns are type-compatible, and whether user overrides are preserved.
-For the anonymization layer, planned checks include exact source-value overlap
-in selected columns before and after generation, consistency of repeated
-surrogate mappings, and failure behaviour when the model proposes a replacement
-that collides with an original value.
-
-\subsection{Preliminary Baseline Comparisons}
+\subsection{Illustrative Results}
 
 The current experiment scaffold includes Adult Census Income and Titanic as
 initial mixed-type datasets. For each dataset, we compare simple baselines
@@ -71,17 +52,6 @@ configuration, and a fixed LLM-style configuration recorded in the notebook for
 reproducibility. The LLM-style condition should be read as an experiment proxy
 for the kind of structured recommendation returned by the LLM interface; the
 notebooks do not call an external API during execution.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{baseline_similarity.pdf}
-\caption{Starter distributional and association metrics for DataFrameSampler
-configurations and simple baselines on Adult and Titanic. Lower is better for
-KS, total variation, and association difference; higher is better for histogram
-overlap. Row bootstrap is included as an important reference because it often
-preserves similarity metrics while directly reusing source rows.}
-\label{fig:baseline-similarity}
-\end{figure*}
 
 \begin{figure*}[t]
 \centering
@@ -97,37 +67,38 @@ score.}
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{configuration_competitors.pdf}
-\caption{Configuration competitors for DataFrameSampler. Default, manual, and
+\caption{Configuration competitors for DataFrameSampler on the primary
+experiment measures. Default, manual, and
 LLM-style configurations expose the configuration burden that motivates the
 LLM-assisted interface. These preliminary results are not a claim that one
 configuration is generally best; they show that configuration choice changes
-distributional metrics, association preservation, and sampling time.}
+the four primary measures as well as sampling time.}
 \label{fig:configuration-competitors}
 \end{figure*}
 
-\begin{figure}[t]
+\subsection{Controlled Synthetic Regimes}
+
+To separate mechanism behaviour from the idiosyncrasies of public datasets, we
+also construct four deterministic synthetic tables. These datasets are not used
+as evidence that the method handles all real deployments. Their role is to
+create known stressors: numeric variables with categorical helper columns,
+high-cardinality categorical values, deliberately rare categories, and a
+sensitive identifier column. The controlled identifier dataset is particularly
+important for bounding the anonymization claim: without the anonymization layer,
+all compared generators can re-emit exact source identifiers because the
+identifier is part of the source schema.
+
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\columnwidth]{utility_cost_frontier.pdf}
-\caption{Starter cost--similarity frontier. The composite score is only a
-visual summary of the already reported metrics; it is not used as a standalone
-claim of method superiority.}
-\label{fig:utility-cost-frontier}
-\end{figure}
+\includegraphics[width=\textwidth]{synthetic_category_stress.pdf}
+\caption{Categorical stress tests on the controlled synthetic datasets. The
+coverage and rare-preservation metrics make high-cardinality and rare-category
+failure modes visible without relying on a single aggregate score.}
+\label{fig:synthetic-category-stress}
+\end{figure*}
 
-\input{tables/datasets}
-
-\input{tables/methods}
-
-\input{tables/distributional_similarity}
-
-\input{tables/usability_runtime}
-
-\input{tables/downstream_utility}
-
-\input{tables/ablations}
-
-\subsection{Datasets}
-
-Candidate datasets include small public mixed-type tabular datasets and the
-example datasets distributed with the project notebook. Any reported results
-will clearly distinguish demonstration datasets from benchmark datasets.
+The controlled results show the intended interpretation pattern. Row bootstrap
+is a useful reference because it can score well by reusing rows; independent
+columns can preserve marginals while breaking dependencies; and the controlled
+identifier dataset shows why anonymization must be treated as a separate
+pre-generation step rather than inferred from distributional similarity.
