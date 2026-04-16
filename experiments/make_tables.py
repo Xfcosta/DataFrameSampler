@@ -123,6 +123,34 @@ DEFAULT_DATASETS = [
         sensitive="None selected",
         rationale="Small mixed-type smoke benchmark",
     ),
+    DatasetTableMetadata(
+        key="breast_cancer",
+        name="Wisconsin Diagnostic Breast Cancer",
+        domain="Medical diagnosis",
+        sensitive="Diagnosis label",
+        rationale="Small medical binary-classification benchmark",
+    ),
+    DatasetTableMetadata(
+        key="pima_diabetes",
+        name="Pima Indians Diabetes",
+        domain="Medical risk classification",
+        sensitive="Diabetes label",
+        rationale="Small medical classification benchmark with missing clinical measurements",
+    ),
+    DatasetTableMetadata(
+        key="bank_marketing",
+        name="Bank Marketing",
+        domain="Marketing / subscription",
+        sensitive="None selected",
+        rationale="Mixed-type business classification benchmark",
+    ),
+    DatasetTableMetadata(
+        key="heart_disease",
+        name="UCI Heart Disease",
+        domain="Medical diagnosis",
+        sensitive="Heart-disease label",
+        rationale="Small medical classification benchmark with mixed clinical variables",
+    ),
     *[
         DatasetTableMetadata(
             key=spec.key,

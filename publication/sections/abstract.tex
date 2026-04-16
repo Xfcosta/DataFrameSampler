@@ -5,9 +5,11 @@ DataFrameSampler, a lightweight Python library for generating mixed-type
 tabular samples from pandas dataframes with an emphasis on simplicity and
 human-auditable behaviour. The method maps numeric and categorical columns into
 a discretized latent bin-space, samples new latent rows by transferring
-differences along local neighbour chains, and decodes latent bins back into
-column values. Each generated example can therefore be explained in terms of
-nearby source rows, bin assignments, and a local difference operation, rather
+difference vectors along local neighbour chains, and decodes latent bins back
+into column values. The difference vector can be read as a first-order local
+tangent-space approximation to the empirical manifold estimated by mutual
+nearest neighbours. Each generated example can therefore be explained in terms
+of nearby source rows, bin assignments, and a local difference operation, rather
 than as the opaque output of a large learned generator. The implementation
 supports configurable categorical vectorization, exact and approximate
 nearest-neighbour backends, CSV and Parquet data I/O, optional LLM-assisted

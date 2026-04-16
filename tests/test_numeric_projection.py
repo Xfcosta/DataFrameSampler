@@ -2,8 +2,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from dataframe_sampler import ConcreteDataFrameSampler
+from experiments.datasets import DatasetExperimentConfig
 from experiments.numeric_projection import (
     numeric_view,
+    numeric_view_from_config,
     plot_numeric_projection_triptych,
     project_numeric_views,
 )
@@ -40,6 +42,29 @@ def test_numeric_view_uses_fitted_sampler_transform():
     numeric = numeric_view(df.head(4), sampler)
 
     assert numeric.shape == (4, 3)
+    assert all(dtype.kind in {"i", "u", "f"} for dtype in numeric.dtypes)
+
+
+def test_numeric_view_from_config_fits_configured_sampler():
+    df = make_mixed_dataframe()
+    config = DatasetExperimentConfig(
+        dataset_name="toy",
+        title="Toy",
+        data_filename="toy.csv",
+        target_column=None,
+        random_state=1,
+        manual_sampler_config={
+            "n_bins": 4,
+            "n_neighbours": 3,
+            "knn_backend": "sklearn",
+            "vectorizing_columns_dict": {"band": ["age", "score"]},
+            "embedding_method": "pca",
+        },
+    )
+
+    numeric = numeric_view_from_config(df, config)
+
+    assert numeric.shape == df.shape
     assert all(dtype.kind in {"i", "u", "f"} for dtype in numeric.dtypes)
 
 

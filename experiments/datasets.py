@@ -17,6 +17,8 @@ class DatasetExperimentConfig:
     working_sample_size: int | None = None
     n_generated: int = 1000
     random_state: int = 42
+    drop_columns: tuple[str, ...] = ()
+    direct_numeric_mappings: dict[str, dict[Any, float]] | None = None
 
 
 ADULT_VECTOR_COLUMNS = {
@@ -35,29 +37,96 @@ ADULT_LLM_VECTOR_COLUMNS = {
     "occupation": ["age", "education_num", "hours_per_week", "capital_gain"],
     "relationship": ["age", "education_num", "hours_per_week"],
     "race": ["age", "education_num", "hours_per_week"],
-    "sex": ["age", "education_num", "hours_per_week"],
     "native_country": ["age", "education_num", "hours_per_week"],
-    "income": ["age", "education_num", "hours_per_week", "capital_gain", "capital_loss"],
 }
 
 TITANIC_VECTOR_COLUMNS = {
-    "sex": ["age", "fare", "pclass"],
-    "class": ["age", "fare", "pclass"],
     "embark_town": ["age", "fare", "pclass"],
-    "who": ["age", "fare", "pclass"],
-    "adult_male": ["age", "fare", "pclass"],
-    "alone": ["age", "fare", "pclass"],
+    "deck": ["age", "fare", "pclass"],
 }
 
 TITANIC_LLM_VECTOR_COLUMNS = {
-    "sex": ["survived", "pclass", "age", "fare"],
-    "class": ["survived", "pclass", "age", "fare"],
-    "who": ["survived", "pclass", "age", "fare"],
-    "adult_male": ["survived", "pclass", "age", "fare"],
     "deck": ["survived", "pclass", "age", "fare"],
     "embark_town": ["survived", "pclass", "age", "fare"],
-    "alive": ["pclass", "age", "fare"],
-    "alone": ["survived", "pclass", "age", "fare"],
+}
+
+BREAST_CANCER_VECTOR_COLUMNS = {}
+
+BREAST_CANCER_LLM_VECTOR_COLUMNS = {}
+
+PIMA_DIABETES_VECTOR_COLUMNS = {}
+
+PIMA_DIABETES_LLM_VECTOR_COLUMNS = {}
+
+BANK_MARKETING_VECTOR_COLUMNS = {
+    "job": ["age", "duration", "campaign", "previous", "euribor3m"],
+    "marital": ["age", "duration", "campaign", "previous", "euribor3m"],
+    "education": ["age", "duration", "campaign", "previous", "euribor3m"],
+    "contact": ["age", "duration", "campaign", "previous", "euribor3m"],
+    "month": ["age", "duration", "campaign", "previous", "euribor3m"],
+    "day_of_week": ["age", "duration", "campaign", "previous", "euribor3m"],
+    "poutcome": ["age", "duration", "campaign", "previous", "euribor3m"],
+}
+
+BANK_MARKETING_LLM_VECTOR_COLUMNS = {
+    "job": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
+    "marital": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
+    "education": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
+    "contact": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
+    "month": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
+    "day_of_week": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
+    "poutcome": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
+}
+
+HEART_DISEASE_VECTOR_COLUMNS = {
+    "chest_pain": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak"],
+    "resting_ecg": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak"],
+    "slope": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak"],
+    "thal": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak"],
+}
+
+HEART_DISEASE_LLM_VECTOR_COLUMNS = {
+    "chest_pain": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak", "major_vessels"],
+    "resting_ecg": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak", "major_vessels"],
+    "slope": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak", "major_vessels"],
+    "thal": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak", "major_vessels"],
+}
+
+
+BINARY_NO_YES_MAPPING = {"no": 0.0, "yes": 1.0}
+
+ADULT_DIRECT_NUMERIC_MAPPINGS = {
+    "sex": {"Female": 0.0, "Male": 1.0},
+    "income": {"<=50K": 0.0, ">50K": 1.0},
+}
+
+TITANIC_DIRECT_NUMERIC_MAPPINGS = {
+    "sex": {"female": 0.0, "male": 1.0},
+    "who": {"woman": 0.0, "child": 0.5, "man": 1.0},
+    "adult_male": {False: 0.0, True: 1.0, "False": 0.0, "True": 1.0},
+    "alone": {False: 0.0, True: 1.0, "False": 0.0, "True": 1.0},
+}
+
+BREAST_CANCER_DIRECT_NUMERIC_MAPPINGS = {
+    "diagnosis": {"benign": 0.0, "malignant": 1.0},
+}
+
+PIMA_DIABETES_DIRECT_NUMERIC_MAPPINGS = {
+    "diabetes": {"negative": 0.0, "positive": 1.0},
+}
+
+BANK_MARKETING_DIRECT_NUMERIC_MAPPINGS = {
+    "default": BINARY_NO_YES_MAPPING,
+    "housing": BINARY_NO_YES_MAPPING,
+    "loan": BINARY_NO_YES_MAPPING,
+    "subscribed": BINARY_NO_YES_MAPPING,
+}
+
+HEART_DISEASE_DIRECT_NUMERIC_MAPPINGS = {
+    "sex": {"female": 0.0, "male": 1.0},
+    "fasting_blood_sugar": {"not_above_120": 0.0, "above_120": 1.0},
+    "exercise_angina": BINARY_NO_YES_MAPPING,
+    "heart_disease": {"absent": 0.0, "present": 1.0},
 }
 
 
@@ -68,6 +137,7 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         data_filename="adult.csv",
         target_column="income",
         working_sample_size=2500,
+        direct_numeric_mappings=ADULT_DIRECT_NUMERIC_MAPPINGS,
         manual_sampler_config={
             "n_bins": 10,
             "n_neighbours": 8,
@@ -88,6 +158,8 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         title="Titanic",
         data_filename="titanic.csv",
         target_column="survived",
+        drop_columns=("class", "embarked", "alive"),
+        direct_numeric_mappings=TITANIC_DIRECT_NUMERIC_MAPPINGS,
         manual_sampler_config={
             "n_bins": 8,
             "n_neighbours": 6,
@@ -99,6 +171,99 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
             "n_bins": 8,
             "n_neighbours": 6,
             "vectorizing_columns_dict": TITANIC_LLM_VECTOR_COLUMNS,
+            "embedding_method": "pca",
+            "knn_backend": "sklearn",
+        },
+    ),
+    "breast_cancer": DatasetExperimentConfig(
+        dataset_name="breast_cancer",
+        title="Wisconsin Diagnostic Breast Cancer",
+        data_filename="breast_cancer.csv",
+        target_column="diagnosis",
+        n_generated=569,
+        random_state=52,
+        direct_numeric_mappings=BREAST_CANCER_DIRECT_NUMERIC_MAPPINGS,
+        manual_sampler_config={
+            "n_bins": 8,
+            "n_neighbours": 6,
+            "vectorizing_columns_dict": BREAST_CANCER_VECTOR_COLUMNS,
+            "embedding_method": "pca",
+            "knn_backend": "sklearn",
+        },
+        llm_assisted_config={
+            "n_bins": 10,
+            "n_neighbours": 8,
+            "vectorizing_columns_dict": BREAST_CANCER_LLM_VECTOR_COLUMNS,
+            "embedding_method": "pca",
+            "knn_backend": "sklearn",
+        },
+    ),
+    "pima_diabetes": DatasetExperimentConfig(
+        dataset_name="pima_diabetes",
+        title="Pima Indians Diabetes",
+        data_filename="pima_diabetes.csv",
+        target_column="diabetes",
+        n_generated=768,
+        random_state=53,
+        direct_numeric_mappings=PIMA_DIABETES_DIRECT_NUMERIC_MAPPINGS,
+        manual_sampler_config={
+            "n_bins": 8,
+            "n_neighbours": 6,
+            "vectorizing_columns_dict": PIMA_DIABETES_VECTOR_COLUMNS,
+            "embedding_method": "pca",
+            "knn_backend": "sklearn",
+        },
+        llm_assisted_config={
+            "n_bins": 10,
+            "n_neighbours": 8,
+            "vectorizing_columns_dict": PIMA_DIABETES_LLM_VECTOR_COLUMNS,
+            "embedding_method": "pca",
+            "knn_backend": "sklearn",
+        },
+    ),
+    "bank_marketing": DatasetExperimentConfig(
+        dataset_name="bank_marketing",
+        title="Bank Marketing",
+        data_filename="bank_marketing.csv",
+        target_column="subscribed",
+        working_sample_size=3000,
+        n_generated=1000,
+        random_state=54,
+        direct_numeric_mappings=BANK_MARKETING_DIRECT_NUMERIC_MAPPINGS,
+        manual_sampler_config={
+            "n_bins": 10,
+            "n_neighbours": 8,
+            "vectorizing_columns_dict": BANK_MARKETING_VECTOR_COLUMNS,
+            "embedding_method": "pca",
+            "knn_backend": "sklearn",
+        },
+        llm_assisted_config={
+            "n_bins": 12,
+            "n_neighbours": 8,
+            "vectorizing_columns_dict": BANK_MARKETING_LLM_VECTOR_COLUMNS,
+            "embedding_method": "pca",
+            "knn_backend": "sklearn",
+        },
+    ),
+    "heart_disease": DatasetExperimentConfig(
+        dataset_name="heart_disease",
+        title="UCI Heart Disease",
+        data_filename="heart_disease.csv",
+        target_column="heart_disease",
+        n_generated=303,
+        random_state=55,
+        direct_numeric_mappings=HEART_DISEASE_DIRECT_NUMERIC_MAPPINGS,
+        manual_sampler_config={
+            "n_bins": 8,
+            "n_neighbours": 6,
+            "vectorizing_columns_dict": HEART_DISEASE_VECTOR_COLUMNS,
+            "embedding_method": "pca",
+            "knn_backend": "sklearn",
+        },
+        llm_assisted_config={
+            "n_bins": 10,
+            "n_neighbours": 8,
+            "vectorizing_columns_dict": HEART_DISEASE_LLM_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },

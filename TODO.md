@@ -106,7 +106,8 @@ If evidence is missing, the claim must be weakened.
 - [x] Figure 3, HOW: DataFrameSampler pipeline.
   - [x] dataframe input;
   - [x] optional anonymization of selected columns;
-  - [x] numeric conversion and categorical vectorization;
+  - [x] direct binary/ordinal mappings, redundant alias removal, and
+  categorical vectorization;
   - [x] bin encoding;
   - [x] neighbour-chain sampling;
   - [x] bin decoding;
@@ -197,15 +198,15 @@ If evidence is missing, the claim must be weakened.
   - [ ] sales, transactions, or retail dataset;
   - [ ] employee/HR-style dataset if available.
 - [ ] Medical or health-informatics datasets:
-  - [ ] UCI Heart Disease;
-  - [ ] diabetes readmission or diabetes classification;
-  - [ ] breast cancer diagnostic dataset;
+  - [x] UCI Heart Disease;
+  - [x] diabetes readmission or diabetes classification;
+  - [x] breast cancer diagnostic dataset;
   - [ ] MIMIC-derived public benchmark only if governance and preprocessing are
   practical.
 - [ ] Generic mixed-type benchmarks:
   - [x] Adult Census Income;
   - [x] Titanic;
-  - [ ] Bank Marketing;
+  - [x] Bank Marketing;
   - [ ] OpenML mixed-type classification datasets.
 - [x] Synthetic controlled datasets:
   - [x] correlated numeric plus categorical helper columns;

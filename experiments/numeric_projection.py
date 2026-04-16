@@ -9,11 +9,25 @@ from sklearn.decomposition import PCA
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 
+from dataframe_sampler import ConcreteDataFrameSampler
+
+from .datasets import DatasetExperimentConfig
+from .workflow import sampler_config_with_random_state
+
 
 def numeric_view(dataframe, sampler) -> pd.DataFrame:
     """Return the sampler's pure numeric representation for dataframe rows."""
     numeric = sampler.transform(dataframe)
     return numeric.apply(pd.to_numeric, errors="coerce")
+
+
+def numeric_view_from_config(dataframe: pd.DataFrame, config: DatasetExperimentConfig) -> pd.DataFrame:
+    """Fit the configured sampler and return its numeric representation."""
+    sampler = ConcreteDataFrameSampler(
+        **sampler_config_with_random_state(config.manual_sampler_config, config.random_state)
+    )
+    sampler.fit(dataframe)
+    return numeric_view(dataframe, sampler)
 
 
 def project_numeric_views(

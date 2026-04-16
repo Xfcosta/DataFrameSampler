@@ -11,7 +11,8 @@ preparation helpers for the paper.
   helpers, high-cardinality categoricals, rare categories, and sensitive
   identifiers.
 - `datasets.py`: dataset-specific parameters, including sampler configs,
-  vectorizing columns, target columns, and row limits.
+  direct numeric mappings, redundant columns to drop, vectorizing columns,
+  target columns, and row limits.
 - `workflow.py`: reusable notebook workflow for loading, profiling, starter
   sampling, baseline comparison, and output writing.
 - `make_tables.py`: reusable table-generation functions for publication
@@ -24,6 +25,8 @@ preparation helpers for the paper.
 - `notebooks/`: one notebook per dataset.
 - `data/raw/`: downloaded source files.
 - `data/processed/`: cleaned CSV files consumed by notebooks.
+- `descriptions/`: human-readable per-dataset column descriptions and
+  potential predictive targets.
 - `results/`: generated tables and intermediate experiment outputs.
 - `figures/`: generated plots for the paper.
 
@@ -36,6 +39,11 @@ and distribution similarity through histogram overlap/divergence summaries.
 
 - Adult Census Income from the UCI Machine Learning Repository.
 - Titanic from the seaborn example datasets repository.
+- Wisconsin Diagnostic Breast Cancer from the UCI Machine Learning Repository.
+- Pima Indians Diabetes from a public CSV mirror of the classic diabetes
+  classification dataset.
+- Bank Marketing from the UCI Machine Learning Repository.
+- Heart Disease Cleveland from the UCI Machine Learning Repository.
 - Four deterministic controlled synthetic datasets for TODO point 5.
 
 Run:
@@ -49,13 +57,19 @@ Then open:
 ```bash
 jupyter notebook experiments/notebooks/adult.ipynb
 jupyter notebook experiments/notebooks/titanic.ipynb
+jupyter notebook experiments/notebooks/breast_cancer.ipynb
+jupyter notebook experiments/notebooks/pima_diabetes.ipynb
+jupyter notebook experiments/notebooks/bank_marketing.ipynb
+jupyter notebook experiments/notebooks/heart_disease.ipynb
 jupyter notebook experiments/notebooks/synthetic_controlled.ipynb
 ```
 
 The notebooks are intentionally thin. Each notebook selects a dataset key from
-`experiments/datasets.py`, calls `run_configured_dataset_experiment`, displays
-the returned profile, starter sample report, numeric projection triptych, and
-baseline comparison.
+`experiments/datasets.py`, displays the preprocessing and vectorization plans,
+plots pairwise features only after the configured sampler has reduced every
+column to its numeric representation, calls `run_configured_dataset_experiment`,
+and displays the returned profile, starter sample report, numeric projection
+triptych, and baseline comparison.
 To add another dataset, add a `DatasetExperimentConfig`, create a small
 notebook that changes `DATASET_NAME`, then rerun the table and figure helpers:
 

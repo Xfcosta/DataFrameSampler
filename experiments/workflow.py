@@ -83,7 +83,31 @@ def notebook_environment(paths: ExperimentPaths) -> dict[str, str]:
 
 def load_dataset(config: DatasetExperimentConfig, *, root: str | Path | None = None) -> pd.DataFrame:
     paths = experiment_paths(config, root=root)
+    return prepare_dataframe_for_experiment(pd.read_csv(paths.data_path), config)
+
+
+def load_raw_dataset(config: DatasetExperimentConfig, *, root: str | Path | None = None) -> pd.DataFrame:
+    """Load the processed dataset before experiment-specific column preparation."""
+    paths = experiment_paths(config, root=root)
     return pd.read_csv(paths.data_path)
+
+
+def prepare_dataframe_for_experiment(
+    dataframe: pd.DataFrame,
+    config: DatasetExperimentConfig,
+) -> pd.DataFrame:
+    """Apply configured direct encodings and redundant-column removal."""
+    prepared = dataframe.copy()
+    drop_columns = [column for column in config.drop_columns if column in prepared.columns]
+    if drop_columns:
+        prepared = prepared.drop(columns=drop_columns)
+
+    for column, mapping in (config.direct_numeric_mappings or {}).items():
+        if column not in prepared.columns:
+            continue
+        mapped = prepared[column].map(mapping)
+        prepared[column] = pd.to_numeric(mapped, errors="coerce")
+    return prepared
 
 
 def dataset_profile(dataframe: pd.DataFrame) -> pd.DataFrame:
@@ -203,7 +227,7 @@ def run_configured_dataset_experiment(
 ) -> DatasetExperimentResult:
     np.random.seed(config.random_state)
     paths = experiment_paths(config, root=root, results_dir=results_dir)
-    dataframe = pd.read_csv(paths.data_path)
+    dataframe = load_dataset(config, root=paths.root)
     work = working_dataframe(dataframe, config)
     starter_run = run_starter_sampler(
         work,

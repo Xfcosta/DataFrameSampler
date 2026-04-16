@@ -4,11 +4,22 @@
 
 Let $D$ be an input dataframe with $m$ rows and $d$ columns. Numeric columns are
 converted to floating point values and missing values are imputed with the
-column median. For a non-numeric column $c$, DataFrameSampler supports two
+column median. Before vectorization, columns with a clear human scale can be
+encoded directly: booleans become $0/1$, binary labels such as female/male can
+be encoded as $0/1$, ordinal labels such as passenger class can be encoded as
+$1/2/3$, and derived ordered labels such as woman/child/man can be encoded as
+$0/0.5/1$. Redundant aliases are removed at the same stage so that the latent
+geometry does not overweight one fact. In the Titanic notebook, for example,
+\texttt{pclass}, \texttt{embark\_town}, and \texttt{survived} are preserved,
+while their aliases \texttt{class}, \texttt{embarked}, and \texttt{alive} are
+dropped. For a remaining non-numeric column $c$, DataFrameSampler supports two
 vectorization strategies.
 
 If no helper columns are provided, each category is represented by its empirical
-frequency. If helper columns are provided, each row receives a helper vector
+frequency. This is deliberately simple, but it only gives a weak ordering:
+categories with similar counts become nearby even if they have no semantic
+relationship. The more important case is helper-column vectorization. If helper
+columns are provided, each row receives a helper vector
 $h_i \in \mathbb{R}^{k}$ constructed from the selected numeric helper columns.
 An embedding function
 \[
@@ -20,6 +31,31 @@ including PCA, MDS, Kernel PCA, Isomap, locally linear embedding, and related
 methods. Users may also supply custom objects implementing a scikit-learn-like
 \texttt{fit\_transform}, \texttt{fit}/\texttt{transform}, or \texttt{transform}
 interface.
+
+The purpose of this step is to turn a symbolic category into a one-dimensional
+trace that preserves a useful notion of neighbourhood for that column. For
+example, suppose a table contains a \texttt{nation} column and also contains
+latitude and longitude columns describing the nation centroid. A user can choose
+latitude and longitude as helper columns and use an embedding such as MDS to
+place nations on a one-dimensional curve through the geographic helper space.
+Nearby points on this curve then correspond, approximately, to nearby nations.
+If a row containing Spain has a neighbour containing Italy, and Italy's
+neighbour in the embedded trace is Austria, the local difference points
+north-east in the geographic helper space. Applying an analogous local movement
+from Spain may decode to a nearby country such as France, rather than to an
+unrelated country chosen only because it has a similar empirical frequency.
+
+This helper selection is therefore a semantic modelling decision. The user, or
+the optional LLM-assisted configuration layer, must decide which numeric columns
+express the context in which a categorical column should be ordered. For a job
+title this might be seniority, compensation, and department size; for a medical
+diagnosis it might be laboratory values and age; for a banking campaign outcome
+it might be contact duration, prior contacts, and economic indicators. The
+notebooks report these choices explicitly as a vectorization plan before any
+sampling results are shown. Pairwise exploratory plots are drawn after this
+numeric reduction step, using the same transformed coordinates used by the
+sampler, so visual inspection refers to the operative latent geometry rather
+than only to raw numeric columns.
 
 \subsection{Discretization And Decoding}
 
@@ -40,6 +76,17 @@ Let $Z = \{z_i\}_{i=1}^{m}$ be the encoded latent matrix. DataFrameSampler build
 a nearest-neighbour graph in this latent space. By default, only mutual
 nearest-neighbour relationships are retained. If a row has no mutual neighbours,
 a nearest-neighbour fallback is used to preserve sampleability.
+
+The geometric intuition is that the encoded rows lie on an empirical manifold
+inside the discretized latent space. Around any row, mutual nearest neighbours
+provide a local, symmetric estimate of which observations occupy the same
+small neighbourhood of that manifold. A difference vector between two nearby
+neighbours is therefore treated as a first-order approximation to a direction in
+the local tangent space. Sampling transfers such a local tangent direction to a
+nearby anchor point, with the aim of moving along the empirical manifold rather
+than jumping to an unrelated part of the latent space. This is a modelling
+intuition and an inspectable construction, not a formal guarantee that generated
+rows remain on a smooth manifold.
 
 To generate a new latent row, the sampler selects an anchor row $z_a$, a
 neighbour $z_b$ of that anchor, and a neighbour $z_c$ of $z_b$. It then forms
