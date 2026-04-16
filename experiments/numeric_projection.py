@@ -54,6 +54,7 @@ def plot_numeric_projection_triptych(
     original: pd.DataFrame,
     generated: pd.DataFrame,
     *,
+    target_column: str | None = None,
     title: str | None = None,
     reducer: str = "umap",
     random_state: int = 42,
@@ -74,10 +75,40 @@ def plot_numeric_projection_triptych(
 
     fig, axes = plt.subplots(1, 3, figsize=(15.6, 4.6))
     prefix = f"{title}: " if title else ""
-    _scatter_projection(axes[0], original_projection, color="#1f77b4", label="original", title=f"{prefix}original")
-    _scatter_projection(axes[1], generated_projection, color="#d62728", label="generated", title=f"{prefix}generated")
-    _scatter_projection(axes[2], original_projection, color="#1f77b4", label="original", title=f"{prefix}superimposed")
-    _scatter_projection(axes[2], generated_projection, color="#d62728", label="generated", title=f"{prefix}superimposed")
+    original_style = _target_marker_style(original, target_column=target_column)
+    generated_style = _target_marker_style(generated, target_column=target_column)
+    _scatter_projection(
+        axes[0],
+        original_projection,
+        color="#1f77b4",
+        label="original",
+        title=f"{prefix}original",
+        style=original_style,
+    )
+    _scatter_projection(
+        axes[1],
+        generated_projection,
+        color="#d62728",
+        label="generated",
+        title=f"{prefix}generated",
+        style=generated_style,
+    )
+    _scatter_projection(
+        axes[2],
+        original_projection,
+        color="#1f77b4",
+        label="original",
+        title=f"{prefix}superimposed",
+        style=original_style,
+    )
+    _scatter_projection(
+        axes[2],
+        generated_projection,
+        color="#d62728",
+        label="generated",
+        title=f"{prefix}superimposed",
+        style=generated_style,
+    )
     axes[0].set_ylabel(f"{reducer_name} 2")
     for ax in axes:
         ax.set_xlabel(f"{reducer_name} 1")
@@ -108,6 +139,63 @@ def _projection_frame(values: np.ndarray) -> pd.DataFrame:
     return pd.DataFrame(values, columns=["dim1", "dim2"])
 
 
-def _scatter_projection(ax, projection: pd.DataFrame, *, color: str, label: str, title: str):
-    ax.scatter(projection["dim1"], projection["dim2"], s=12, alpha=0.45, color=color, label=label)
+def _scatter_projection(ax, projection: pd.DataFrame, *, color: str, label: str, title: str, style: dict):
+    if style["task"] == "classification":
+        for marker_label, marker in style["markers"].items():
+            mask = style["labels"] == marker_label
+            if mask.any():
+                ax.scatter(
+                    projection.loc[mask, "dim1"],
+                    projection.loc[mask, "dim2"],
+                    s=18,
+                    alpha=0.52,
+                    color=color,
+                    marker=marker,
+                    linewidths=0.8 if marker == "x" else 0,
+                    label=f"{label} {marker_label}",
+                )
+    else:
+        ax.scatter(
+            projection["dim1"],
+            projection["dim2"],
+            s=style["sizes"],
+            alpha=0.45,
+            color=color,
+            marker="o",
+            linewidths=0,
+            label=label,
+        )
     ax.set_title(title)
+
+
+def _target_marker_style(dataframe: pd.DataFrame, *, target_column: str | None) -> dict:
+    if target_column is None or target_column not in dataframe:
+        return {"task": "none", "sizes": 12}
+
+    target = dataframe[target_column]
+    clean = target.dropna()
+    unique_values = list(pd.unique(clean))
+    if len(unique_values) == 2:
+        ordered = sorted(unique_values, key=lambda value: str(value))
+        return {
+            "task": "classification",
+            "labels": target.map({ordered[0]: str(ordered[0]), ordered[1]: str(ordered[1])}).fillna("missing"),
+            "markers": {str(ordered[0]): "o", str(ordered[1]): "x", "missing": "o"},
+        }
+    if pd.api.types.is_numeric_dtype(target):
+        return {"task": "regression", "sizes": _regression_marker_sizes(target)}
+    return {"task": "none", "sizes": 12}
+
+
+def _regression_marker_sizes(target: pd.Series) -> pd.Series:
+    numeric = pd.to_numeric(target, errors="coerce")
+    if numeric.notna().sum() == 0:
+        return pd.Series(12.0, index=target.index)
+    fill_value = numeric.median()
+    numeric = numeric.fillna(fill_value)
+    minimum = numeric.min()
+    maximum = numeric.max()
+    if minimum == maximum:
+        return pd.Series(18.0, index=target.index)
+    scaled = (numeric - minimum) / (maximum - minimum)
+    return 10.0 + 34.0 * scaled

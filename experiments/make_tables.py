@@ -364,7 +364,7 @@ def write_runtime_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = T
     ].copy()
     setup_steps = {
         "DFS default": "1 config",
-        "DFS manual": "Manual helpers",
+        "DFS manual": "Category embedding",
         "DFS LLM-style": "LLM-style dict",
         "Row bootstrap": "None",
         "Independent columns": "None",

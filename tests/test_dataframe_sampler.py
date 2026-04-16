@@ -64,7 +64,7 @@ class FixedLatentSampler:
         return np.array([[0.25, 0.75], [1.5, 2.25]])[:n_samples]
 
 
-def test_vectorizer_keeps_numeric_columns_and_frequency_encodes_categories():
+def test_vectorizer_keeps_numeric_columns_and_embeds_categories():
     df = pd.DataFrame(
         {
             "value": [1.0, 2.0, 3.0, 4.0],
@@ -75,7 +75,38 @@ def test_vectorizer_keeps_numeric_columns_and_frequency_encodes_categories():
     transformed = DataFrameVectorizer().fit_transform(df)
 
     assert transformed["value"].tolist() == [1.0, 2.0, 3.0, 4.0]
-    assert transformed["label"].tolist() == [2, 1, 2, 1]
+    assert transformed["label"].dtype.kind == "f"
+    assert transformed["label"].nunique() == 3
+
+
+def test_vectorizer_maps_binary_categories_to_zero_one():
+    df = pd.DataFrame(
+        {
+            "value": [1.0, 2.0, 3.0, 4.0],
+            "flag": ["yes", "no", "yes", "no"],
+        }
+    )
+
+    transformed = DataFrameVectorizer().fit_transform(df)
+
+    assert sorted(transformed["flag"].unique()) == [0.0, 1.0]
+
+
+def test_vectorizer_discards_high_cardinality_identifier_columns():
+    df = pd.DataFrame(
+        {
+            "value": np.arange(80, dtype=float),
+            "address": [f"person-{idx}" for idx in range(80)],
+            "group": ["a", "b", "c", "d"] * 20,
+        }
+    )
+
+    vectorizer = DataFrameVectorizer(max_categorical_fraction=0.3, max_categorical_unique=20)
+    transformed = vectorizer.fit_transform(df)
+
+    assert "address" not in transformed
+    assert vectorizer.dropped_columns_ == ["address"]
+    assert set(transformed.columns) == {"value", "group"}
 
 
 def test_column_encoder_decoder_round_trips_through_known_bins():
@@ -484,7 +515,7 @@ def test_sampler_handles_missing_values_in_fit_data():
     assert len(generated) == 4
 
 
-def test_vectorizing_columns_dict_embeds_configured_category():
+def test_vectorizer_learns_category_embedding_mapping_used_on_new_data():
     df = pd.DataFrame(
         {
             "name": ["ann", "bob", "cam", "dan"],
@@ -493,13 +524,14 @@ def test_vectorizing_columns_dict_embeds_configured_category():
         }
     )
 
-    transformed = DataFrameVectorizer(
-        vectorizing_columns_dict={"name": ["age", "country_id"]},
-        random_state=6,
-    ).fit_transform(df)
+    vectorizer = DataFrameVectorizer(random_state=6)
+    transformed = vectorizer.fit_transform(df)
+    new = vectorizer.transform(pd.DataFrame({"name": ["ann", "eve"], "age": [25, 60], "country_id": [1, 3]}))
 
     assert set(transformed.columns) == {"name", "age", "country_id"}
     assert transformed["name"].nunique() > 1
+    assert set(new.columns) == {"name", "age", "country_id"}
+    assert np.isfinite(new["name"]).all()
 
 
 def test_vectorizer_supports_pca_embedding_by_string():
@@ -512,7 +544,6 @@ def test_vectorizer_supports_pca_embedding_by_string():
     )
 
     transformed = DataFrameVectorizer(
-        vectorizing_columns_dict={"name": ["age", "country_id"]},
         embedding_method="pca",
     ).fit_transform(df)
 
@@ -533,25 +564,21 @@ def test_vectorizer_supports_custom_transform_embedding_object():
     )
 
     transformed = DataFrameVectorizer(
-        vectorizing_columns_dict={"name": ["age", "country_id"]},
         embedding_method=FirstColumnProjector(),
     ).fit_transform(df)
 
-    assert transformed["name"].tolist() == [20.0, 30.0, 40.0]
+    assert transformed["name"].tolist() == [1.0, 0.0, 0.0]
 
 
 def test_vectorizer_rejects_unknown_embedding_string():
     df = pd.DataFrame(
         {
-            "name": ["ann", "bob"],
-            "age": [20, 30],
+            "name": ["ann", "bob", "cam"],
+            "age": [20, 30, 40],
         }
     )
 
-    vectorizer = DataFrameVectorizer(
-        vectorizing_columns_dict={"name": ["age"]},
-        embedding_method="not_real",
-    )
+    vectorizer = DataFrameVectorizer(embedding_method="not_real")
 
     with pytest.raises(ValueError, match="Unknown embedding_method"):
         vectorizer.fit_transform(df)
@@ -575,15 +602,15 @@ def test_suggest_sampler_config_with_openai_uses_structured_response():
           "recommendations": [
             {
               "column": "band",
-              "helper_columns": ["age", "score", "not_a_column"],
-              "rationale": "Age and score define the band semantics.",
+              "action": "keep",
+              "rationale": "Band has a compact alphabet and should be embedded.",
               "confidence": 0.9
             }
           ],
           "sampled_columns": ["age", "band", "score"],
           "embedding_method": "pca",
           "knn_backend": "sklearn",
-          "notes": "Use PCA for the numeric helper space."
+          "notes": "Use PCA for categorical one-hot embeddings."
         }
         """
 
@@ -602,7 +629,6 @@ def test_suggest_sampler_config_with_openai_uses_structured_response():
         client=FakeClient(),
     )
 
-    assert config["vectorizing_columns_dict"] == {"band": ["age", "score"]}
     assert config["sampled_columns"] == ["age", "band", "score"]
     assert config["embedding_method"] == "pca"
     assert config["knn_backend"] == "sklearn"
@@ -614,7 +640,6 @@ def test_concrete_dataframe_sampler_accepts_pca_embedding_method():
         n_bins=4,
         n_neighbours=3,
         random_state=9,
-        vectorizing_columns_dict={"band": ["age", "score"]},
         embedding_method="pca",
     )
 
@@ -669,7 +694,6 @@ def test_cli_auto_config_fills_omitted_sampler_options(tmp_path, monkeypatch):
     def fake_auto_config(df):
         assert list(df.columns) == ["age", "band", "score"]
         return {
-            "vectorizing_columns_dict": {"band": ["age", "score"]},
             "sampled_columns": ["age", "band", "score"],
             "embedding_method": "pca",
             "knn_backend": "sklearn",
@@ -703,12 +727,8 @@ def test_cli_auto_config_preserves_user_specified_options(tmp_path, monkeypatch)
     output_csv = tmp_path / "generated.csv"
     make_mixed_dataframe().to_csv(input_csv, index=False)
 
-    vectorizing_yaml = tmp_path / "vectorizing.yaml"
-    vectorizing_yaml.write_text("band:\n- age\n")
-
     def fake_auto_config(df):
         return {
-            "vectorizing_columns_dict": {"band": ["score"]},
             "sampled_columns": ["band"],
             "embedding_method": "pca",
             "knn_backend": "sklearn",
@@ -725,8 +745,6 @@ def test_cli_auto_config_preserves_user_specified_options(tmp_path, monkeypatch)
             str(input_csv),
             "-o",
             str(output_csv),
-            "-f",
-            str(vectorizing_yaml),
             "-c",
             "age",
             "-c",

@@ -51,8 +51,8 @@ If evidence is missing, the claim must be weakened.
 ### Supporting Evidence
 
 - [ ] Mechanism ablations:
-  - [ ] frequency categorical encoding only;
-  - [ ] helper-column embedding;
+  - [ ] high-cardinality discard threshold;
+  - [ ] one-hot categorical embedding;
   - [ ] PCA embedding;
   - [ ] MDS embedding;
   - [ ] nonlinear embedding option, for example Isomap or Kernel PCA;
@@ -60,7 +60,7 @@ If evidence is missing, the claim must be weakened.
   - [ ] mutual neighbours plus one-nearest-neighbour fallback;
   - [ ] exact KNN versus approximate KNN backend.
 - [ ] Configuration evidence:
-  - [ ] manual vectorizing-column configuration;
+  - [ ] sampled-column configuration;
   - [x] LLM-assisted configuration with user overrides;
   - [ ] invalid or weak LLM recommendation rate;
   - [ ] configuration reproducibility across prompts/seeds/models if feasible.
@@ -209,7 +209,7 @@ If evidence is missing, the claim must be weakened.
   - [x] Bank Marketing;
   - [ ] OpenML mixed-type classification datasets.
 - [x] Synthetic controlled datasets:
-  - [x] correlated numeric plus categorical helper columns;
+  - [x] correlated numeric plus categorical embeddings;
   - [x] high-cardinality categorical column;
   - [x] known rare-category structure;
   - [x] known sensitive identifier column.
@@ -349,7 +349,7 @@ distributional and downstream metrics remain supporting diagnostics.
 
 - [ ] Remove anonymization layer.
 - [ ] Replace LLM-assisted config with defaults.
-- [ ] Replace helper-column embeddings with frequency encoding.
+- [ ] Replace one-hot categorical embeddings with binary/frequency baselines.
 - [ ] Compare embedding methods:
   - [ ] PCA;
   - [ ] MDS;

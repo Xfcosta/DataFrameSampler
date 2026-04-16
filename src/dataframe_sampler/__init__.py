@@ -7,7 +7,6 @@ from .llm import (
     LLM_VECTORISING_COLUMNS_SYSTEM_PROMPT,
     profile_dataframe_for_llm,
     suggest_sampler_config_with_openai,
-    suggest_vectorizing_columns_with_openai,
 )
 from .metrics import (
     compute_symmetrized_kullback_leibler_divergence,
@@ -53,7 +52,6 @@ __all__ = [
     "profile_dataframe_for_llm",
     "read_dataframe",
     "suggest_sampler_config_with_openai",
-    "suggest_vectorizing_columns_with_openai",
     "write_dataframe",
     "SUPPORTED_KNN_BACKENDS",
     "yaml_load",

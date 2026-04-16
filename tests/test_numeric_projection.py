@@ -57,7 +57,6 @@ def test_numeric_view_from_config_fits_configured_sampler():
             "n_bins": 4,
             "n_neighbours": 3,
             "knn_backend": "sklearn",
-            "vectorizing_columns_dict": {"band": ["age", "score"]},
             "embedding_method": "pca",
         },
     )
@@ -107,4 +106,48 @@ def test_plot_numeric_projection_triptych_returns_three_panel_figure():
         "generated",
         "superimposed",
     ]
+    plt.close(fig)
+
+
+def test_plot_numeric_projection_triptych_uses_binary_target_markers():
+    df = make_mixed_dataframe()
+    df["target"] = [0, 1] * 6
+    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=1)
+    sampler.fit(df)
+    generated = sampler.sample(n_samples=6)
+
+    fig = plot_numeric_projection_triptych(
+        sampler,
+        df,
+        generated,
+        target_column="target",
+        reducer="pca",
+        random_state=2,
+    )
+
+    assert len(fig.axes[0].collections) == 2
+    assert len(fig.axes[1].collections) == 2
+    assert len(fig.axes[2].collections) == 4
+    plt.close(fig)
+
+
+def test_plot_numeric_projection_triptych_uses_regression_target_sizes():
+    df = make_mixed_dataframe()
+    df["target"] = [float(value) for value in range(len(df))]
+    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=1)
+    sampler.fit(df)
+    generated = sampler.sample(n_samples=6)
+
+    fig = plot_numeric_projection_triptych(
+        sampler,
+        df,
+        generated,
+        target_column="target",
+        reducer="pca",
+        random_state=2,
+    )
+
+    sizes = fig.axes[0].collections[0].get_sizes()
+    assert sizes.max() > sizes.min()
+    assert len(fig.axes[2].collections) == 2
     plt.close(fig)

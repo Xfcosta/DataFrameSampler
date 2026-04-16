@@ -1,26 +1,35 @@
-# Prompt For LLM Vectorizing Configuration
+# Prompt For LLM Sampler Configuration
 
 You are configuring DataFrameSampler for a tabular dataset.
 
 DataFrameSampler generates synthetic rows by:
 
-1. vectorizing categorical columns into numeric values,
-2. discretizing every column into bins,
+1. converting every usable column to numeric values,
+2. discretizing every converted column into bins,
 3. sampling in latent bin space,
 4. decoding bins back into observed source values.
 
-Your task is to recommend `vectorizing_columns_dict`.
+Categorical conversion is fixed:
+
+- high-cardinality identifier-like non-numeric columns are discarded;
+- binary non-numeric columns are mapped to `0/1`;
+- other non-numeric columns are one-hot encoded and embedded to one numeric
+  coordinate.
+
+Your task is to recommend sampled columns, one global `embedding_method`, and
+one `knn_backend`.
 
 Rules:
 
-- Recommend entries only for categorical/non-numeric columns.
-- Helper columns must be numeric and present in the dataframe.
-- Helper columns should plausibly explain the categorical value.
-- Use 1 to 4 helper columns per categorical column.
-- Do not recommend a helper if it leaks a target/outcome column.
-- If no useful numeric helpers exist for a categorical column, omit it.
-- Also recommend one global `embedding_method`.
-- Also recommend one `knn_backend`; prefer `sklearn` unless there is a strong reason otherwise.
+- Exclude direct identifiers such as names, emails, phone numbers, addresses,
+  free-text IDs, or mostly unique code columns.
+- Keep compact categorical columns that should appear in generated output; the
+  vectorizer will embed them automatically.
+- Avoid leakage-like target columns unless the user explicitly wants to sample
+  them.
+- Prefer `pca` for `embedding_method` unless there is a clear reason for a
+  nonlinear reducer.
+- Prefer `sklearn` for `knn_backend` unless there is a strong reason otherwise.
 
 Return JSON with:
 
@@ -29,12 +38,12 @@ Return JSON with:
   "recommendations": [
     {
       "column": "personName",
-      "helper_columns": ["age", "country_id"],
-      "rationale": "Age and country help locate names in a demographic space.",
-      "confidence": 0.85
+      "action": "exclude",
+      "rationale": "Mostly unique direct identifier.",
+      "confidence": 0.95
     }
   ],
-  "sampled_columns": ["personName", "age", "country"],
+  "sampled_columns": ["age", "city", "country"],
   "embedding_method": "pca",
   "knn_backend": "sklearn",
   "notes": "Short explanation of tradeoffs."

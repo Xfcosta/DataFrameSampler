@@ -189,11 +189,13 @@ class DataFrameSampler(object):
         vectorizing_dataframe = self.dataframe_vectorizer.fit_transform(dataframe)
 
         if self.sampled_columns is not None:
-            missing_columns = [column for column in self.sampled_columns if column not in dataframe.columns]
+            missing_columns = [column for column in self.sampled_columns if column not in vectorizing_dataframe.columns]
             if missing_columns:
-                raise ValueError("Unknown sampled columns: %s" % missing_columns)
+                raise ValueError("Unknown or discarded sampled columns: %s" % missing_columns)
             vectorizing_dataframe = vectorizing_dataframe[self.sampled_columns]
             dataframe = dataframe[self.sampled_columns]
+        else:
+            dataframe = dataframe[vectorizing_dataframe.columns]
 
         self.dataframe_encoder_decoder.fit(dataframe, vectorizing_dataframe)
         self.latent_data_mtx = self.dataframe_encoder_decoder.encode(vectorizing_dataframe)
@@ -276,20 +278,22 @@ class DataFrameSampler(object):
 def ConcreteDataFrameSampler(
     n_bins=20,
     n_neighbours=10,
-    vectorizing_columns_dict=None,
     sampled_columns=None,
     random_state=None,
     knn_backend="exact",
     knn_backend_kwargs=None,
-    embedding_method="mds",
+    embedding_method="pca",
     embedding_kwargs=None,
+    max_categorical_fraction=0.3,
+    max_categorical_unique=50,
     numeric_decode_strategy="observed_bin",
 ):
     dataframe_vectorizer = DataFrameVectorizer(
-        vectorizing_columns_dict=vectorizing_columns_dict,
         random_state=random_state,
         embedding_method=embedding_method,
         embedding_kwargs=embedding_kwargs,
+        max_categorical_fraction=max_categorical_fraction,
+        max_categorical_unique=max_categorical_unique,
     )
     dataframe_encoder_decoder = DataFrameEncoderDecoder(
         n_bins=n_bins,

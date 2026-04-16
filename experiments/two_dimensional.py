@@ -16,12 +16,11 @@ from dataframe_sampler import ConcreteDataFrameSampler
 DEFAULT_TWO_DIMENSIONAL_SAMPLER_KWARGS = {
     "n_bins": 60,
     "n_neighbours": 8,
-    "vectorizing_columns_dict": None,
     "sampled_columns": None,
     "random_state": None,
     "knn_backend": "sklearn",
     "knn_backend_kwargs": None,
-    "embedding_method": "mds",
+    "embedding_method": "pca",
     "embedding_kwargs": None,
     "numeric_decode_strategy": "continuous",
 }

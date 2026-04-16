@@ -14,6 +14,7 @@ from experiments.metrics import (
     practicality_metrics,
     regression_scores,
     theils_u,
+    utility_lift_test,
 )
 
 
@@ -113,7 +114,7 @@ def test_inspectability_and_practicality_metrics():
 
     inspectability = inspectability_metrics(traces)
     practicality = practicality_metrics(
-        configuration={"n_bins": 10, "vectorizing_columns_dict": {"name": ["age"]}},
+        configuration={"n_bins": 10, "embedding_method": "pca"},
         python_code="sampler.fit(df)\ngenerated = sampler.sample(10)\n",
         cli_command="dataframe-sampler -i input.csv -o output.csv -n 10",
         fit_seconds=0.5,
@@ -161,6 +162,30 @@ def test_primary_measure_report_contains_four_experiment_measures():
     assert "utility_lift" in report
     assert "distribution_histogram_overlap" in report
     assert 0.0 <= report["distribution_histogram_overlap"] <= 1.0
+
+
+def test_utility_lift_snaps_continuous_synthetic_labels_for_classification():
+    real = pd.DataFrame(
+        {
+            "feature": np.linspace(0.0, 1.0, 40),
+            "segment": ["a", "b"] * 20,
+            "target": [0, 1] * 20,
+        }
+    )
+    synthetic = pd.DataFrame(
+        {
+            "feature": np.linspace(0.05, 0.95, 24),
+            "segment": ["a", "b"] * 12,
+            "target": np.linspace(-0.1, 1.1, 24),
+        }
+    )
+
+    report = utility_lift_test(real, synthetic, target_column="target", random_state=1)
+
+    assert report["utility_task"] == "classification"
+    assert np.isfinite(report["utility_real_score"])
+    assert np.isfinite(report["utility_augmented_score"])
+    assert np.isfinite(report["utility_lift"])
 
 
 def test_nearest_neighbor_distance_test_compares_to_natural_distances():

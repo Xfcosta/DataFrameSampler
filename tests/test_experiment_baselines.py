@@ -141,7 +141,6 @@ def test_run_dataset_comparison_includes_llm_assisted_configuration(tmp_path):
             "n_bins": 4,
             "n_neighbours": 2,
             "knn_backend": "sklearn",
-            "vectorizing_columns_dict": {"group": ["age", "fare"]},
             "embedding_method": "pca",
             "random_state": 1,
         },

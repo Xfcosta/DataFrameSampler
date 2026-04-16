@@ -7,10 +7,9 @@ Parquet file, or pandas DataFrame.
 
 Generate a useful DataFrameSampler configuration:
 
-- `vectorizing_columns_dict`
-- optional `sampled_columns`
-- optional `embedding_method`
-- optional KNN backend choice
+- optional `sampled_columns`;
+- optional `embedding_method`;
+- optional KNN backend choice.
 
 Then use either the Python API or CLI to fit the sampler and generate data.
 
@@ -18,56 +17,52 @@ Then use either the Python API or CLI to fit the sampler and generate data.
 
 For every column, identify:
 
-- column name
-- dtype
-- whether it is numeric or categorical
-- examples of values
-- missing count
-- unique count
-- likely semantic role, such as ID, category, place, person, amount, time, target
+- column name;
+- dtype;
+- whether it is numeric, binary, categorical, identifier-like, or free text;
+- examples of values;
+- missing count;
+- unique count;
+- likely semantic role, such as ID, category, place, person, amount, time, or target.
 
-## Choosing `vectorizing_columns_dict`
+## Categorical Policy
 
-Only add entries for categorical/non-numeric columns that have meaningful
-numeric helper columns.
+DataFrameSampler has one fitted categorical conversion policy:
 
-Good examples:
+- high-cardinality identifier-like non-numeric columns are discarded;
+- binary non-numeric columns are mapped to `0/1`;
+- other non-numeric columns are one-hot encoded and embedded to one numeric
+  coordinate.
 
-- `personName`: use `age`, `country_id`, `income`, or other numeric demographic/context columns.
-- `city`: use `country_id`, `region_id`, latitude/longitude, or numeric location encodings.
-- `productName`: use price, category_id, rating, or numeric product descriptors.
-- `diagnosisLabel`: use numeric clinical measurements only if generating that label is appropriate.
+The default high-cardinality threshold discards a non-numeric column only when
+its alphabet is larger than both 50 distinct values and 30% of the row count.
 
-Avoid:
+## Choosing `sampled_columns`
 
-- using the categorical column itself as a helper
-- using free-text columns as helpers
-- using helper columns that do not exist
-- using non-numeric helper columns
-- overloading with every numeric column; prefer 1 to 4 meaningful helpers
-- using target/outcome columns as helpers when that would leak label information
-
-If no meaningful helper exists, omit the categorical column and let
-DataFrameSampler use frequency encoding.
+Include columns that should appear in generated output. Exclude direct
+identifiers, free-text fields, names, addresses, emails, phone numbers, and
+mostly unique operational IDs unless the user explicitly wants to test
+memorization or overlap risk.
 
 ## Choosing `embedding_method`
 
 Use:
 
-- `pca` for mostly linear numeric helper spaces.
-- `mds` when the helper columns represent mixed semantic distances.
-- `kernel_pca`, `isomap`, or `lle` only when there is a clear nonlinear reason.
+- `pca` as the default for compact categorical alphabets;
+- `mds`, `kernel_pca`, `isomap`, or `lle` only when there is a clear nonlinear
+  or manifold reason.
 
-Default to `pca` for broad tabular use unless the original MDS behavior is
-specifically desired.
+For reducers that cannot transform new data directly, the fitted vectorizer
+learns the training category mapping and a regressor fallback from one-hot
+indicators to embedded values.
 
 ## Choosing KNN Backend
 
 Use:
 
-- `exact` for small datasets or debugging.
-- `sklearn` as the safe faster default without optional dependencies.
-- `pynndescent` for larger dense tabular data when optional dependencies are installed.
+- `exact` for small datasets or debugging;
+- `sklearn` as the safe faster default without optional dependencies;
+- `pynndescent` for larger dense tabular data when optional dependencies are installed;
 - `hnswlib` for large vector-search-style workloads with euclidean/cosine metrics.
 
 ## Python Pattern
@@ -75,15 +70,9 @@ Use:
 ```python
 from dataframe_sampler import ConcreteDataFrameSampler
 
-vectorizing_columns_dict = {
-    "personName": ["age", "country_id"],
-    "city": ["country_id"],
-}
-
 sampler = ConcreteDataFrameSampler(
     n_bins=10,
     n_neighbours=5,
-    vectorizing_columns_dict=vectorizing_columns_dict,
     embedding_method="pca",
     knn_backend="sklearn",
     random_state=42,
@@ -98,14 +87,13 @@ If the `openai` optional dependency is installed and `OPENAI_API_KEY` is set,
 use:
 
 ```python
-from dataframe_sampler import suggest_sampler_config_with_openai
+from dataframe_sampler import ConcreteDataFrameSampler, suggest_sampler_config_with_openai
 
 config = suggest_sampler_config_with_openai(df)
 sampler = ConcreteDataFrameSampler(
-    vectorizing_columns_dict=config["vectorizing_columns_dict"],
     sampled_columns=config["sampled_columns"],
     embedding_method=config["embedding_method"],
-    knn_backend="sklearn",
+    knn_backend=config["knn_backend"],
     random_state=42,
 )
 ```
@@ -128,38 +116,6 @@ anon_df, report = anonymize_columns_with_openai(
 )
 
 sampler.fit(anon_df)
-generated_df = sampler.sample(n_samples=len(df))
+generated_df = sampler.sample(n_samples=len(anon_df))
 assert_no_value_overlap(df, generated_df, ["personName", "email"])
 ```
-
-CLI:
-
-```bash
-dataframe-sampler \
-  --input_filename input.csv \
-  --output_filename generated.csv \
-  --anonymize_columns personName \
-  --anonymize_columns email
-```
-
-This is surrogate value replacement, not a formal privacy guarantee.
-
-## CLI Auto Mode
-
-The CLI can ask OpenAI to fill omitted configuration values:
-
-```bash
-dataframe-sampler \
-  -A \
-  --input_filename input.csv \
-  --output_filename generated.csv \
-  --n_samples 100 \
-  --random_state 42
-```
-
-The user remains in control. Values explicitly supplied by the user are kept:
-
-- `-f/--vectorizing_columns_dict_filename` overrides the LLM mapping.
-- `-c/--sampled_columns` overrides LLM sampled columns.
-- `--embedding_method` overrides the LLM embedding method.
-- `--knn_backend` overrides the LLM KNN backend.

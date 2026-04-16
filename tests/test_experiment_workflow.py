@@ -1,5 +1,6 @@
 from dataclasses import replace
 
+import numpy as np
 import pandas as pd
 
 from experiments.datasets import DatasetExperimentConfig
@@ -127,7 +128,7 @@ def test_run_starter_sampler_writes_reusable_outputs(tmp_path):
     assert (tmp_path / "toy_runtime_start.csv").exists()
 
 
-def test_vectorization_plan_reports_helper_embedding_and_frequency_fallback():
+def test_vectorization_plan_reports_one_hot_embedding_for_categoricals():
     df = make_workflow_dataframe()
     config = make_workflow_config(
         manual_sampler_config={
@@ -135,7 +136,6 @@ def test_vectorization_plan_reports_helper_embedding_and_frequency_fallback():
             "n_neighbours": 2,
             "knn_backend": "sklearn",
             "embedding_method": "pca",
-            "vectorizing_columns_dict": {"group": ["age", "fare"]},
         }
     )
 
@@ -143,20 +143,32 @@ def test_vectorization_plan_reports_helper_embedding_and_frequency_fallback():
 
     assert columns_requiring_vectorization(df) == ["group"]
     group = plan.loc[plan["column"] == "group"].iloc[0]
-    assert group["strategy"] == "helper_embedding"
+    assert group["strategy"] == "one_hot_embedding"
     assert group["embedding_method"] == "pca"
-    assert group["helper_columns"] == "age, fare"
-    assert group["helper_status"] == "all helpers numeric"
+    assert "one-hot encoded" in group["decision"]
 
 
-def test_vectorization_plan_marks_unconfigured_categoricals_as_frequency_encoded():
-    df = make_workflow_dataframe()
-    plan = vectorization_plan(df, make_workflow_config())
+def test_vectorization_plan_marks_high_cardinality_categoricals_as_dropped():
+    df = pd.DataFrame(
+        {
+            "age": np.arange(80),
+            "identifier": [f"id-{idx}" for idx in range(80)],
+        }
+    )
+    config = make_workflow_config(
+        manual_sampler_config={
+            "n_bins": 3,
+            "n_neighbours": 2,
+            "knn_backend": "sklearn",
+            "max_categorical_unique": 20,
+        }
+    )
+    plan = vectorization_plan(df, config)
 
-    group = plan.loc[plan["column"] == "group"].iloc[0]
+    identifier = plan.loc[plan["column"] == "identifier"].iloc[0]
 
-    assert group["strategy"] == "frequency_encoding"
-    assert "empirical frequency" in group["decision"]
+    assert identifier["strategy"] == "drop_high_cardinality"
+    assert "discarded" in identifier["decision"]
 
 
 def test_vectorization_plan_reports_configured_direct_mapping():
@@ -167,7 +179,6 @@ def test_vectorization_plan_reports_configured_direct_mapping():
             "n_bins": 3,
             "n_neighbours": 2,
             "knn_backend": "sklearn",
-            "vectorizing_columns_dict": {"sex": ["age"]},
         },
     )
 
@@ -175,7 +186,6 @@ def test_vectorization_plan_reports_configured_direct_mapping():
     row = plan.loc[plan["column"] == "sex"].iloc[0]
 
     assert row["strategy"] == "direct_mapping"
-    assert row["helper_columns"] == ""
     assert "'female'->0" in row["direct_mapping"]
 
 

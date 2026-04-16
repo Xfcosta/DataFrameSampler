@@ -356,6 +356,19 @@ def utility_lift_test(
     for column in missing_columns:
         synthetic_aligned[column] = pd.NA
     synthetic_aligned = synthetic_aligned[real_train.columns]
+    synthetic_aligned[target_column] = _align_synthetic_target_for_task(
+        synthetic_aligned[target_column],
+        real_train[target_column],
+        task,
+    )
+    synthetic_aligned = synthetic_aligned.dropna(subset=[target_column])
+    if synthetic_aligned.empty:
+        return {
+            "utility_task": "insufficient_synthetic_target",
+            "utility_real_score": base_score,
+            "utility_augmented_score": np.nan,
+            "utility_lift": np.nan,
+        }
     augmented_train = pd.concat([real_train, synthetic_aligned], ignore_index=True)
     augmented_model = _make_predictive_model(task, augmented_train.drop(columns=[target_column]), random_state)
     augmented_model.fit(augmented_train.drop(columns=[target_column]), augmented_train[target_column])
@@ -628,6 +641,27 @@ def _infer_prediction_task(target: pd.Series) -> str:
     if unique_count <= max(20, int(len(target) * 0.05)):
         return "classification"
     return "regression"
+
+
+def _align_synthetic_target_for_task(synthetic_target: pd.Series, real_target: pd.Series, task: str) -> pd.Series:
+    if task != "classification":
+        return synthetic_target
+
+    real_classes = pd.Series(real_target.dropna().unique())
+    if pd.api.types.is_numeric_dtype(real_target):
+        real_numeric = pd.to_numeric(real_classes, errors="coerce")
+        if real_numeric.notna().all():
+            synthetic_numeric = pd.to_numeric(synthetic_target, errors="coerce")
+            class_numeric = real_numeric.to_numpy(dtype=float)
+            aligned = pd.Series(np.nan, index=synthetic_target.index, dtype=float)
+            valid = synthetic_numeric.notna()
+            if valid.any():
+                distances = np.abs(synthetic_numeric.loc[valid].to_numpy(dtype=float)[:, None] - class_numeric[None, :])
+                aligned.loc[valid] = class_numeric[np.argmin(distances, axis=1)]
+            return aligned
+
+    valid_classes = set(real_classes)
+    return synthetic_target.where(synthetic_target.isin(valid_classes))
 
 
 def _make_predictive_model(task: str, features: pd.DataFrame, random_state: int) -> Pipeline:

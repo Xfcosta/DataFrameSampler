@@ -43,3 +43,14 @@ def test_plot_pairwise_features_returns_figure():
     assert len(axes[1, 0].collections) > 1
     assert len(axes[0, 1].collections) == 1
     plt.close(fig)
+
+
+def test_plot_pairwise_features_can_include_all_numeric_columns():
+    df = make_exploration_dataframe()
+    df["extra"] = np.linspace(10.0, 20.0, len(df))
+
+    fig = plot_pairwise_features(df, target_column=None, max_numeric=None)
+    axes = np.asarray(fig.axes).reshape(4, 4)
+
+    assert axes[-1, -1].get_xlabel() == "extra"
+    plt.close(fig)

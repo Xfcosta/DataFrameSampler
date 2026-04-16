@@ -92,16 +92,21 @@ def plot_pairwise_features(
     *,
     target_column: str | None = None,
     title: str | None = None,
-    max_numeric: int = 5,
+    max_numeric: int | None = 5,
     sample_size: int = 1000,
     random_state: int = 42,
 ):
-    """Plot pairwise relationships for an already numeric feature view."""
+    """Plot pairwise relationships for an already numeric feature view.
+
+    Set max_numeric=None to include every plottable numeric feature.
+    """
     numeric_columns = [
         column
         for column in dataframe.select_dtypes(include="number").columns
         if column != target_column and _is_plottable_numeric(dataframe[column])
-    ][:max_numeric]
+    ]
+    if max_numeric is not None:
+        numeric_columns = numeric_columns[:max_numeric]
     if len(numeric_columns) < 2:
         raise ValueError("At least two numeric feature columns are required for pairwise plotting.")
 

@@ -31,12 +31,6 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     help="Path to model to save.",
 )
 @click.option(
-    "--vectorizing_columns_dict_filename",
-    "-f",
-    type=click.Path(exists=True),
-    help="Path to vectorizing_columns_dict serialized in YAML.",
-)
-@click.option(
     "--n_samples",
     "-n",
     type=click.IntRange(min=0, max_open=True, clamp=True),
@@ -72,9 +66,9 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option(
     "--embedding_method",
     type=click.Choice(EMBEDDING_METHODS, case_sensitive=False),
-    default="mds",
+    default="pca",
     show_default=True,
-    help="Embedding method for categorical columns with vectorizing helper columns.",
+    help="Embedding method for one-hot categorical columns.",
 )
 @click.option(
     "--embedding_kwargs_filename",
@@ -85,7 +79,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     "--auto_config",
     "-A",
     is_flag=True,
-    help="Use OpenAI to choose omitted vectorizing columns, sampled columns, embedding method, and KNN backend.",
+    help="Use OpenAI to choose omitted sampled columns, embedding method, and KNN backend.",
 )
 @click.version_option("0.5.1", "--version", "-v")
 @click.pass_context
@@ -95,7 +89,6 @@ def dataframe_sampler_main(
     output_filename,
     input_model_filename,
     output_model_filename,
-    vectorizing_columns_dict_filename,
     n_samples,
     n_bins,
     n_neighbours,
@@ -116,9 +109,6 @@ def dataframe_sampler_main(
 
     sampled_columns = list(sampled_columns) if len(sampled_columns) else None
     anonymize_columns = list(anonymize_columns)
-    vectorizing_columns_dict = (
-        yaml_load(fname=vectorizing_columns_dict_filename) if vectorizing_columns_dict_filename else None
-    )
     knn_backend_kwargs = yaml_load(fname=knn_backend_kwargs_filename) if knn_backend_kwargs_filename else None
     embedding_kwargs = yaml_load(fname=embedding_kwargs_filename) if embedding_kwargs_filename else None
     df = read_dataframe(input_filename) if input_filename else None
@@ -130,8 +120,6 @@ def dataframe_sampler_main(
             raise click.UsageError("--auto_config cannot be combined with --input_model_filename.")
 
         llm_config = suggest_sampler_config_with_openai(df)
-        if vectorizing_columns_dict is None:
-            vectorizing_columns_dict = llm_config["vectorizing_columns_dict"]
         if sampled_columns is None:
             sampled_columns = llm_config["sampled_columns"]
         if _is_default_parameter(ctx, "embedding_method"):
@@ -146,7 +134,6 @@ def dataframe_sampler_main(
         sampler = ConcreteDataFrameSampler(
             n_bins=n_bins,
             n_neighbours=n_neighbours,
-            vectorizing_columns_dict=vectorizing_columns_dict,
             sampled_columns=sampled_columns,
             random_state=random_state,
             knn_backend=knn_backend,

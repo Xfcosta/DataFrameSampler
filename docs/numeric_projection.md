@@ -9,9 +9,6 @@ from dataframe_sampler import ConcreteDataFrameSampler
 sampler = ConcreteDataFrameSampler(
     n_bins=10,
     n_neighbours=8,
-    vectorizing_columns_dict={
-        "category_column": ["numeric_helper_1", "numeric_helper_2"],
-    },
     embedding_method="pca",
     knn_backend="sklearn",
     random_state=42,
@@ -23,14 +20,14 @@ generated_df = sampler.sample(n_samples=len(df))
 generated_numeric_df = sampler.transform(generated_df)
 ```
 
-`transform` preserves the dataframe columns but converts every column to a
-numeric representation:
+`transform` returns the fitted numeric representation:
 
 - numeric columns are converted to floats with median imputation for missing
   values;
-- categorical columns with configured helper columns use the selected
-  one-dimensional embedding;
-- categorical columns without helper columns use frequency encoding;
+- high-cardinality identifier-like non-numeric columns are omitted;
+- binary non-numeric columns are mapped to `0/1`;
+- compact non-numeric columns are one-hot encoded and embedded to one numeric
+  coordinate;
 - `sampled_columns`, when configured, is respected.
 
 This numeric view is useful for inspection, distance calculations, and shared
@@ -45,6 +42,7 @@ fig = plot_numeric_projection_triptych(
     sampler,
     original=df,
     generated=generated_df,
+    target_column="target",
     title="Dataset name",
     reducer="umap",
     random_state=42,

@@ -1,6 +1,6 @@
 # Controlled Correlated Helpers
 
-This synthetic dataset is generated from latent numeric factors so that numeric columns and categorical helper columns have known dependencies. It is used to test whether DataFrameSampler preserves simple mixed-type relationships.
+This synthetic dataset is generated from latent numeric factors so that numeric columns and categorical embeddings have known dependencies. It is used to test whether DataFrameSampler preserves simple mixed-type relationships.
 
 ## Columns
 

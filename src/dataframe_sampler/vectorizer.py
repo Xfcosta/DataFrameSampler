@@ -4,6 +4,8 @@ import inspect
 import numpy as np
 import pandas as pd
 from pandas.api.types import is_numeric_dtype
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import OneHotEncoder
 
 
 EMBEDDING_METHODS = (
@@ -21,6 +23,8 @@ EMBEDDING_METHODS = (
     "tsne",
 )
 
+MISSING_CATEGORY = "__MISSING__"
+
 
 def is_numerical_column_type(series):
     return is_numeric_dtype(series)
@@ -30,55 +34,156 @@ class DataFrameVectorizer(object):
     """
     Vectorizes a dataframe for discretization.
 
-    Numeric columns are copied after numeric missing values are imputed with the
-    column median. Non-numeric columns are mapped either through a configurable
-    1D embedding of configured helper columns or through category frequencies.
+    Numeric columns are copied after missing values are imputed with the column
+    median. Non-numeric columns follow one policy learned during fit:
+    high-cardinality identifier-like columns are discarded, binary columns are
+    mapped to 0/1, and remaining categorical columns are one-hot encoded and
+    reduced to a one-dimensional embedding.
     """
 
     def __init__(
         self,
-        vectorizing_columns_dict=None,
         random_state=None,
-        embedding_method="mds",
+        embedding_method="pca",
         embedding_kwargs=None,
+        max_categorical_fraction=0.3,
+        max_categorical_unique=50,
     ):
-        self.vectorizing_columns_dict = vectorizing_columns_dict
         self.random_state = random_state
         self.embedding_method = embedding_method
         self.embedding_kwargs = dict(embedding_kwargs or {})
+        self.max_categorical_fraction = max_categorical_fraction
+        self.max_categorical_unique = max_categorical_unique
 
     def fit(self, dataframe):
-        self._validate_columns(dataframe)
-        return self
-
-    def transform(self, dataframe):
-        self._validate_columns(dataframe)
-        vectorizing_dataframe = pd.DataFrame(index=dataframe.index)
+        self._validate_dataframe(dataframe)
+        self.input_columns_ = list(dataframe.columns)
+        self.column_plans_ = {}
+        self.output_columns_ = []
+        self.dropped_columns_ = []
 
         for column in dataframe.columns:
             series = dataframe[column]
             if is_numerical_column_type(series):
-                vectorizing_dataframe[column] = self._numeric_values(series)
-            elif self.vectorizing_columns_dict is not None and column in self.vectorizing_columns_dict:
-                selected_cols = self.vectorizing_columns_dict[column]
-                X = dataframe.loc[:, selected_cols].apply(self._numeric_values).values
-                if X.shape[0] == 1:
-                    vectorizing_dataframe[column] = np.zeros(1)
-                else:
-                    vectorizing_dataframe[column] = self._embed(X, column).flatten()
-            else:
-                values = series.astype("object").where(series.notna(), "__MISSING__")
-                counts = values.value_counts(dropna=False).to_dict()
-                vectorizing_dataframe[column] = values.map(counts).astype(float)
+                self.column_plans_[column] = self._fit_numeric(series)
+                self.output_columns_.append(column)
+                continue
 
-        return vectorizing_dataframe
+            values = self._category_values(series)
+            unique_values = list(pd.unique(values))
+            if self._should_drop_categorical(unique_values, len(series)):
+                self.column_plans_[column] = {"strategy": "drop_high_cardinality"}
+                self.dropped_columns_.append(column)
+            elif len(unique_values) == 2:
+                self.column_plans_[column] = self._fit_binary(unique_values)
+                self.output_columns_.append(column)
+            else:
+                self.column_plans_[column] = self._fit_categorical_embedding(column, values, unique_values)
+                self.output_columns_.append(column)
+
+        if not self.output_columns_:
+            raise ValueError("No usable columns remain after vectorization.")
+        return self
+
+    def transform(self, dataframe):
+        self._ensure_fit()
+        self._validate_dataframe(dataframe)
+        missing = [column for column in self.input_columns_ if column not in dataframe.columns]
+        if missing:
+            raise ValueError("Missing columns for fitted vectorizer: %s" % missing)
+
+        vectorizing_dataframe = pd.DataFrame(index=dataframe.index)
+        for column in self.input_columns_:
+            plan = self.column_plans_[column]
+            strategy = plan["strategy"]
+            if strategy == "numeric":
+                vectorizing_dataframe[column] = self._numeric_values(dataframe[column], fill_value=plan["fill_value"])
+            elif strategy == "binary":
+                vectorizing_dataframe[column] = self._transform_binary(dataframe[column], plan)
+            elif strategy == "categorical_embedding":
+                vectorizing_dataframe[column] = self._transform_categorical_embedding(dataframe[column], plan)
+            elif strategy == "drop_high_cardinality":
+                continue
+            else:
+                raise ValueError("Unknown vectorization strategy %r." % strategy)
+        return vectorizing_dataframe[self.output_columns_]
 
     def fit_transform(self, dataframe):
         return self.fit(dataframe).transform(dataframe)
 
-    def _embed(self, X, column):
+    def _fit_numeric(self, series):
+        numeric = pd.to_numeric(series, errors="coerce")
+        fill_value = numeric.median()
+        if pd.isna(fill_value):
+            fill_value = 0.0
+        return {"strategy": "numeric", "fill_value": float(fill_value)}
+
+    @staticmethod
+    def _fit_binary(unique_values):
+        ordered = sorted(unique_values, key=lambda value: str(value))
+        return {
+            "strategy": "binary",
+            "mapping": {ordered[0]: 0.0, ordered[1]: 1.0},
+            "fallback": 0.5,
+        }
+
+    def _fit_categorical_embedding(self, column, values, unique_values):
+        categories = sorted(unique_values, key=lambda value: str(value))
+        category_frame = pd.DataFrame({column: categories})
+        one_hot_encoder = _one_hot_encoder()
+        one_hot = one_hot_encoder.fit_transform(category_frame[[column]])
+        one_hot = _as_float_array(one_hot)
+
         embedding = self._embedding_for_column(column)
-        values = self._apply_embedding(embedding, X)
+        embedded = self._embed_training_categories(embedding, one_hot, column)
+        embedded = np.asarray(embedded, dtype=float).reshape(-1)
+
+        approximator = RandomForestRegressor(
+            n_estimators=100,
+            min_samples_leaf=1,
+            random_state=self.random_state,
+            n_jobs=1,
+        )
+        approximator.fit(one_hot, embedded)
+
+        return {
+            "strategy": "categorical_embedding",
+            "categories": categories,
+            "mapping": dict(zip(categories, embedded)),
+            "one_hot_encoder": one_hot_encoder,
+            "embedding": embedding if hasattr(embedding, "transform") else None,
+            "approximator": approximator,
+            "fallback": float(np.mean(embedded)),
+        }
+
+    def _transform_binary(self, series, plan):
+        values = self._category_values(series)
+        return values.map(plan["mapping"]).fillna(plan["fallback"]).astype(float)
+
+    def _transform_categorical_embedding(self, series, plan):
+        values = self._category_values(series)
+        mapped = values.map(plan["mapping"])
+        missing = mapped.isna()
+        if not missing.any():
+            return mapped.astype(float)
+
+        category_frame = pd.DataFrame({series.name: values.loc[missing]})
+        try:
+            one_hot = plan["one_hot_encoder"].transform(category_frame[[series.name]])
+        except ValueError:
+            one_hot = plan["one_hot_encoder"].transform(category_frame.iloc[:, [0]])
+        one_hot = _as_float_array(one_hot)
+
+        if plan["embedding"] is not None:
+            predicted = self._apply_transform(plan["embedding"], one_hot)
+        else:
+            predicted = plan["approximator"].predict(one_hot)
+        predicted = np.asarray(predicted, dtype=float).reshape(-1)
+        mapped.loc[missing] = predicted if len(predicted) else plan["fallback"]
+        return mapped.fillna(plan["fallback"]).astype(float)
+
+    def _embed_training_categories(self, embedding, one_hot, column):
+        values = self._apply_embedding(embedding, one_hot)
         values = np.asarray(values)
         if values.ndim == 1:
             return values
@@ -108,9 +213,15 @@ class DataFrameVectorizer(object):
             return embedding.transform(X)
         raise TypeError("Embedding object must implement fit_transform, fit+transform, or transform.")
 
+    @staticmethod
+    def _apply_transform(embedding, X):
+        if hasattr(embedding, "transform"):
+            return embedding.transform(X)
+        raise TypeError("Embedding object must implement transform.")
+
     def _embedding_method_for_column(self, column):
         if isinstance(self.embedding_method, dict):
-            return self.embedding_method.get(column, "mds")
+            return self.embedding_method.get(column, "pca")
         return self.embedding_method
 
     def _embedding_kwargs_for_column(self, column):
@@ -118,28 +229,30 @@ class DataFrameVectorizer(object):
             return dict(self.embedding_kwargs[column])
         return dict(self.embedding_kwargs)
 
-    def _validate_columns(self, dataframe):
+    def _should_drop_categorical(self, unique_values, row_count):
+        unique_count = len(unique_values)
+        limit = max(self.max_categorical_unique, int(row_count * self.max_categorical_fraction))
+        return unique_count > limit
+
+    @staticmethod
+    def _category_values(series):
+        return series.astype("object").where(series.notna(), MISSING_CATEGORY)
+
+    @staticmethod
+    def _numeric_values(series, fill_value):
+        numeric = pd.to_numeric(series, errors="coerce")
+        return numeric.fillna(fill_value).astype(float)
+
+    @staticmethod
+    def _validate_dataframe(dataframe):
         if not isinstance(dataframe, pd.DataFrame):
             raise TypeError("dataframe must be a pandas DataFrame.")
         if dataframe.empty:
             raise ValueError("dataframe must contain at least one row.")
-        if self.vectorizing_columns_dict is None:
-            return
-        missing = []
-        for column, selected_cols in self.vectorizing_columns_dict.items():
-            if column not in dataframe.columns:
-                missing.append(column)
-            missing.extend([col for col in selected_cols if col not in dataframe.columns])
-        if missing:
-            raise ValueError("Unknown vectorizing columns: %s" % sorted(set(missing)))
 
-    @staticmethod
-    def _numeric_values(series):
-        numeric = pd.to_numeric(series, errors="coerce")
-        fill_value = numeric.median()
-        if pd.isna(fill_value):
-            fill_value = 0
-        return numeric.fillna(fill_value).astype(float)
+    def _ensure_fit(self):
+        if not hasattr(self, "column_plans_"):
+            raise ValueError("Vectorizer is not fit.")
 
 
 def make_embedding_method(method, random_state=None, **kwargs):
@@ -210,3 +323,16 @@ def _maybe_add_random_state(embedding_class, params, random_state):
     if "random_state" in signature.parameters:
         params["random_state"] = random_state
     return params
+
+
+def _one_hot_encoder():
+    try:
+        return OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+    except TypeError:
+        return OneHotEncoder(handle_unknown="ignore", sparse=False)
+
+
+def _as_float_array(values):
+    if hasattr(values, "toarray"):
+        values = values.toarray()
+    return np.asarray(values, dtype=float)

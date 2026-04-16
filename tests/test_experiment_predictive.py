@@ -29,7 +29,6 @@ def make_predictive_config():
             "n_bins": 4,
             "n_neighbours": 3,
             "knn_backend": "sklearn",
-            "vectorizing_columns_dict": {"segment": ["age", "score"]},
             "embedding_method": "pca",
         },
     )

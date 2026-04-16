@@ -27,7 +27,7 @@ SYNTHETIC_DATASETS = [
     SyntheticDatasetMetadata(
         key="synthetic_correlated_helpers",
         name="Controlled correlated helpers",
-        regime="Correlated numeric plus categorical helper columns",
+        regime="Correlated numeric plus categorical embeddings",
         rows=600,
         target_column="target",
         sensitive_columns=(),
@@ -40,7 +40,7 @@ SYNTHETIC_DATASETS = [
         rows=600,
         target_column="target",
         sensitive_columns=(),
-        rationale="Stress category coverage and helper embeddings",
+        rationale="Stress category coverage and categorical embeddings",
     ),
     SyntheticDatasetMetadata(
         key="synthetic_rare_categories",

@@ -8,18 +8,16 @@ LLM_VECTORISING_COLUMNS_SYSTEM_PROMPT = """
 You configure DataFrameSampler for a tabular dataset.
 
 Goal:
-- Identify categorical/non-numeric columns that would benefit from vectorizing helper columns.
-- For each such categorical column, choose numeric helper columns that encode useful semantics.
-- Return only helper columns that are present in the dataframe profile and are numeric.
+- Choose sampled columns, a categorical embedding method, and a KNN backend.
+- DataFrameSampler now uses one fixed categorical policy: high-cardinality
+  identifier-like non-numeric columns are discarded by the vectorizer, binary
+  columns are mapped to 0/1, and other non-numeric columns are one-hot encoded
+  and embedded to one numeric dimension.
 
 Guidelines:
-- Prefer helper columns that plausibly explain or locate the categorical value.
-- Examples: use age/country_id/income to vectorize personName; use country_id/region_id to vectorize city.
-- Do not recommend the categorical column itself as a helper.
 - Avoid leakage-like target columns if the profile marks them as likely target/outcome, unless there is no better choice.
-- Prefer compact recommendations: 1 to 4 helper columns per categorical column is usually enough.
-- If a categorical column has no useful numeric helpers, omit it; DataFrameSampler will fall back to frequency encoding.
-- Choose a global embedding method. Prefer pca for mostly linear numeric helper spaces, mds for mixed semantic distances, and kernel_pca/isomap/lle only when there is an explicit nonlinear reason.
+- Exclude direct identifiers such as names, addresses, emails, phone numbers, free text IDs, or mostly unique code columns from sampled_columns.
+- Choose a global embedding method. Prefer pca unless there is an explicit nonlinear reason for kernel_pca/isomap/lle.
 - Choose a KNN backend. Prefer sklearn as the safe default; use exact only for tiny/debug datasets; recommend optional ANN backends only when the user has said those dependencies are available.
 """.strip()
 
@@ -106,10 +104,6 @@ def suggest_sampler_config_with_openai(
     return _sanitize_sampler_config(payload, dataframe)
 
 
-def suggest_vectorizing_columns_with_openai(dataframe, **kwargs):
-    return suggest_sampler_config_with_openai(dataframe, **kwargs)["vectorizing_columns_dict"]
-
-
 def _sampler_config_schema():
     return {
         "type": "object",
@@ -121,10 +115,10 @@ def _sampler_config_schema():
                 "items": {
                     "type": "object",
                     "additionalProperties": False,
-                    "required": ["column", "helper_columns", "rationale", "confidence"],
+                    "required": ["column", "action", "rationale", "confidence"],
                     "properties": {
                         "column": {"type": "string"},
-                        "helper_columns": {"type": "array", "items": {"type": "string"}},
+                        "action": {"type": "string", "enum": ["keep", "exclude"]},
                         "rationale": {"type": "string"},
                         "confidence": {"type": "number"},
                     },
@@ -159,39 +153,34 @@ def _sampler_config_schema():
 
 def _sanitize_sampler_config(payload, dataframe):
     columns = set(map(str, dataframe.columns))
-    numeric_columns = {str(column) for column in dataframe.columns if is_numeric_dtype(dataframe[column])}
-    categorical_columns = columns - numeric_columns
 
     recommendations = []
-    vectorizing_columns_dict = {}
+    excluded_columns = set()
     for recommendation in payload.get("recommendations", []):
         column = recommendation.get("column")
-        if column not in categorical_columns:
-            continue
-        helper_columns = [
-            helper
-            for helper in recommendation.get("helper_columns", [])
-            if helper in numeric_columns and helper != column
-        ]
-        if not helper_columns:
+        if column not in columns:
             continue
         clean = {
             "column": column,
-            "helper_columns": helper_columns,
+            "action": recommendation.get("action", "keep"),
             "rationale": recommendation.get("rationale", ""),
             "confidence": recommendation.get("confidence", 0),
         }
         recommendations.append(clean)
-        vectorizing_columns_dict[column] = helper_columns
+        if clean["action"] == "exclude":
+            excluded_columns.add(column)
 
-    sampled_columns = [column for column in payload.get("sampled_columns", []) if column in columns]
+    sampled_columns = [
+        column
+        for column in payload.get("sampled_columns", [])
+        if column in columns and column not in excluded_columns
+    ]
     if not sampled_columns:
-        sampled_columns = list(map(str, dataframe.columns))
+        sampled_columns = [column for column in map(str, dataframe.columns) if column not in excluded_columns]
 
     return {
-        "vectorizing_columns_dict": vectorizing_columns_dict,
         "sampled_columns": sampled_columns,
-        "embedding_method": payload.get("embedding_method", "mds"),
+        "embedding_method": payload.get("embedding_method", "pca"),
         "knn_backend": payload.get("knn_backend", "sklearn"),
         "recommendations": recommendations,
         "notes": payload.get("notes", ""),

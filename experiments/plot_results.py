@@ -168,7 +168,7 @@ def plot_how_pipeline(figures_dir: str | Path = FIGURES) -> Path:
     steps = [
         ("Dataframe", "pandas / CSV\\nAdult, Titanic"),
         ("Optional\\nanonymization", "selected columns\\nsurrogate values"),
-        ("Vectorize", "numeric + categorical\\nhelper columns"),
+        ("Vectorize", "numeric + categorical\\ncategorical embeddings"),
         ("Encode bins", "latent integer\\nbin-space"),
         ("Neighbour chain", "anchor -> neighbour\\n-> neighbour"),
         ("Decode", "bins back to\\ncolumn values"),

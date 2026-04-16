@@ -21,78 +21,6 @@ class DatasetExperimentConfig:
     direct_numeric_mappings: dict[str, dict[Any, float]] | None = None
 
 
-ADULT_VECTOR_COLUMNS = {
-    "workclass": ["age", "education_num", "hours_per_week"],
-    "education": ["age", "education_num", "hours_per_week"],
-    "occupation": ["age", "education_num", "hours_per_week"],
-    "marital_status": ["age", "education_num", "hours_per_week"],
-    "relationship": ["age", "education_num", "hours_per_week"],
-    "native_country": ["age", "education_num", "hours_per_week"],
-}
-
-ADULT_LLM_VECTOR_COLUMNS = {
-    "workclass": ["age", "education_num", "hours_per_week"],
-    "education": ["age", "education_num", "hours_per_week"],
-    "marital_status": ["age", "education_num", "hours_per_week", "capital_gain"],
-    "occupation": ["age", "education_num", "hours_per_week", "capital_gain"],
-    "relationship": ["age", "education_num", "hours_per_week"],
-    "race": ["age", "education_num", "hours_per_week"],
-    "native_country": ["age", "education_num", "hours_per_week"],
-}
-
-TITANIC_VECTOR_COLUMNS = {
-    "embark_town": ["age", "fare", "pclass"],
-    "deck": ["age", "fare", "pclass"],
-}
-
-TITANIC_LLM_VECTOR_COLUMNS = {
-    "deck": ["survived", "pclass", "age", "fare"],
-    "embark_town": ["survived", "pclass", "age", "fare"],
-}
-
-BREAST_CANCER_VECTOR_COLUMNS = {}
-
-BREAST_CANCER_LLM_VECTOR_COLUMNS = {}
-
-PIMA_DIABETES_VECTOR_COLUMNS = {}
-
-PIMA_DIABETES_LLM_VECTOR_COLUMNS = {}
-
-BANK_MARKETING_VECTOR_COLUMNS = {
-    "job": ["age", "duration", "campaign", "previous", "euribor3m"],
-    "marital": ["age", "duration", "campaign", "previous", "euribor3m"],
-    "education": ["age", "duration", "campaign", "previous", "euribor3m"],
-    "contact": ["age", "duration", "campaign", "previous", "euribor3m"],
-    "month": ["age", "duration", "campaign", "previous", "euribor3m"],
-    "day_of_week": ["age", "duration", "campaign", "previous", "euribor3m"],
-    "poutcome": ["age", "duration", "campaign", "previous", "euribor3m"],
-}
-
-BANK_MARKETING_LLM_VECTOR_COLUMNS = {
-    "job": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
-    "marital": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
-    "education": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
-    "contact": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
-    "month": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
-    "day_of_week": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
-    "poutcome": ["age", "duration", "campaign", "previous", "emp_var_rate", "euribor3m"],
-}
-
-HEART_DISEASE_VECTOR_COLUMNS = {
-    "chest_pain": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak"],
-    "resting_ecg": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak"],
-    "slope": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak"],
-    "thal": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak"],
-}
-
-HEART_DISEASE_LLM_VECTOR_COLUMNS = {
-    "chest_pain": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak", "major_vessels"],
-    "resting_ecg": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak", "major_vessels"],
-    "slope": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak", "major_vessels"],
-    "thal": ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak", "major_vessels"],
-}
-
-
 BINARY_NO_YES_MAPPING = {"no": 0.0, "yes": 1.0}
 
 ADULT_DIRECT_NUMERIC_MAPPINGS = {
@@ -141,14 +69,12 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         manual_sampler_config={
             "n_bins": 10,
             "n_neighbours": 8,
-            "vectorizing_columns_dict": ADULT_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
         llm_assisted_config={
             "n_bins": 12,
             "n_neighbours": 8,
-            "vectorizing_columns_dict": ADULT_LLM_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
@@ -163,14 +89,12 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         manual_sampler_config={
             "n_bins": 8,
             "n_neighbours": 6,
-            "vectorizing_columns_dict": TITANIC_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
         llm_assisted_config={
             "n_bins": 8,
             "n_neighbours": 6,
-            "vectorizing_columns_dict": TITANIC_LLM_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
@@ -186,14 +110,12 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         manual_sampler_config={
             "n_bins": 8,
             "n_neighbours": 6,
-            "vectorizing_columns_dict": BREAST_CANCER_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
         llm_assisted_config={
             "n_bins": 10,
             "n_neighbours": 8,
-            "vectorizing_columns_dict": BREAST_CANCER_LLM_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
@@ -209,14 +131,12 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         manual_sampler_config={
             "n_bins": 8,
             "n_neighbours": 6,
-            "vectorizing_columns_dict": PIMA_DIABETES_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
         llm_assisted_config={
             "n_bins": 10,
             "n_neighbours": 8,
-            "vectorizing_columns_dict": PIMA_DIABETES_LLM_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
@@ -233,14 +153,12 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         manual_sampler_config={
             "n_bins": 10,
             "n_neighbours": 8,
-            "vectorizing_columns_dict": BANK_MARKETING_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
         llm_assisted_config={
             "n_bins": 12,
             "n_neighbours": 8,
-            "vectorizing_columns_dict": BANK_MARKETING_LLM_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
@@ -256,14 +174,12 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         manual_sampler_config={
             "n_bins": 8,
             "n_neighbours": 6,
-            "vectorizing_columns_dict": HEART_DISEASE_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
         llm_assisted_config={
             "n_bins": 10,
             "n_neighbours": 8,
-            "vectorizing_columns_dict": HEART_DISEASE_LLM_VECTOR_COLUMNS,
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
@@ -278,22 +194,12 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         manual_sampler_config={
             "n_bins": 8,
             "n_neighbours": 6,
-            "vectorizing_columns_dict": {
-                "helper_band": ["spend_score", "visit_rate", "risk_score"],
-                "segment": ["spend_score", "visit_rate", "risk_score"],
-                "target": ["spend_score", "visit_rate", "risk_score"],
-            },
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
         llm_assisted_config={
             "n_bins": 10,
             "n_neighbours": 8,
-            "vectorizing_columns_dict": {
-                "helper_band": ["spend_score", "visit_rate", "risk_score"],
-                "segment": ["spend_score", "visit_rate", "risk_score"],
-                "target": ["spend_score", "visit_rate", "risk_score"],
-            },
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
@@ -308,24 +214,12 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         manual_sampler_config={
             "n_bins": 8,
             "n_neighbours": 6,
-            "vectorizing_columns_dict": {
-                "region": ["account_value", "tenure_months", "activity_score"],
-                "sku_code": ["account_value", "tenure_months", "activity_score"],
-                "plan_tier": ["account_value", "tenure_months", "activity_score"],
-                "target": ["account_value", "tenure_months", "activity_score"],
-            },
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
         llm_assisted_config={
             "n_bins": 10,
             "n_neighbours": 8,
-            "vectorizing_columns_dict": {
-                "region": ["account_value", "tenure_months", "activity_score"],
-                "sku_code": ["account_value", "tenure_months", "activity_score"],
-                "plan_tier": ["account_value", "tenure_months", "activity_score"],
-                "target": ["account_value", "tenure_months", "activity_score"],
-            },
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
@@ -340,22 +234,12 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         manual_sampler_config={
             "n_bins": 8,
             "n_neighbours": 6,
-            "vectorizing_columns_dict": {
-                "rare_signal": ["recency_days", "frequency", "monetary"],
-                "lifecycle": ["recency_days", "frequency", "monetary"],
-                "target": ["recency_days", "frequency", "monetary"],
-            },
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
         llm_assisted_config={
             "n_bins": 10,
             "n_neighbours": 8,
-            "vectorizing_columns_dict": {
-                "rare_signal": ["recency_days", "frequency", "monetary"],
-                "lifecycle": ["recency_days", "frequency", "monetary"],
-                "target": ["recency_days", "frequency", "monetary"],
-            },
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
@@ -370,24 +254,12 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         manual_sampler_config={
             "n_bins": 10,
             "n_neighbours": 6,
-            "vectorizing_columns_dict": {
-                "patient_id": ["age", "lab_score", "visits"],
-                "condition": ["age", "lab_score", "visits"],
-                "ward": ["age", "lab_score", "visits"],
-                "risk_flag": ["age", "lab_score", "visits"],
-            },
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },
         llm_assisted_config={
             "n_bins": 10,
             "n_neighbours": 8,
-            "vectorizing_columns_dict": {
-                "patient_id": ["age", "lab_score", "visits"],
-                "condition": ["age", "lab_score", "visits"],
-                "ward": ["age", "lab_score", "visits"],
-                "risk_flag": ["age", "lab_score", "visits"],
-            },
             "embedding_method": "pca",
             "knn_backend": "sklearn",
         },

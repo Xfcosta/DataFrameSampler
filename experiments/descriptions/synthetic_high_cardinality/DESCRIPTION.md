@@ -1,6 +1,6 @@
 # Controlled High Cardinality
 
-This synthetic dataset is designed to stress categorical coverage and helper-column embeddings. It includes normal numeric business-style features plus a high-cardinality SKU-like categorical column.
+This synthetic dataset is designed to stress categorical coverage and categorical embeddings. It includes normal numeric business-style features plus a high-cardinality SKU-like categorical column.
 
 ## Columns
 

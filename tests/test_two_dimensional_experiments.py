@@ -58,7 +58,6 @@ def test_default_sampler_kwargs_expose_concrete_sampler_parameters():
     assert {
         "n_bins",
         "n_neighbours",
-        "vectorizing_columns_dict",
         "sampled_columns",
         "random_state",
         "knn_backend",

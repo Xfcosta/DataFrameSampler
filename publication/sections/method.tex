@@ -12,48 +12,36 @@ $0/0.5/1$. Redundant aliases are removed at the same stage so that the latent
 geometry does not overweight one fact. In the Titanic notebook, for example,
 \texttt{pclass}, \texttt{embark\_town}, and \texttt{survived} are preserved,
 while their aliases \texttt{class}, \texttt{embarked}, and \texttt{alive} are
-dropped. For a remaining non-numeric column $c$, DataFrameSampler supports two
-vectorization strategies.
-
-If no helper columns are provided, each category is represented by its empirical
-frequency. This is deliberately simple, but it only gives a weak ordering:
-categories with similar counts become nearby even if they have no semantic
-relationship. The more important case is helper-column vectorization. If helper
-columns are provided, each row receives a helper vector
-$h_i \in \mathbb{R}^{k}$ constructed from the selected numeric helper columns.
-An embedding function
+dropped. For a remaining non-numeric column $c$, DataFrameSampler uses a single
+categorical conversion policy. If the alphabet is large relative to the number
+of rows, the column is treated as identifier-like and discarded before fitting.
+In the implementation this default threshold is an alphabet larger than both
+50 distinct values and 30\% of the row count. Binary non-numeric columns are
+mapped to $0/1$. All other non-numeric columns are one-hot encoded over the
+training categories. An embedding function
 \[
-  f: \mathbb{R}^{k} \rightarrow \mathbb{R}
+  f: \{0,1\}^{q} \rightarrow \mathbb{R}
 \]
-maps each helper vector to a scalar used to discretize column $c$. In the
-implementation, $f$ may be selected from several scikit-learn reducers,
-including PCA, MDS, Kernel PCA, Isomap, locally linear embedding, and related
-methods. Users may also supply custom objects implementing a scikit-learn-like
-\texttt{fit\_transform}, \texttt{fit}/\texttt{transform}, or \texttt{transform}
-interface.
+maps each one-hot category vector to a scalar used to discretize column $c$.
+The default is PCA with one component, but the implementation can use several
+scikit-learn reducers, including MDS, Kernel PCA, Isomap, locally linear
+embedding, and related methods. Users may also supply custom objects
+implementing a scikit-learn-like \texttt{fit\_transform},
+\texttt{fit}/\texttt{transform}, or \texttt{transform} interface.
 
-The purpose of this step is to turn a symbolic category into a one-dimensional
-trace that preserves a useful notion of neighbourhood for that column. For
-example, suppose a table contains a \texttt{nation} column and also contains
-latitude and longitude columns describing the nation centroid. A user can choose
-latitude and longitude as helper columns and use an embedding such as MDS to
-place nations on a one-dimensional curve through the geographic helper space.
-Nearby points on this curve then correspond, approximately, to nearby nations.
-If a row containing Spain has a neighbour containing Italy, and Italy's
-neighbour in the embedded trace is Austria, the local difference points
-north-east in the geographic helper space. Applying an analogous local movement
-from Spain may decode to a nearby country such as France, rather than to an
-unrelated country chosen only because it has a similar empirical frequency.
+The converter is fitted once and then reused for later data. For inductive
+reducers such as PCA, the fitted reducer can transform later one-hot rows
+directly. Some manifold methods only expose \texttt{fit\_transform}; for these
+methods the implementation first learns the category-to-scalar mapping on the
+training set and then fits a \texttt{RandomForestRegressor} from one-hot
+category indicators to the embedded values. This makes the vectorizer usable on
+test or production data with the same schema while keeping the categorical
+geometry one-dimensional.
 
-This helper selection is therefore a semantic modelling decision. The user, or
-the optional LLM-assisted configuration layer, must decide which numeric columns
-express the context in which a categorical column should be ordered. For a job
-title this might be seniority, compensation, and department size; for a medical
-diagnosis it might be laboratory values and age; for a banking campaign outcome
-it might be contact duration, prior contacts, and economic indicators. The
-notebooks report these choices explicitly as a vectorization plan before any
-sampling results are shown. Pairwise exploratory plots are drawn after this
-numeric reduction step, using the same transformed coordinates used by the
+The notebooks report this policy explicitly as a vectorization plan before any
+sampling results are shown: numeric, direct mapping, high-cardinality discard,
+binary mapping, or one-hot embedding. Pairwise exploratory plots are drawn after
+this numeric reduction step, using the same transformed coordinates used by the
 sampler, so visual inspection refers to the operative latent geometry rather
 than only to raw numeric columns.
 
@@ -141,14 +129,13 @@ and the generated-row trace.}
 
 \subsection{LLM-Assisted Configuration}
 
-Choosing helper columns for categorical vectorization can require semantic
-knowledge of column roles. The package therefore includes an optional
+Choosing sampled columns and spotting identifier-like fields can require
+semantic knowledge of column roles. The package therefore includes an optional
 OpenAI-assisted mode that treats configuration as a structured recommendation
 task. The helper sends a compact dataframe profile to an LLM, including column
 names, dtypes, missing counts, unique counts, examples, and basic numeric
-summaries. The model returns a JSON-compatible configuration containing
-candidate helper columns, sampled columns, an embedding method, and a
-nearest-neighbour backend.
+summaries. The model returns a JSON-compatible configuration containing sampled
+columns, an embedding method, a nearest-neighbour backend, and short rationales.
 
 The LLM is not part of the generative model itself. It is used only to reduce
 the friction of selecting a reasonable configuration. Explicit user choices
