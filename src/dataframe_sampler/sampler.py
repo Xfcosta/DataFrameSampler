@@ -204,7 +204,7 @@ class DataFrameSampler(object):
         if self.latent_data_mtx is None:
             raise ValueError("Sampler is not fit.")
         generated_latent_data_mtx = self.sampler.sample(n_samples=n_samples)
-        self.generated_latent_data_mtx = np.rint(generated_latent_data_mtx).astype(int)
+        self.generated_latent_data_mtx = generated_latent_data_mtx
         generated_df = self.dataframe_encoder_decoder.decode(self.generated_latent_data_mtx)
         return generated_df
 
@@ -270,6 +270,7 @@ def ConcreteDataFrameSampler(
     knn_backend_kwargs=None,
     embedding_method="mds",
     embedding_kwargs=None,
+    numeric_decode_strategy="observed_bin",
 ):
     dataframe_vectorizer = DataFrameVectorizer(
         vectorizing_columns_dict=vectorizing_columns_dict,
@@ -277,7 +278,12 @@ def ConcreteDataFrameSampler(
         embedding_method=embedding_method,
         embedding_kwargs=embedding_kwargs,
     )
-    dataframe_encoder_decoder = DataFrameEncoderDecoder(n_bins=n_bins, strategy="uniform", random_state=random_state)
+    dataframe_encoder_decoder = DataFrameEncoderDecoder(
+        n_bins=n_bins,
+        strategy="uniform",
+        random_state=random_state,
+        numeric_decode_strategy=numeric_decode_strategy,
+    )
     sampler = ConcreteNearestMutualNeighboursSampler(
         n_neighbours=n_neighbours,
         interpolation_factor=1,

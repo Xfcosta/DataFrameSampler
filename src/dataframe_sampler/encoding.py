@@ -23,11 +23,14 @@ class ConstantDiscretizer(object):
 
 
 class ColumnDataFrameEncoderDecoder(object):
-    def __init__(self, n_bins=5, strategy="uniform", random_state=None):
+    def __init__(self, n_bins=5, strategy="uniform", random_state=None, decode_strategy="observed_bin"):
         if n_bins < 1:
             raise ValueError("n_bins must be at least 1.")
+        if decode_strategy not in {"observed_bin", "continuous"}:
+            raise ValueError("decode_strategy must be 'observed_bin' or 'continuous'.")
         self.n_bins = n_bins
         self.strategy = strategy
+        self.decode_strategy = decode_strategy
         self.default = -1
         self.max_n_attempts = 100
         self.discretizer = None
@@ -62,12 +65,16 @@ class ColumnDataFrameEncoderDecoder(object):
         if self.discretizer is None:
             raise ValueError("Encoder is not fit.")
         vectorizing_column_values = np.asarray(vectorizing_column_values, dtype=float)
+        if self.decode_strategy == "continuous":
+            return vectorizing_column_values
         Xt = self.discretizer.transform(vectorizing_column_values.reshape(-1, 1))
         return Xt[:, 0].flatten().astype(int)
 
     def decode(self, discretized_column_values):
         if self.discretizer is None:
             raise ValueError("Encoder is not fit.")
+        if self.decode_strategy == "continuous":
+            return np.asarray(discretized_column_values, dtype=float).tolist()
 
         results = []
         for discretized_column_value in np.asarray(discretized_column_values).astype(int):
@@ -88,11 +95,14 @@ class ColumnDataFrameEncoderDecoder(object):
 
 
 class DataFrameEncoderDecoder(object):
-    def __init__(self, n_bins=5, strategy="uniform", random_state=None):
+    def __init__(self, n_bins=5, strategy="uniform", random_state=None, numeric_decode_strategy="observed_bin"):
         if n_bins < 1:
             raise ValueError("n_bins must be at least 1.")
+        if numeric_decode_strategy not in {"observed_bin", "continuous"}:
+            raise ValueError("numeric_decode_strategy must be 'observed_bin' or 'continuous'.")
         self.n_bins = n_bins
         self.strategy = strategy
+        self.numeric_decode_strategy = numeric_decode_strategy
         self.random_state = random_state
         self.rng = make_random_state(random_state)
 
@@ -108,6 +118,7 @@ class DataFrameEncoderDecoder(object):
                 n_bins=self.n_bins,
                 strategy=self.strategy,
                 random_state=self.rng,
+                decode_strategy=self._column_decode_strategy(dataframe[column]),
             ).fit(dataframe[column].values, vectorizing_dataframe[column].values)
             for column in dataframe.columns
         ]
@@ -163,3 +174,8 @@ class DataFrameEncoderDecoder(object):
     def _ensure_fit(self):
         if not hasattr(self, "column_dataframe_encoder_decoders"):
             raise ValueError("Encoder is not fit.")
+
+    def _column_decode_strategy(self, series):
+        if self.numeric_decode_strategy == "continuous" and pd.api.types.is_numeric_dtype(series):
+            return "continuous"
+        return "observed_bin"

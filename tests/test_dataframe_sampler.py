@@ -7,6 +7,7 @@ import dataframe_sampler.cli as cli_module
 from dataframe_sampler import (
     ColumnDataFrameEncoderDecoder,
     ConcreteDataFrameSampler,
+    DataFrameSampler,
     DataFrameEncoderDecoder,
     DataFrameVectorizer,
     NearestMutualNeighboursEstimator,
@@ -54,6 +55,15 @@ def make_sensitive_dataframe():
     )
 
 
+class FixedLatentSampler:
+    def fit(self, X):
+        self.fit_shape = X.shape
+        return self
+
+    def sample(self, n_samples):
+        return np.array([[0.25, 0.75], [1.5, 2.25]])[:n_samples]
+
+
 def test_vectorizer_keeps_numeric_columns_and_frequency_encodes_categories():
     df = pd.DataFrame(
         {
@@ -95,6 +105,30 @@ def test_dataframe_encoder_decoder_sample_uses_valid_bin_indexes():
         n_bins = column_encoder.discretizer.n_bins_[0]
         assert sampled_bins[:, col_idx].min() >= 0
         assert sampled_bins[:, col_idx].max() < n_bins
+
+
+def test_dataframe_encoder_decoder_can_keep_numeric_columns_continuous():
+    df = pd.DataFrame(
+        {
+            "x": [0.0, 1.0, 2.0, 3.0],
+            "label": ["a", "a", "b", "b"],
+        }
+    )
+    vectorized = pd.DataFrame(
+        {
+            "x": [0.0, 1.0, 2.0, 3.0],
+            "label": [0.0, 0.0, 1.0, 1.0],
+        }
+    )
+    encoder = DataFrameEncoderDecoder(n_bins=2, numeric_decode_strategy="continuous")
+
+    encoder.fit(df, vectorized)
+    encoded = encoder.encode(vectorized)
+    decoded = encoder.decode(np.array([[0.25, 0], [2.75, 1]]))
+
+    assert encoded[:, 0].tolist() == [0.0, 1.0, 2.0, 3.0]
+    assert decoded["x"].tolist() == [0.25, 2.75]
+    assert set(decoded["label"]).issubset({"a", "b"})
 
 
 def test_nearest_mutual_neighbours_are_symmetric():
@@ -168,6 +202,49 @@ def test_concrete_dataframe_sampler_accepts_sklearn_knn_backend():
 
     assert list(generated.columns) == list(df.columns)
     assert len(generated) == 8
+
+
+def test_concrete_dataframe_sampler_can_generate_continuous_numeric_values():
+    df = pd.DataFrame({"x": [0.0, 1.0, 2.0, 3.0], "y": [0.0, 1.0, 0.0, 1.0]})
+    sampler = ConcreteDataFrameSampler(
+        n_bins=2,
+        n_neighbours=1,
+        random_state=4,
+        knn_backend="sklearn",
+        numeric_decode_strategy="continuous",
+    )
+
+    sampler.fit(df)
+    generated = sampler.sample(n_samples=12)
+
+    assert list(generated.columns) == ["x", "y"]
+    assert len(generated) == 12
+    assert generated["x"].dtype.kind == "f"
+    assert generated["y"].dtype.kind == "f"
+
+
+def test_dataframe_sampler_does_not_round_continuous_latent_values_before_decoding():
+    df = pd.DataFrame(
+        {
+            "x": [0.0, 1.0, 2.0],
+            "y": [0.0, 1.0, 2.0],
+        }
+    )
+    sampler = DataFrameSampler(
+        dataframe_vectorizer=DataFrameVectorizer(),
+        dataframe_encoder_decoder=DataFrameEncoderDecoder(
+            n_bins=2,
+            numeric_decode_strategy="continuous",
+        ),
+        sampler=FixedLatentSampler(),
+    )
+
+    sampler.fit(df)
+    generated = sampler.sample(n_samples=2)
+
+    assert generated["x"].tolist() == [0.25, 1.5]
+    assert generated["y"].tolist() == [0.75, 2.25]
+    assert sampler.generated_latent_data_mtx.tolist() == [[0.25, 0.75], [1.5, 2.25]]
 
 
 def test_concrete_dataframe_sampler_respects_sampled_columns():
