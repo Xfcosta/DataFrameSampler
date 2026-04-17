@@ -81,6 +81,11 @@ def run_manifold_validation_for_config(
         n_neighbors=isomap_neighbors,
         random_state=config.random_state,
     )
+    bootstrap_latent = latent_bootstrap_baseline(
+        train_latent,
+        n_samples=n_generated,
+        random_state=config.random_state,
+    )
 
     pointwise = manifold_validation_report(
         train_latent=train_latent,
@@ -88,6 +93,7 @@ def run_manifold_validation_for_config(
         generated_latents={
             "dataframe_sampler_manual": generated_latent,
             "latent_interpolation": interpolation_latent,
+            "latent_bootstrap": bootstrap_latent,
         },
         dataset_name=config.dataset_name,
         max_eval_points=max_eval_points,
@@ -332,6 +338,23 @@ def latent_interpolation_baseline(
         weight = float(rng.random())
         samples.append(train_latent[anchor] + weight * (train_latent[neighbour] - train_latent[anchor]))
     return np.asarray(samples, dtype=float)
+
+
+def latent_bootstrap_baseline(
+    train_latent: np.ndarray,
+    *,
+    n_samples: int,
+    random_state: int = 42,
+) -> np.ndarray:
+    """Sample fitted latent rows with replacement for transport validation."""
+    train_latent = _validate_matrix(train_latent, "train_latent")
+    if n_samples < 0:
+        raise ValueError("n_samples must be non-negative.")
+    if n_samples == 0:
+        return np.empty((0, train_latent.shape[1]), dtype=float)
+    rng = np.random.default_rng(random_state)
+    indices = rng.integers(0, len(train_latent), size=n_samples)
+    return train_latent[indices].copy()
 
 
 def summarize_manifold_validation(pointwise: pd.DataFrame) -> pd.DataFrame:

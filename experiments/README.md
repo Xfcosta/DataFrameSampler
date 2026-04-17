@@ -13,7 +13,8 @@ preparation helpers for the paper.
 - `datasets.py`: dataset-specific parameters, including sampler configs,
   redundant columns to drop, target columns, and row limits.
 - `workflow.py`: reusable notebook workflow for loading, profiling, starter
-  sampling, baseline comparison, manifold validation, and output writing.
+  sampling, baseline comparison, manifold validation, mechanism validation,
+  decoder calibration, and output writing.
 - `make_tables.py`: reusable table-generation functions for publication
   artifacts.
 - `plot_results.py`: reusable figure-generation functions for publication
@@ -23,6 +24,8 @@ preparation helpers for the paper.
   available and PCA as a fallback.
 - `manifold_validation.py`: convex-hull and frozen-Isomap insertion-stress
   diagnostics in the fitted DataFrameSampler latent space.
+- `mechanism_validation.py`: capped NCA-block ablations and random-forest
+  decoder calibration diagnostics.
 - `predictive.py`: target-choice reporting and real-test predictive
   comparisons between models trained on real rows and models trained on
   synthetic rows generated from the real training split.
@@ -39,7 +42,9 @@ distance against natural real-data neighbor distances, real-versus-synthetic
 discrimination, utility lift from adding generated rows to real training data,
 and distribution similarity through histogram overlap/divergence summaries.
 The manifold validation CSVs report pointwise held-out-real and generated
-insertion stress plus convex-hull membership in the sampler latent space.
+insertion stress plus convex-hull membership in the sampler latent space. The
+mechanism and calibration CSVs report held-out categorical prediction lift for
+NCA blocks and probability-quality diagnostics for categorical decoders.
 
 ## Current Datasets
 
@@ -76,7 +81,8 @@ plots pairwise features only after the configured sampler has reduced every
 column to its numeric representation, states the configured target column, calls
 `run_configured_dataset_experiment`, and displays the returned profile, starter
 sample report, numeric projection triptych, baseline comparison, manifold
-validation summary, and predictive target evaluation.
+validation summary, mechanism validation summary, decoder calibration summary,
+and predictive target evaluation.
 To add another dataset, add a `DatasetExperimentConfig`, create a small
 notebook that changes `DATASET_NAME`, then rerun the table and figure helpers:
 

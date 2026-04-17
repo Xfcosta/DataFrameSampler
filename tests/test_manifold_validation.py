@@ -6,6 +6,7 @@ from experiments.make_tables import DatasetTableMetadata, generate_all_tables, w
 from experiments.manifold_validation import (
     FrozenIsomapGeometry,
     convex_hull_membership,
+    latent_bootstrap_baseline,
     latent_interpolation_baseline,
     manifold_validation_report,
     run_manifold_validation_for_config,
@@ -39,6 +40,13 @@ def test_latent_interpolation_baseline_stays_inside_simple_convex_hull():
     inside = convex_hull_membership(train, generated)
 
     assert inside.all()
+
+
+def test_latent_bootstrap_baseline_reuses_training_latent_rows():
+    train = np.array([[0.0], [1.0], [2.0], [3.0]])
+    generated = latent_bootstrap_baseline(train, n_samples=20, random_state=1)
+
+    assert set(generated.ravel()).issubset(set(train.ravel()))
 
 
 def test_frozen_isomap_insertion_stress_is_finite_and_non_negative():
@@ -127,7 +135,9 @@ def test_run_manifold_validation_for_config_writes_csv(tmp_path):
 
     assert not report.empty
     assert (tmp_path / "toy_manifold_validation.csv").exists()
-    assert {"held_out_real", "dataframe_sampler_manual", "latent_interpolation"}.issubset(set(report["method"]))
+    assert {"held_out_real", "dataframe_sampler_manual", "latent_interpolation", "latent_bootstrap"}.issubset(
+        set(report["method"])
+    )
 
 
 def test_manifold_table_and_figure_helpers_write_outputs(tmp_path):

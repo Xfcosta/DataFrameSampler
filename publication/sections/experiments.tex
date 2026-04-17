@@ -3,8 +3,9 @@
 The empirical scaffold evaluates DataFrameSampler as a practical example-data
 generator rather than as a universal synthetic-data winner. The primary
 measures are nearest-neighbour distance, real-versus-synthetic discrimination,
-downstream utility lift, distributional similarity, and a frozen-Isomap
-manifold-validation diagnostic for extrapolative samples.
+downstream utility lift, distributional similarity, NCA-block mechanism
+validation, decoder calibration, and a frozen-Isomap manifold diagnostic for
+extrapolative samples.
 
 \begin{table*}[t]
 \centering
@@ -16,7 +17,9 @@ manifold-validation diagnostic for extrapolative samples.
 Claim & Type & Primary evidence & Boundary evidence & Allowable conclusion \\
 \midrule
 Simplicity & Practical-use & API, CLI, configuration count & Runtime and dependency burden & Useful when low setup cost matters \\
-Inspectability & Mechanism-supported & Latent blocks and neighbour chains & Implausible local translations & Outputs are auditable under the mechanism \\
+Inspectability & Practical-use & Latent blocks and neighbour chains & Implausible local translations & Outputs are auditable as examples \\
+NCA blocks & Mechanism diagnostic & NCA-vs-PCA and majority prediction lift & Per-dataset failures & Mechanism evidence only where lift is observed \\
+Decoder probabilities & Boundary diagnostic & Log loss, Brier score, calibration error & One-class and high-cardinality columns & Probabilities are diagnostic, not guaranteed calibrated \\
 Utility & Regime-specific & Utility lift on held-out real tasks & Dataset descriptors & Useful only where lift is observed \\
 Safeguard & Boundary & NN distance and discrimination & Exact-value overlap checks outside the model & No formal privacy claim \\
 Extrapolation & Mechanism diagnostic & Out-of-hull rate and insertion stress & Held-out real stress baseline & Empirical manifold-consistency evidence only \\
@@ -64,3 +67,29 @@ the out-of-hull subset separately.}
 }{}
 
 \IfFileExists{tables/manifold_validation.tex}{\input{tables/manifold_validation}}{}
+
+\IfFileExists{../experiments/figures/mechanism_validation.pdf}{
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{mechanism_validation.pdf}
+\caption{Mechanism validation for categorical NCA blocks. Positive values show
+held-out categorical prediction accuracy above majority and same-width PCA
+baselines.}
+\label{fig:mechanism-validation}
+\end{figure*}
+}{}
+
+\IfFileExists{tables/mechanism_validation.tex}{\input{tables/mechanism_validation}}{}
+
+\IfFileExists{../experiments/figures/decoder_calibration.pdf}{
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{decoder_calibration.pdf}
+\caption{Decoder calibration diagnostics. Random-forest decoder probabilities
+are evaluated with expected calibration error and negative log loss; these are
+boundary diagnostics, not calibration guarantees.}
+\label{fig:decoder-calibration}
+\end{figure*}
+}{}
+
+\IfFileExists{tables/decoder_calibration.tex}{\input{tables/decoder_calibration}}{}

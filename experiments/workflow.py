@@ -14,6 +14,7 @@ from .compare import run_dataset_comparison
 from .datasets import DatasetExperimentConfig
 from .instrumentation import measure_call
 from .manifold_validation import run_manifold_validation_for_config
+from .mechanism_validation import run_mechanism_validation_for_config
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,8 @@ class DatasetExperimentResult:
     starter_run: SamplerRun
     comparison: pd.DataFrame
     manifold_validation: pd.DataFrame
+    mechanism_validation: pd.DataFrame
+    decoder_calibration: pd.DataFrame
     paths: ExperimentPaths
 
 
@@ -252,6 +255,15 @@ def run_configured_dataset_experiment(
             config.random_state,
         ),
     )
+    mechanism_validation, decoder_calibration = run_mechanism_validation_for_config(
+        config,
+        work,
+        results_dir=paths.results_dir,
+        sampler_config=sampler_config_with_random_state(
+            config.manual_sampler_config,
+            config.random_state,
+        ),
+    )
     return DatasetExperimentResult(
         dataframe=dataframe,
         working_dataframe=work,
@@ -259,5 +271,7 @@ def run_configured_dataset_experiment(
         starter_run=starter_run,
         comparison=comparison,
         manifold_validation=manifold_validation,
+        mechanism_validation=mechanism_validation,
+        decoder_calibration=decoder_calibration,
         paths=paths,
     )

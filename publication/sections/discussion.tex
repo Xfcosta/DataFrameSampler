@@ -6,9 +6,10 @@ concatenated space has no joint objective. Iterative refinement can improve the
 context available to later projections, but it has no monotonic guarantee.
 
 The decoder is also mismatched to the encoder: random forests approximate
-$p(C_j \mid z_j)$ independently for each categorical column. Generated rows can
-therefore violate cross-column constraints that were not learned by the local
-geometry or the independent decoders.
+$p(C_j \mid z_j)$ independently for each categorical column. Calibration
+diagnostics expose probability quality, but they do not impose calibration or
+cross-column consistency. Generated rows can therefore violate constraints that
+were not learned by the local geometry or the independent decoders.
 
 The generator is intentionally simple. A mutual-neighbour displacement is easy
 to inspect, but it is a heuristic, not a formal manifold sampler. This makes the

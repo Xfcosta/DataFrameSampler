@@ -6,6 +6,10 @@ provides a direct sklearn-style API and a CLI while keeping the modelling claim
 narrow: the method is simple, inspectable, and useful for example-data
 workflows, but it is heuristic and not privacy-preserving.
 
+The added mechanism and calibration diagnostics make the allowable conclusion
+more precise: categorical NCA blocks are supported only where they improve
+held-out categorical prediction against simple baselines, and decoder
+probabilities should be interpreted through their measured calibration quality.
 Future work should evaluate stability of the iterative latent construction,
-constraint-aware decoding, stronger diagnostics for high-cardinality
-categoricals, and alternatives to independent per-column decoders.
+constraint-aware decoding, stronger high-cardinality handling, and alternatives
+to independent per-column decoders.

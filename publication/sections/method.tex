@@ -74,12 +74,3 @@ graph, and embedding it with the fitted Isomap out-of-sample transform
 where $g_i$ is the inserted graph distance to training point $i$ and
 $\tilde e$ is the out-of-sample Isomap coordinate. This is an empirical
 criterion, not a guarantee.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{how_pipeline.pdf}
-\caption{DataFrameSampler 2.0 pipeline. The sampler standardizes continuous
-columns, learns supervised NCA blocks for categorical columns, transports local
-neighbour displacements in latent space, and decodes the generated point.}
-\label{fig:how-pipeline}
-\end{figure*}

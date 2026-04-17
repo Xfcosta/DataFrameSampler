@@ -5,8 +5,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
-from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
+from experiments.mechanism_validation import summarize_decoder_calibration, summarize_mechanism_validation
 from experiments.synthetic_data import SYNTHETIC_DATASETS
 
 
@@ -22,6 +22,7 @@ METHOD_LABELS = {
     "independent_columns": "Independent",
     "gaussian_copula_empirical": "Gaussian copula",
     "stratified_columns": "Stratified",
+    "latent_bootstrap": "Latent bootstrap",
 }
 
 METHOD_ORDER = [
@@ -64,6 +65,7 @@ def load_comparisons(results_dir: str | Path = RESULTS) -> pd.DataFrame:
     if not frames:
         raise FileNotFoundError("No *_baseline_comparison.csv files found. Run the notebooks first.")
     data = pd.concat(frames, ignore_index=True)
+    data = data[~data["method"].astype(str).str.contains("llm_assisted", na=False)].copy()
     data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
     data["method_label"] = pd.Categorical(
         data["method_label"],
@@ -84,6 +86,28 @@ def load_manifold_validations(results_dir: str | Path = RESULTS) -> pd.DataFrame
     data = pd.concat(frames, ignore_index=True)
     data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
     return data
+
+
+def load_mechanism_validations(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    results_path = Path(results_dir)
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(results_path.glob("*_mechanism_validation.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No *_mechanism_validation.csv files found. Run the notebooks first.")
+    return pd.concat(frames, ignore_index=True)
+
+
+def load_decoder_calibrations(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    results_path = Path(results_dir)
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(results_path.glob("*_decoder_calibration.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No *_decoder_calibration.csv files found. Run the notebooks first.")
+    return pd.concat(frames, ignore_index=True)
 
 
 def plot_baseline_similarity(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
@@ -147,65 +171,6 @@ def plot_configuration_competitors(data: pd.DataFrame, figures_dir: str | Path =
     fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
     return output
-
-
-def plot_what_context(figures_dir: str | Path = FIGURES) -> Path:
-    fig, ax = plt.subplots(figsize=(11, 5.5))
-    ax.axis("off")
-    boxes = [
-        ("Source table", "Adult / Titanic\\nMixed numeric + categorical\\nGovernance constraint", 0.04, 0.55),
-        ("Sampler", "DataFrameSampler\\ninspectable NCA latent-space\\nconfiguration choices", 0.38, 0.55),
-        ("Example data", "Generated table\\nsame schema\\nfor non-production use", 0.72, 0.55),
-        ("Uses", "Tests\\nDashboards\\nDemos\\nNotebooks", 0.72, 0.15),
-        ("Review", "Explicit caveat:\\nnot formal privacy\\nnot clinical simulator", 0.38, 0.15),
-    ]
-    for title, body, x, y in boxes:
-        add_box(ax, x, y, title, body)
-    add_arrow(ax, (0.28, 0.70), (0.38, 0.70))
-    add_arrow(ax, (0.62, 0.70), (0.72, 0.70))
-    add_arrow(ax, (0.86, 0.55), (0.86, 0.37))
-    add_arrow(ax, (0.72, 0.24), (0.62, 0.24))
-    ax.set_title("WHAT: intended use context for simple, inspectable tabular example generation", pad=14)
-    figures_path = Path(figures_dir)
-    figures_path.mkdir(parents=True, exist_ok=True)
-    output = figures_path / "what_context.pdf"
-    fig.savefig(output, bbox_inches="tight")
-    plt.close(fig)
-    return output
-
-
-def plot_how_pipeline(figures_dir: str | Path = FIGURES) -> Path:
-    fig, ax = plt.subplots(figsize=(13, 4.8))
-    ax.axis("off")
-    steps = [
-        ("Dataframe", "pandas / CSV\\nAdult, Titanic"),
-        ("Encode context", "standardize numerics\\none-hot categoricals"),
-        ("NCA blocks", "per-categorical\\nsupervised latent"),
-        ("Neighbour chain", "anchor -> neighbour\\n-> neighbour"),
-        ("Decode", "inverse scale\\nRF categorical draw"),
-        ("Output + trace", "same schema\\nexplainable path"),
-    ]
-    xs = [0.03, 0.21, 0.39, 0.57, 0.75, 0.90]
-    for idx, ((title, body), x) in enumerate(zip(steps, xs)):
-        add_box(ax, x, 0.52, title, body, width=0.11, height=0.28)
-        if idx < len(steps) - 1:
-            add_arrow(ax, (x + 0.11, 0.66), (xs[idx + 1], 0.66))
-    ax.text(
-        0.5,
-        0.18,
-        "Inspectable generation: anchor row + neighbour chain + latent difference + decoded values",
-        ha="center",
-        va="center",
-        fontsize=11,
-    )
-    ax.set_title("HOW: DataFrameSampler pipeline and explanation trace", pad=14)
-    figures_path = Path(figures_dir)
-    figures_path.mkdir(parents=True, exist_ok=True)
-    output = figures_path / "how_pipeline.pdf"
-    fig.savefig(output, bbox_inches="tight")
-    plt.close(fig)
-    return output
-
 
 def plot_distribution_dashboard(
     *,
@@ -384,6 +349,8 @@ def plot_manifold_validation_stress(
         raise FileNotFoundError("No finite manifold validation stress values found.")
 
     groups = ["Held-out real", "DFS generated", "DFS out-hull", "Latent interpolation"]
+    if "latent_bootstrap" in set(subset["method"]):
+        groups.append("Latent bootstrap")
     fig, axes = plt.subplots(len(selected), 1, figsize=(10, max(3.2, 2.2 * len(selected))), sharex=True)
     if len(selected) == 1:
         axes = [axes]
@@ -415,26 +382,70 @@ def _manifold_group_label(row: pd.Series) -> str:
         return "DFS generated"
     if row["method"] == "latent_interpolation":
         return "Latent interpolation"
+    if row["method"] == "latent_bootstrap":
+        return "Latent bootstrap"
     return str(row.get("method_label", row["method"]))
 
 
-def add_box(ax, x, y, title, body, width=0.24, height=0.25):
-    patch = FancyBboxPatch(
-        (x, y),
-        width,
-        height,
-        boxstyle="round,pad=0.012,rounding_size=0.015",
-        linewidth=1,
-        edgecolor="#333333",
-        facecolor="#F4F6F8",
+def plot_mechanism_validation(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
+    summary = summarize_mechanism_validation(data)
+    if summary.empty:
+        raise FileNotFoundError("No mechanism validation rows found.")
+    fig, ax = plt.subplots(figsize=(9.5, max(4, 0.42 * len(summary))))
+    y = range(len(summary))
+    ax.barh(
+        [idx - 0.18 for idx in y],
+        summary["mean_lift_over_majority"],
+        height=0.34,
+        label="NCA - majority",
+        color="#4C78A8",
     )
-    ax.add_patch(patch)
-    ax.text(x + width / 2, y + height * 0.70, title, ha="center", va="center", fontsize=11, weight="bold")
-    ax.text(x + width / 2, y + height * 0.35, body, ha="center", va="center", fontsize=9)
+    ax.barh(
+        [idx + 0.18 for idx in y],
+        summary["mean_lift_over_pca"],
+        height=0.34,
+        label="NCA - PCA",
+        color="#F58518",
+    )
+    ax.axvline(0, color="#333333", linewidth=1)
+    ax.set_yticks(list(y))
+    ax.set_yticklabels(summary["dataset"])
+    ax.set_xlabel("Held-out categorical accuracy difference")
+    ax.set_title("Mechanism validation: supervised NCA block lift")
+    ax.grid(axis="x", alpha=0.25)
+    ax.legend()
+    fig.tight_layout()
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "mechanism_validation.pdf"
+    fig.savefig(output, bbox_inches="tight")
+    plt.close(fig)
+    return output
 
 
-def add_arrow(ax, start, end):
-    ax.add_patch(FancyArrowPatch(start, end, arrowstyle="->", mutation_scale=14, linewidth=1.3, color="#333333"))
+def plot_decoder_calibration(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
+    summary = summarize_decoder_calibration(data)
+    if summary.empty:
+        raise FileNotFoundError("No decoder calibration rows found.")
+    summary["label"] = summary["dataset"].astype(str) + " / " + summary["cardinality_bucket"].astype(str)
+    fig, axes = plt.subplots(1, 2, figsize=(13, max(4.5, 0.32 * len(summary))))
+    axes[0].barh(summary["label"], summary["mean_expected_calibration_error"], color="#E45756")
+    axes[0].set_title("Expected calibration error")
+    axes[0].set_xlabel("ECE")
+    axes[0].grid(axis="x", alpha=0.25)
+    axes[1].barh(summary["label"], summary["mean_negative_log_loss"], color="#72B7B2")
+    axes[1].set_title("Negative log loss")
+    axes[1].set_xlabel("NLL")
+    axes[1].tick_params(axis="y", labelleft=False)
+    axes[1].grid(axis="x", alpha=0.25)
+    fig.suptitle("Decoder calibration diagnostics by dataset and categorical-cardinality bucket")
+    fig.tight_layout()
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "decoder_calibration.pdf"
+    fig.savefig(output, bbox_inches="tight")
+    plt.close(fig)
+    return output
 
 
 def generate_all_figures(
@@ -446,8 +457,6 @@ def generate_all_figures(
 ) -> list[Path]:
     data = load_comparisons(results_dir)
     outputs = [
-        plot_what_context(figures_dir),
-        plot_how_pipeline(figures_dir),
         plot_distribution_dashboard(
             data_dir=data_dir,
             results_dir=results_dir,
@@ -467,6 +476,14 @@ def generate_all_figures(
         )
     try:
         outputs.append(plot_manifold_validation_stress(load_manifold_validations(results_dir), figures_dir))
+    except FileNotFoundError:
+        pass
+    try:
+        outputs.append(plot_mechanism_validation(load_mechanism_validations(results_dir), figures_dir))
+    except FileNotFoundError:
+        pass
+    try:
+        outputs.append(plot_decoder_calibration(load_decoder_calibrations(results_dir), figures_dir))
     except FileNotFoundError:
         pass
     return outputs

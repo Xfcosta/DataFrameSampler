@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from experiments.manifold_validation import summarize_manifold_validation
+from experiments.mechanism_validation import summarize_decoder_calibration, summarize_mechanism_validation
 from experiments.synthetic_data import SYNTHETIC_DATASETS, materialize_synthetic_datasets
 
 
@@ -98,6 +99,7 @@ METHOD_LABELS = {
     "gaussian_copula_empirical": "Gaussian copula",
     "stratified_columns": "Stratified columns",
     "latent_interpolation": "Latent interpolation",
+    "latent_bootstrap": "Latent bootstrap",
 }
 
 DEFAULT_DATASETS = [
@@ -161,6 +163,7 @@ def load_comparisons(results_dir: str | Path = RESULTS) -> pd.DataFrame:
     if not frames:
         raise FileNotFoundError("No baseline comparison files found. Run the notebooks first.")
     data = pd.concat(frames, ignore_index=True)
+    data = data[~data["method"].astype(str).str.contains("llm_assisted", na=False)].copy()
     data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
     for column in [
         "fit_peak_memory_mb",
@@ -194,6 +197,26 @@ def load_manifold_validations(results_dir: str | Path = RESULTS) -> pd.DataFrame
     data = pd.concat(frames, ignore_index=True)
     data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
     return data
+
+
+def load_mechanism_validations(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(Path(results_dir).glob("*_mechanism_validation.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No mechanism validation files found. Run the notebooks first.")
+    return pd.concat(frames, ignore_index=True)
+
+
+def load_decoder_calibrations(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(Path(results_dir).glob("*_decoder_calibration.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No decoder calibration files found. Run the notebooks first.")
+    return pd.concat(frames, ignore_index=True)
 
 
 def write_dataset_table(
@@ -547,13 +570,103 @@ def write_manifold_validation_table(
     )
 
 
+def write_mechanism_validation_table(
+    validations: pd.DataFrame,
+    *,
+    tables_dir: str | Path = TABLES,
+) -> Path:
+    summary = summarize_mechanism_validation(validations)
+    df = summary[
+        [
+            "dataset",
+            "columns_evaluated",
+            "mean_cardinality",
+            "mean_nca_accuracy",
+            "mean_majority_accuracy",
+            "mean_pca_accuracy",
+            "mean_raw_context_accuracy",
+            "mean_lift_over_majority",
+            "mean_lift_over_pca",
+        ]
+    ].copy()
+    df = df.rename(
+        columns={
+            "dataset": "Dataset",
+            "columns_evaluated": "Columns",
+            "mean_cardinality": "Mean card.",
+            "mean_nca_accuracy": "NCA acc.",
+            "mean_majority_accuracy": "Majority acc.",
+            "mean_pca_accuracy": "PCA acc.",
+            "mean_raw_context_accuracy": "Raw ctx acc.",
+            "mean_lift_over_majority": "NCA-majority",
+            "mean_lift_over_pca": "NCA-PCA",
+        }
+    )
+    return write_latex(
+        df,
+        Path(tables_dir) / "mechanism_validation.tex",
+        "Mechanism validation for categorical NCA blocks. Each row aggregates held-out categorical prediction tests over categorical columns. NCA-majority and NCA-PCA are accuracy differences against majority and same-width PCA baselines.",
+        "tab:mechanism-validation",
+        float_format="%.3f",
+        full_width=True,
+    )
+
+
+def write_decoder_calibration_table(
+    calibrations: pd.DataFrame,
+    *,
+    tables_dir: str | Path = TABLES,
+) -> Path:
+    summary = summarize_decoder_calibration(calibrations)
+    df = summary[
+        [
+            "dataset",
+            "cardinality_bucket",
+            "columns_evaluated",
+            "mean_accuracy",
+            "mean_top_confidence",
+            "mean_confidence_gap",
+            "mean_negative_log_loss",
+            "mean_brier_score",
+            "mean_expected_calibration_error",
+        ]
+    ].copy()
+    df = df.rename(
+        columns={
+            "dataset": "Dataset",
+            "cardinality_bucket": "Cardinality",
+            "columns_evaluated": "Columns",
+            "mean_accuracy": "Acc.",
+            "mean_top_confidence": "Top conf.",
+            "mean_confidence_gap": "Conf.-acc.",
+            "mean_negative_log_loss": "NLL",
+            "mean_brier_score": "Brier",
+            "mean_expected_calibration_error": "ECE",
+        }
+    )
+    return write_latex(
+        df,
+        Path(tables_dir) / "decoder_calibration.tex",
+        "Random-forest decoder calibration diagnostics by dataset and categorical-cardinality bucket. These are boundary diagnostics for probabilistic decoding rather than guarantees of calibrated sampling.",
+        "tab:decoder-calibration",
+        float_format="%.3f",
+        full_width=True,
+    )
+
+
 def write_ablation_table(*, tables_dir: str | Path = TABLES) -> Path:
     rows = [
         {
             "Component": "Per-column NCA blocks",
             "Expected effect": "Supervised categorical geometry",
-            "Observed effect": "Unit tested",
-            "Claim status": "Mechanism plausible",
+            "Observed effect": "Mechanism validation table",
+            "Claim status": "Supported only where lift is positive",
+        },
+        {
+            "Component": "RF categorical decoders",
+            "Expected effect": "Probabilistic inverse categories",
+            "Observed effect": "Calibration diagnostics",
+            "Claim status": "Boundary diagnostic",
         },
         {
             "Component": "Frozen-Isomap validation",
@@ -682,6 +795,26 @@ def generate_all_tables(
             -2,
             write_manifold_validation_table(
                 load_manifold_validations(results_dir),
+                tables_dir=tables_dir,
+            ),
+        )
+    except FileNotFoundError:
+        pass
+    try:
+        outputs.insert(
+            -2,
+            write_mechanism_validation_table(
+                load_mechanism_validations(results_dir),
+                tables_dir=tables_dir,
+            ),
+        )
+    except FileNotFoundError:
+        pass
+    try:
+        outputs.insert(
+            -2,
+            write_decoder_calibration_table(
+                load_decoder_calibrations(results_dir),
                 tables_dir=tables_dir,
             ),
         )

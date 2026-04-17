@@ -43,11 +43,12 @@ fig = plot_numeric_projection_triptych(
     title="Dataset name",
     reducer="umap",
     random_state=42,
-    output_path="experiments/figures/dataset_numeric_projection.pdf",
 )
 ```
 
 The helper transforms original and generated rows with the fitted sampler,
 projects both latent views into a shared two-dimensional space with UMAP when
 available or PCA otherwise, and displays original-only, generated-only, and
-superimposed panels.
+superimposed panels. Pass `output_path=...` only when you explicitly want a
+saved diagnostic figure; numeric projection PDFs are not part of the current
+paper artifact set.

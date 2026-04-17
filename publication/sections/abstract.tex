@@ -7,5 +7,8 @@ Analysis block for each categorical column. Binary columns are categorical even
 when stored as numeric values. Generation applies a local mutual-neighbour
 translation in the learned latent space and decodes the result with inverse
 numeric scaling plus probabilistic random-forest categorical decoders. The
-method is simple and auditable, but heuristic: it has no global objective, no
-formal manifold-preservation guarantee, and no privacy guarantee.
+method is simple and auditable, but heuristic. We evaluate it with
+claim-specific diagnostics, including NCA-block ablations, decoder calibration
+checks, and frozen-Isomap manifold insertion stress. These diagnostics support
+only bounded example-data claims: the method has no global objective, no formal
+manifold-preservation guarantee, and no privacy guarantee.

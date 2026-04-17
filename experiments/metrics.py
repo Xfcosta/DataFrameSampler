@@ -24,7 +24,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import NearestNeighbors
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
 
 
 def numeric_similarity(
@@ -545,6 +545,7 @@ def make_feature_preprocessor(dataframe: pd.DataFrame) -> ColumnTransformer:
                 "numeric",
                 Pipeline(
                     [
+                        ("coerce", FunctionTransformer(_coerce_numeric_frame, validate=False)),
                         ("imputer", SimpleImputer(strategy="median")),
                         ("scaler", StandardScaler()),
                     ]
@@ -555,6 +556,7 @@ def make_feature_preprocessor(dataframe: pd.DataFrame) -> ColumnTransformer:
                 "categorical",
                 Pipeline(
                     [
+                        ("coerce", FunctionTransformer(_coerce_categorical_frame, validate=False)),
                         ("imputer", SimpleImputer(strategy="most_frequent")),
                         ("encoder", _one_hot_encoder()),
                     ]
@@ -565,6 +567,30 @@ def make_feature_preprocessor(dataframe: pd.DataFrame) -> ColumnTransformer:
         remainder="drop",
         sparse_threshold=0.0,
     )
+
+
+def _coerce_numeric_frame(values) -> np.ndarray:
+    dataframe = _as_preprocessor_dataframe(values)
+    return dataframe.apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
+
+
+def _coerce_categorical_frame(values) -> pd.DataFrame:
+    dataframe = _as_preprocessor_dataframe(values)
+    coerced = pd.DataFrame(index=dataframe.index)
+    for column in dataframe.columns:
+        series = dataframe[column].astype("object")
+        coerced[column] = series.where(series.notna(), np.nan).map(
+            lambda value: np.nan if pd.isna(value) else str(value)
+        )
+    return coerced
+
+
+def _as_preprocessor_dataframe(values) -> pd.DataFrame:
+    if isinstance(values, pd.DataFrame):
+        return values.copy()
+    if isinstance(values, pd.Series):
+        return values.to_frame()
+    return pd.DataFrame(values)
 
 
 def _one_hot_encoder() -> OneHotEncoder:

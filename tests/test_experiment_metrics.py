@@ -176,3 +176,26 @@ def test_nearest_neighbor_distance_test_compares_to_natural_distances():
     assert report["nn_synthetic_to_real_mean"] >= 0.0
     assert report["nn_real_to_real_mean"] > 0.0
     assert report["nn_distance_ratio"] >= 0.0
+
+
+def test_nearest_neighbor_distance_handles_nullable_pandas_missing_values():
+    real = pd.DataFrame(
+        {
+            "age": pd.Series([20, 30, pd.NA, 50], dtype="Int64"),
+            "flag": pd.Series([True, False, pd.NA, True], dtype="boolean"),
+            "group": pd.Series(["a", pd.NA, "b", "b"], dtype="string"),
+        }
+    )
+    synthetic = pd.DataFrame(
+        {
+            "age": pd.Series([21, pd.NA, 49], dtype="Int64"),
+            "flag": pd.Series([False, True, pd.NA], dtype="boolean"),
+            "group": pd.Series(["a", "b", pd.NA], dtype="string"),
+        }
+    )
+
+    report = nearest_neighbor_distance_test(real, synthetic)
+
+    assert np.isfinite(report["nn_synthetic_to_real_mean"])
+    assert np.isfinite(report["nn_real_to_real_mean"])
+    assert report["nn_distance_ratio"] >= 0.0
