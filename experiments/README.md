@@ -15,6 +15,10 @@ preparation helpers for the paper.
 - `workflow.py`: reusable notebook workflow for loading, profiling, starter
   sampling, baseline comparison, manifold validation, mechanism validation,
   decoder calibration, capped sensitivity validation, and output writing.
+- `deep_reference.py`: optional Adult-only CTGAN reference comparison through
+  SDV.
+- `run_deep_reference.py`: explicit helper for producing the optional Adult
+  CTGAN artifact when `dataframe-sampler[deep-baselines]` is installed.
 - `make_tables.py`: reusable table-generation functions for publication
   artifacts.
 - `plot_results.py`: reusable figure-generation functions for publication
@@ -52,6 +56,8 @@ NCA blocks and probability-quality diagnostics for categorical decoders. The
 sensitivity CSV reports the same primary measures for the three proposed
 setups on Adult Census Income only, so setup choice remains an illustrative
 speed--accuracy tradeoff rather than a full cross-dataset benchmark.
+The optional deep-reference CSV reports CTGAN on Adult Census Income only; it
+is a high-capacity reference point, not a required notebook or CI artifact.
 
 ## Current Datasets
 
@@ -96,4 +102,12 @@ notebook that changes `DATASET_NAME`, then rerun the table and figure helpers:
 ```bash
 python experiments/make_tables.py
 python experiments/plot_results.py
+```
+
+To produce the optional CTGAN reference artifact:
+
+```bash
+pip install ".[deep-baselines]"
+python experiments/run_deep_reference.py
+python experiments/make_tables.py
 ```

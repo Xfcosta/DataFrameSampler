@@ -98,6 +98,12 @@ pip install ".[annoy]"
 pip install ".[ann]"
 ```
 
+Optional high-capacity reference experiments use SDV:
+
+```bash
+pip install ".[deep-baselines]"
+```
+
 ## Python API
 
 ```python

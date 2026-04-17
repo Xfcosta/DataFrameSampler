@@ -227,6 +227,57 @@ class SmoteNcBaseline:
         return _restore_dtypes(self.resampled_.iloc[indexes].reset_index(drop=True).copy(), self.dtypes_)
 
 
+class SdvCtganBaseline:
+    """Optional SDV CTGAN adapter used only for high-capacity reference experiments."""
+
+    DEFAULT_SYNTHESIZER_KWARGS = {
+        "epochs": 50,
+        "enforce_min_max_values": True,
+        "enforce_rounding": True,
+        "verbose": False,
+        "enable_gpu": False,
+    }
+
+    def __init__(
+        self,
+        *,
+        random_state: int | None = None,
+        synthesizer_kwargs: Mapping[str, Any] | None = None,
+    ):
+        self.random_state = random_state
+        self.synthesizer_kwargs = dict(synthesizer_kwargs or {})
+
+    def fit(self, dataframe: pd.DataFrame, target_column: str | None = None):
+        try:
+            from sdv.metadata import Metadata
+            from sdv.single_table import CTGANSynthesizer
+        except ImportError as exc:
+            raise ImportError(
+                "CTGAN reference baseline requires SDV. Install it with: "
+                "pip install 'dataframe-sampler[deep-baselines]'"
+            ) from exc
+
+        if self.random_state is not None:
+            np.random.seed(self.random_state)
+        self.columns_ = list(dataframe.columns)
+        self.dtypes_ = dataframe.dtypes.to_dict()
+        self.metadata_ = Metadata.detect_from_dataframe(data=dataframe, table_name="table")
+        kwargs = dict(self.DEFAULT_SYNTHESIZER_KWARGS)
+        kwargs.update(self.synthesizer_kwargs)
+        self.synthesizer_ = CTGANSynthesizer(self.metadata_, **kwargs)
+        self.synthesizer_.fit(dataframe)
+        return self
+
+    def sample(self, n_samples: int) -> pd.DataFrame:
+        sampled = self.synthesizer_.sample(num_rows=n_samples)
+        sampled = sampled.copy()
+        for column in self.columns_:
+            if column not in sampled:
+                sampled[column] = pd.NA
+        sampled = sampled[self.columns_]
+        return _restore_dtypes(sampled, self.dtypes_)
+
+
 @dataclass(frozen=True)
 class BaselineSpec:
     name: str

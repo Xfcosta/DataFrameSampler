@@ -29,6 +29,9 @@ test = [
 parquet = [
     "pyarrow>=14",
 ]
+deep-baselines = [
+    "sdv>=1.0",
+]
 pynndescent = [
     "pynndescent>=0.5",
 ]

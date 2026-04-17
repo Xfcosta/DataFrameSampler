@@ -22,15 +22,14 @@ mixed-type workflow.}
 \label{tab:method-positioning}
 \small
 \begin{adjustbox}{max width=\textwidth}
-\begin{tabular}{@{}llll@{}}
+\begin{tabular}{@{}llllll@{}}
 \toprule
-Property & Deep tabular generator & Copula model & DataFrameSampler \\
+Method & Objective & Mixed-type handling & Local geometry & Interpretability & Setup cost \\
 \midrule
-Primary objective & Likelihood or adversarial fidelity & Dependence and marginal modelling & No global objective \\
-Mixed-type handling & Learned or model-specific & Structured marginals plus dependence & Explicit type policy and decoders \\
-Local geometry & Usually implicit & Usually absent & Explicit learned latent neighbours \\
-Inspectability & Low to medium & Medium & High: blocks, chains, decoders \\
-Typical use & High-fidelity synthetic data & Statistical simulation & Low-setup example data \\
+CTGAN & Adversarial fidelity & Learned & Implicit & Low & High \\
+Copula & Likelihood/dependence & Structured marginals & None & Medium & Low \\
+SMOTE-style & Interpolation & Numeric or encoded & Linear segments & High & Low \\
+DataFrameSampler & Constructive, no global loss & Explicit type policy & Learned neighbour transport & High & Low \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}

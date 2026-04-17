@@ -82,6 +82,12 @@ and manifold claims treated as empirical diagnostics rather than guarantees.
     than a full cross-dataset benchmark.
   - Recommended final cap: `max_train_rows=80`, `n_samples=80` if the accurate
     setup remains slow in local builds; increase only if runtime is acceptable.
+- [ ] Optional CTGAN reference artifact:
+  - [x] SDV CTGAN adapter and Adult-only reference workflow;
+  - [x] publication table hook for `deep_reference_comparison.tex`;
+  - [ ] install `dataframe-sampler[deep-baselines]` and run
+    `python experiments/run_deep_reference.py` if the CTGAN table should appear
+    in the final PDF snapshot.
 
 ## 4. Tables And Figures
 
@@ -123,6 +129,9 @@ and manifold claims treated as empirical diagnostics rather than guarantees.
   intentionally part of the snapshot.
 - [ ] Record final runtime caps used for each paper artifact in the appendix or
   table captions.
+- [ ] Consider one larger modern dataset before final submission:
+  - recommended: UCI Credit Card Default for a larger mixed-type real dataset;
+  - optional: Covertype only if a mostly numeric scaling reference is useful.
 
 ## 6. Validation
 

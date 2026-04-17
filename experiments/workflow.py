@@ -11,6 +11,7 @@ import pandas as pd
 from dataframe_sampler import DataFrameSampler
 
 from .compare import run_dataset_comparison
+from .deep_reference import run_deep_reference_comparison_for_config
 from .datasets import DatasetExperimentConfig
 from .instrumentation import measure_call
 from .manifold_validation import run_manifold_validation_for_config
@@ -49,6 +50,7 @@ class DatasetExperimentResult:
     mechanism_validation: pd.DataFrame
     decoder_calibration: pd.DataFrame
     sensitivity_validation: pd.DataFrame
+    deep_reference_comparison: pd.DataFrame
     paths: ExperimentPaths
 
 
@@ -225,6 +227,7 @@ def run_configured_dataset_experiment(
     root: str | Path | None = None,
     results_dir: str | Path | None = None,
     write_outputs: bool = True,
+    include_deep_reference: bool = False,
 ) -> DatasetExperimentResult:
     np.random.seed(config.random_state)
     paths = experiment_paths(config, root=root, results_dir=results_dir)
@@ -275,6 +278,15 @@ def run_configured_dataset_experiment(
             config.random_state,
         ),
     )
+    deep_reference_comparison = (
+        run_deep_reference_comparison_for_config(
+            config,
+            work,
+            results_dir=paths.results_dir,
+        )
+        if include_deep_reference
+        else pd.DataFrame()
+    )
     return DatasetExperimentResult(
         dataframe=dataframe,
         working_dataframe=work,
@@ -285,5 +297,6 @@ def run_configured_dataset_experiment(
         mechanism_validation=mechanism_validation,
         decoder_calibration=decoder_calibration,
         sensitivity_validation=sensitivity_validation,
+        deep_reference_comparison=deep_reference_comparison,
         paths=paths,
     )

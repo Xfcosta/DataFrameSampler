@@ -30,6 +30,15 @@ choice creates a mixed evidence base: public datasets support practical
 workflow relevance, whereas controlled datasets make particular boundary
 conditions observable under known structure.
 
+The dataset selection is therefore structured to cover distinct failure modes
+rather than to maximize the number of benchmarks. Adult acts as the primary
+running example because it is a familiar, moderately sized, mixed-type dataset
+with interpretable categorical and numerical dependencies. Titanic is used for
+small illustrative figures, while the medical, business, and controlled
+datasets test whether the same diagnostics remain legible across different
+regimes. This design keeps the paper method-focused rather than turning it
+into a domain-specific benchmark study.
+
 Table~\ref{tab:methods} records the comparison methods used throughout the
 experiments. The baselines are deliberately simple because the central claim is
 not that DataFrameSampler dominates specialized synthetic-data systems; it is

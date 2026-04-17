@@ -34,6 +34,18 @@ dataset, Adult Census Income. This keeps setup choice separate from the main
 cross-dataset evidence: fast, default, and accurate are practical operating
 points, not three additional methods to rank across every benchmark.
 
+\subsection{Comparison with High-Capacity Generative Models}
+
+We include CTGAN as an optional Adult-only reference model because modern deep
+tabular generators are an important design point for reviewers and users.
+This comparison is deliberately limited. CTGAN is not treated as a target to
+beat, and we do not perform broad hyperparameter optimization. Instead, it is
+used to locate DataFrameSampler relative to a model with a global adversarial
+training objective, higher setup cost, and lower decomposition into inspectable
+components. The same primary metrics are reported for the reference run:
+distributional score, real-versus-synthetic discrimination, utility lift,
+runtime, and memory.
+
 \begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{distribution_dashboard.pdf}
@@ -117,3 +129,5 @@ not an additional cross-dataset superiority claim.}
 }{}
 
 \IfFileExists{tables/sensitivity_validation.tex}{\input{tables/sensitivity_validation}}{}
+
+\IfFileExists{tables/deep_reference_comparison.tex}{\input{tables/deep_reference_comparison}}{}

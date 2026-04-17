@@ -90,6 +90,15 @@ METHOD_METADATA = [
         "optional": "Target column",
     },
     {
+        "method": "CTGAN",
+        "package": "SDV",
+        "family": "High-capacity adversarial reference",
+        "mixed": "Yes",
+        "setup": "Medium",
+        "inspectability": "Low",
+        "optional": "sdv",
+    },
+    {
         "method": "SMOTENC",
         "package": "imbalanced-learn",
         "family": "Supervised oversampling",
@@ -102,6 +111,7 @@ METHOD_METADATA = [
 
 METHOD_LABELS = {
     "dataframe_sampler": "DataFrameSampler",
+    "ctgan": "CTGAN",
     "row_bootstrap": "Row bootstrap",
     "independent_columns": "Independent columns",
     "gaussian_copula_empirical": "Gaussian copula",
@@ -234,6 +244,18 @@ def load_sensitivity_validations(results_dir: str | Path = RESULTS) -> pd.DataFr
     if not frames:
         raise FileNotFoundError("No sensitivity validation files found. Run the notebooks first.")
     return pd.concat(frames, ignore_index=True)
+
+
+def load_deep_reference_comparisons(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(Path(results_dir).glob("*_deep_reference_comparison.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No deep reference comparison files found. Run the Adult CTGAN reference first.")
+    data = pd.concat(frames, ignore_index=True)
+    data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data.get("method_label", data["method"]))
+    return data
 
 
 def write_dataset_table(
@@ -730,6 +752,45 @@ def write_sensitivity_validation_table(
     )
 
 
+def write_deep_reference_table(
+    comparisons: pd.DataFrame,
+    *,
+    tables_dir: str | Path = TABLES,
+) -> Path:
+    df = comparisons[
+        [
+            "dataset",
+            "method_label",
+            "distribution_similarity_score",
+            "discrimination_accuracy",
+            "utility_lift",
+            "fit_seconds",
+            "sample_seconds",
+            "peak_memory_mb",
+        ]
+    ].copy()
+    df = df.rename(
+        columns={
+            "dataset": "Dataset",
+            "method_label": "Method",
+            "distribution_similarity_score": "Dist. score",
+            "discrimination_accuracy": "Disc. acc.",
+            "utility_lift": "Utility lift",
+            "fit_seconds": "Fit s",
+            "sample_seconds": "Sample s",
+            "peak_memory_mb": "Peak MB",
+        }
+    )
+    return write_latex(
+        df,
+        Path(tables_dir) / "deep_reference_comparison.tex",
+        "Adult high-capacity reference comparison. CTGAN is included as an optional SDV-based reference model with a global adversarial objective, not as a leaderboard target. Takeaway: the comparison locates DataFrameSampler against a modern deep generator while preserving the paper's emphasis on inspectability and setup cost.",
+        "tab:deep-reference-comparison",
+        float_format="%.3f",
+        full_width=True,
+    )
+
+
 def write_ablation_table(*, tables_dir: str | Path = TABLES) -> Path:
     rows = [
         {
@@ -902,6 +963,16 @@ def generate_all_tables(
             -2,
             write_sensitivity_validation_table(
                 load_sensitivity_validations(results_dir),
+                tables_dir=tables_dir,
+            ),
+        )
+    except FileNotFoundError:
+        pass
+    try:
+        outputs.insert(
+            -2,
+            write_deep_reference_table(
+                load_deep_reference_comparisons(results_dir),
                 tables_dir=tables_dir,
             ),
         )
