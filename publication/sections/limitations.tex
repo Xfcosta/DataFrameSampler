@@ -2,17 +2,22 @@
 
 DataFrameSampler has no formal privacy guarantee. It should not be presented as
 differential privacy, formal de-identification, regulatory compliance, or
-protection against linkage attacks.
+protection against linkage attacks, because none of these properties follows
+from decoding new rows through a learned latent representation. In practice,
+users who need a release mechanism must add an explicit privacy model and
+disclosure-risk evaluation outside the sampler.
 
-The method has no global optimization objective. Per-column NCA blocks can
-conflict, and the concatenated latent space is only an empirical construction.
-High-cardinality categorical columns are used after a warning, so users should
-preprocess identifiers deliberately.
+The method also has no global optimization objective. Per-column NCA blocks can
+conflict, and the concatenated latent space is only an empirical construction
+whose usefulness depends on the dataset and the configured widths. High-cardinality
+categorical columns are used after a warning, so identifiers or near-identifiers
+should be preprocessed deliberately rather than treated as ordinary categories.
 
-Generation is a local linear transport heuristic. It can produce implausible
-rows when the learned latent space is poorly conditioned, when categorical
-decoders are uncertain, or when real-world constraints span multiple columns.
-NCA-block ablations, decoder calibration, and manifold stress are diagnostics
-for observed behaviour, not proofs of causal mechanism quality.
+Generation remains a local linear transport heuristic. It can produce
+implausible rows when the learned latent space is poorly conditioned, when
+categorical decoders are uncertain, or when real-world constraints span
+multiple columns. NCA-block ablations, decoder calibration, and manifold stress
+therefore provide diagnostics for observed behaviour, not proofs of causal
+mechanism quality.
 
 \input{tables/limitations_scope}

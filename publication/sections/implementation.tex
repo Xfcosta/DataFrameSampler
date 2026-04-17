@@ -3,21 +3,24 @@
 The public library entry point is \texttt{DataFrameSampler}. The estimator
 accepts pandas dataframes in \texttt{fit} and \texttt{transform};
 \texttt{transform} returns a NumPy latent matrix; \texttt{inverse\_transform}
-accepts a NumPy matrix and returns a dataframe; \texttt{generate} returns a
-synthetic dataframe.
+accepts a NumPy matrix and returns a dataframe; and \texttt{generate} returns a
+synthetic dataframe. This interface is intentionally close to the scikit-learn
+transformer convention, because the main implementation constraint is not to
+expose several competing vectorization modes, but to make one explicit latent
+construction easy to fit, inspect, persist, and reuse.
 
-The implementation is organized around:
-\begin{itemize}
-  \item \texttt{sampler.py}: NCA latent learning, decoding, model persistence,
-  and neighbour-transport generation;
-  \item \texttt{neighbours.py}: mutual-neighbour estimation and sampling
-  probabilities;
-  \item \texttt{knn.py}: exact, scikit-learn, and optional approximate nearest
-  neighbour backends;
-  \item \texttt{io.py}: CSV and Parquet dataframe I/O;
-  \item \texttt{cli.py}: file-oriented command-line workflow.
-\end{itemize}
+The implementation is organized around five small modules: 1) \texttt{sampler.py}
+contains NCA latent learning, decoding, model persistence, and
+neighbour-transport generation; 2) \texttt{neighbours.py} contains
+mutual-neighbour estimation and sampling probabilities; 3) \texttt{knn.py}
+contains exact, scikit-learn, and optional approximate nearest-neighbour
+backends; 4) \texttt{io.py} contains CSV and Parquet dataframe I/O; and
+5) \texttt{cli.py} contains the file-oriented command-line workflow. In
+practice, this separation keeps optional nearest-neighbour dependencies away
+from the default path while preserving a single public estimator.
 
-Version 2.0 exposes one direct estimator and removes auxiliary configuration,
-column-selection, embedding-method-selection, and bin-encoding workflows. The
-CLI therefore exposes only the NCA and neighbour-transport parameters.
+Version 2.0 therefore exposes one direct estimator and removes auxiliary
+configuration, column-selection, embedding-method-selection, and bin-encoding
+workflows. The CLI exposes only the NCA and neighbour-transport parameters,
+which is consistent with the paper's practical-use claim: low setup cost is
+favoured over a large configuration surface.

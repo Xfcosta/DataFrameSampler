@@ -6,36 +6,36 @@
 \toprule
 Dataset & Method & NN ratio & NN close rate & Disc. acc. & Disc. privacy & Utility lift & Hist. overlap & Cat. JSD \\
 \midrule
-adult & DFS manual & 1.394 & 0.006 & 0.833 & 0.333 & -0.007 & 0.968 & 0.009 \\
-adult & Independent columns & 1.467 & 0.003 & 0.867 & 0.267 & -0.012 & 0.969 & 0.002 \\
-adult & Row bootstrap & 0.000 & 1.000 & 0.696 & 0.608 & 0.014 & 0.974 & 0.002 \\
-bank\_marketing & DFS manual & 1.564 & 0.001 & 0.940 & 0.120 & -0.026 & 0.923 & 0.014 \\
-bank\_marketing & Independent columns & 1.861 & 0.000 & 0.985 & 0.030 & -0.032 & 0.976 & 0.001 \\
-bank\_marketing & Row bootstrap & 0.000 & 1.000 & 0.731 & 0.538 & 0.021 & 0.978 & 0.001 \\
-breast\_cancer & DFS manual & 1.229 & 0.000 & 0.915 & 0.170 & 0.012 & 0.932 & 0.000 \\
+adult & DFS manual & 1.270 & 0.025 & 0.806 & 0.389 & 0.004 & 0.950 & 0.008 \\
+adult & Independent columns & 1.473 & 0.003 & 0.869 & 0.263 & -0.012 & 0.973 & 0.002 \\
+adult & Row bootstrap & 0.000 & 1.000 & 0.696 & 0.608 & 0.014 & 0.975 & 0.003 \\
+bank\_marketing & DFS manual & 1.103 & 0.019 & 0.883 & 0.233 & -0.004 & 0.971 & 0.003 \\
+bank\_marketing & Independent columns & 1.828 & 0.000 & 0.986 & 0.028 & -0.024 & 0.981 & 0.001 \\
+bank\_marketing & Row bootstrap & 0.000 & 1.000 & 0.732 & 0.537 & 0.016 & 0.984 & 0.001 \\
+breast\_cancer & DFS manual & 1.253 & 0.016 & 0.801 & 0.398 & 0.017 & 0.860 & 0.000 \\
 breast\_cancer & Independent columns & 2.029 & 0.000 & 1.000 & 0.000 & -0.000 & 0.943 & 0.000 \\
 breast\_cancer & Row bootstrap & 0.000 & 1.000 & 0.351 & 0.702 & 0.017 & 0.946 & 0.000 \\
-heart\_disease & DFS manual & 1.069 & 0.030 & 0.632 & 0.736 & 0.022 & 0.918 & 0.001 \\
+heart\_disease & DFS manual & 1.264 & 0.023 & 0.670 & 0.659 & -0.077 & 0.785 & 0.009 \\
 heart\_disease & Independent columns & 1.151 & 0.007 & 0.632 & 0.736 & -0.022 & 0.934 & 0.001 \\
 heart\_disease & Row bootstrap & 0.000 & 1.000 & 0.352 & 0.703 & 0.066 & 0.937 & 0.001 \\
-pima\_diabetes & DFS manual & 0.984 & 0.046 & 0.516 & 0.967 & 0.009 & 0.932 & 0.001 \\
+pima\_diabetes & DFS manual & 1.441 & 0.010 & 0.792 & 0.416 & 0.012 & 0.818 & 0.000 \\
 pima\_diabetes & Independent columns & 1.196 & 0.020 & 0.711 & 0.577 & 0.027 & 0.950 & 0.001 \\
 pima\_diabetes & Row bootstrap & 0.000 & 1.000 & 0.388 & 0.777 & 0.163 & 0.948 & 0.000 \\
-synthetic\_correlated\_helpers & DFS manual & 2.202 & 0.046 & 0.739 & 0.521 & 0.011 & 0.930 & 0.001 \\
+synthetic\_correlated\_helpers & DFS manual & 1.533 & 0.048 & 0.600 & 0.800 & 0.006 & 0.923 & 0.001 \\
 synthetic\_correlated\_helpers & Independent columns & 6.328 & 0.006 & 0.918 & 0.164 & -0.000 & 0.944 & 0.001 \\
 synthetic\_correlated\_helpers & Row bootstrap & 0.000 & 1.000 & 0.424 & 0.848 & 0.028 & 0.944 & 0.000 \\
-synthetic\_high\_cardinality & DFS manual & 1.149 & 0.036 & 0.612 & 0.776 & -0.006 & 0.935 & 0.014 \\
+synthetic\_high\_cardinality & DFS manual & 1.231 & 0.052 & 0.591 & 0.818 & -0.017 & 0.902 & 0.016 \\
 synthetic\_high\_cardinality & Independent columns & 1.799 & 0.004 & 0.815 & 0.370 & -0.006 & 0.947 & 0.012 \\
 synthetic\_high\_cardinality & Row bootstrap & 0.000 & 1.000 & 0.436 & 0.873 & 0.006 & 0.960 & 0.007 \\
-synthetic\_rare\_categories & DFS manual & 1.610 & 0.044 & 0.676 & 0.648 & -0.006 & 0.948 & 0.001 \\
+synthetic\_rare\_categories & DFS manual & 1.825 & 0.038 & 0.709 & 0.582 & -0.045 & 0.791 & 0.013 \\
 synthetic\_rare\_categories & Independent columns & 2.213 & 0.038 & 0.724 & 0.552 & -0.073 & 0.950 & 0.001 \\
 synthetic\_rare\_categories & Row bootstrap & 0.000 & 1.000 & 0.403 & 0.806 & 0.072 & 0.951 & 0.002 \\
-synthetic\_sensitive\_identifier & DFS manual & 0.969 & 0.128 & 0.545 & 0.909 & 0.013 & 0.931 & 0.097 \\
+synthetic\_sensitive\_identifier & DFS manual & 1.043 & 0.056 & 0.555 & 0.891 & 0.013 & 0.854 & 0.093 \\
 synthetic\_sensitive\_identifier & Independent columns & 1.007 & 0.056 & 0.545 & 0.909 & 0.000 & 0.954 & 0.100 \\
 synthetic\_sensitive\_identifier & Row bootstrap & 0.000 & 1.000 & 0.545 & 0.909 & 0.153 & 0.946 & 0.100 \\
-titanic & DFS manual & 4.229 & 0.000 & 0.949 & 0.102 & 0.000 & 0.944 & 0.002 \\
-titanic & Independent columns & 4.898 & 0.000 & 0.961 & 0.077 & 0.000 & 0.980 & 0.002 \\
-titanic & Row bootstrap & 0.000 & 0.000 & 0.421 & 0.842 & 0.000 & 0.972 & 0.001 \\
+titanic & DFS manual & 1.804 & 0.000 & 0.597 & 0.806 & 0.022 & 0.946 & 0.010 \\
+titanic & Independent columns & 4.695 & 0.000 & 0.954 & 0.092 & 0.018 & 0.976 & 0.001 \\
+titanic & Row bootstrap & 0.000 & 0.000 & 0.438 & 0.877 & 0.072 & 0.972 & 0.001 \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}

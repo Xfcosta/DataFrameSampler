@@ -1,15 +1,17 @@
 \section{Conclusion}
 
-DataFrameSampler 2.0 is a lightweight mixed-type dataframe sampler based on
-iterative supervised NCA latent blocks and local mutual-neighbour transport. It
-provides a direct sklearn-style API and a CLI while keeping the modelling claim
-narrow: the method is simple, inspectable, and useful for example-data
-workflows, but it is heuristic and not privacy-preserving.
+DataFrameSampler 2.0 provides a lightweight mixed-type dataframe sampler based
+on iterative supervised NCA latent blocks and local mutual-neighbour transport.
+The resulting estimator has a direct sklearn-style API and a file-oriented CLI,
+but its modelling claim is intentionally narrow: it is a simple and inspectable
+tool for example-data workflows, not a formally private or globally optimized
+synthetic-data mechanism.
 
-The added mechanism and calibration diagnostics make the allowable conclusion
-more precise: categorical NCA blocks are supported only where they improve
-held-out categorical prediction against simple baselines, and decoder
-probabilities should be interpreted through their measured calibration quality.
-Future work should evaluate stability of the iterative latent construction,
-constraint-aware decoding, stronger high-cardinality handling, and alternatives
-to independent per-column decoders.
+The mechanism and calibration diagnostics make this conclusion more precise.
+Categorical NCA blocks are supported only where they improve held-out
+categorical prediction against simple baselines, decoder probabilities should be
+interpreted through their measured calibration quality, and manifold evidence
+should be read as an insertion-stress diagnostic rather than as a preservation
+guarantee. Future work should therefore focus on stability of the iterative
+latent construction, constraint-aware decoding, stronger high-cardinality
+handling, and alternatives to independent per-column decoders.

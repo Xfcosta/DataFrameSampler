@@ -563,7 +563,7 @@ def write_manifold_validation_table(
     return write_latex(
         df,
         Path(tables_dir) / "manifold_validation.tex",
-        "Frozen-Isomap manifold validation in DataFrameSampler latent space. Out-hull rate is the fraction of generated points outside the training convex hull. Out-hull accept is the fraction of out-of-hull generated points with insertion stress no larger than the held-out real 95th percentile. Validation uses at most 250 evaluated points per distribution.",
+        "Frozen-Isomap manifold validation in DataFrameSampler latent space. Out-hull rate is the fraction of generated points outside the training convex hull. Out-hull accept is the fraction of out-of-hull generated points with insertion stress no larger than the held-out real 95th percentile. The validation CSV records the training and evaluated-point caps used for each run.",
         "tab:manifold-validation",
         float_format="%.3f",
         full_width=True,
@@ -605,7 +605,7 @@ def write_mechanism_validation_table(
     return write_latex(
         df,
         Path(tables_dir) / "mechanism_validation.tex",
-        "Mechanism validation for categorical NCA blocks. Each row aggregates held-out categorical prediction tests over categorical columns. NCA-majority and NCA-PCA are accuracy differences against majority and same-width PCA baselines.",
+        "Mechanism validation for categorical NCA blocks. Each row aggregates capped held-out categorical prediction tests over categorical columns. NCA-majority and NCA-PCA are accuracy differences against majority and same-width PCA baselines.",
         "tab:mechanism-validation",
         float_format="%.3f",
         full_width=True,

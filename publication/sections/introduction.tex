@@ -1,30 +1,45 @@
 \section{Introduction}
 
-Tabular datasets remain central in business analytics, health informatics,
-scientific computing, and machine learning. Developers and analysts often need
-example tables that resemble existing data for tests, dashboards, training
-material, and demonstrations. Direct reuse of source data may be inappropriate
-because of governance, licensing, privacy, or operational constraints.
+Tabular datasets remain a central representation in business analytics, health
+informatics, scientific computing, and applied machine learning, and many
+software workflows require example tables that preserve at least some schema and
+distributional properties of an existing source table. However, direct reuse of
+source records can be infeasible even when the intended use is modest, because
+governance rules, licensing constraints, privacy concerns, or operational
+separation may prevent developers from placing real rows in tests, dashboards,
+training material, or notebooks. The resulting need is therefore not identical
+to the classical problem of producing a high-fidelity or formally private
+synthetic release. It is a narrower constructive problem: given a mixed-type
+dataframe, produce example rows that are useful enough to support low-stakes
+workflows while keeping the modelling assumptions visible.
 
-DataFrameSampler targets this pragmatic setting. It is not a formal privacy
-mechanism and it is not a claim of state-of-the-art synthetic-data fidelity.
-Instead, it provides a small, inspectable generator whose assumptions are
-visible in ordinary Python code.
+DataFrameSampler targets this pragmatic setting. In principle, one could use a
+large generative model, a disclosure-control system, or a task-specific
+oversampler, but these alternatives often introduce additional dependencies,
+implicit objectives, or claims that are stronger than the use case requires. We
+therefore make a conservative design choice: the method should be small,
+inspectable, and explicit about its failure modes, even if this excludes formal
+optimality and formal privacy guarantees. In other words, the paper is not a
+claim of state-of-the-art synthetic-data fidelity; it is an argument that a
+structured and auditable heuristic can be useful when the target workflow is
+example generation rather than data release.
 
 Version 2.0 uses a supervised latent representation throughout. Non-binary
-numeric columns are standardized. Every categorical
+numeric columns are median-imputed and standardized, while every categorical
 column, including booleans and numeric two-valued columns such as $0/1$, is
-given its own NCA block learned from the remaining columns. Generated latent
-points are decoded back to the original schema with numeric inverse scaling and
-probabilistic categorical classifiers.
+assigned its own NCA block learned from the remaining columns. Generated latent
+points are then mapped back to the original schema by inverse numeric scaling
+and probabilistic categorical classification. This construction is deliberately
+modular: the encoder defines local supervised geometry, the transport step
+constructs candidate latent rows, and the decoder expresses uncertainty over
+observed categorical labels.
 
-The contributions are:
-\begin{itemize}
-  \item a direct \texttt{DataFrameSampler} estimator with \texttt{fit},
-  \texttt{transform}, \texttt{inverse\_transform}, and \texttt{generate};
-  \item an iterative per-categorical-column NCA latent construction;
-  \item a local mutual-neighbour transport generator in the learned space;
-  \item claim-specific diagnostics for distributional similarity, downstream
-  utility, neighbour-distance behaviour, NCA-block mechanism evidence, decoder
-  calibration, and extrapolative manifold consistency.
-\end{itemize}
+The contributions are fourfold. First, we provide a direct
+\texttt{DataFrameSampler} estimator with \texttt{fit}, \texttt{transform},
+\texttt{inverse\_transform}, and \texttt{generate}. Second, we define an
+iterative per-categorical-column NCA latent construction for mixed-type
+dataframes. Third, we use a local mutual-neighbour transport rule in the learned
+space as an inspectable generation mechanism. Fourth, we pair the method with
+claim-specific diagnostics for distributional similarity, downstream utility,
+neighbour-distance behaviour, NCA-block mechanism evidence, decoder
+calibration, and extrapolative manifold consistency.

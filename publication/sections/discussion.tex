@@ -2,16 +2,25 @@
 
 DataFrameSampler 2.0 trades global optimality for a modular and inspectable
 construction. Each categorical block is optimized independently, so the
-concatenated space has no joint objective. Iterative refinement can improve the
-context available to later projections, but it has no monotonic guarantee.
+concatenated space has no joint objective that would guarantee compatibility
+across all blocks. Iterative refinement can improve the context available to
+later projections, however it can also propagate earlier approximation errors,
+and there is no monotonic criterion that certifies improvement across
+iterations.
 
-The decoder is also mismatched to the encoder: random forests approximate
-$p(C_j \mid z_j)$ independently for each categorical column. Calibration
-diagnostics expose probability quality, but they do not impose calibration or
-cross-column consistency. Generated rows can therefore violate constraints that
-were not learned by the local geometry or the independent decoders.
+The decoder is also mismatched to the encoder in a deliberate but consequential
+way. Random forests approximate $p(C_j \mid z_j)$ independently for each
+categorical column, and calibration diagnostics expose the quality of those
+probabilities without enforcing either calibration or cross-column consistency.
+It can therefore occur that a generated row is locally plausible in each
+categorical block but violates a structured constraint that spans several
+columns. This is not a defect relative to a formal objective, because no such
+objective is being claimed; it is a boundary of the construction.
 
 The generator is intentionally simple. A mutual-neighbour displacement is easy
-to inspect, but it is a heuristic, not a formal manifold sampler. This makes the
-method suitable for tests, demonstrations, notebooks, and exploratory workflows,
-not for regulated privacy-preserving data release.
+to inspect because it can be described by an anchor, a neighbour chain, and a
+latent displacement, but that same simplicity means the method is a heuristic
+rather than a formal manifold sampler. The appropriate interpretation is
+therefore conservative: DataFrameSampler is suitable for tests, demonstrations,
+notebooks, and exploratory workflows where auditable example rows are useful,
+but it is not a regulated privacy-preserving data release mechanism.

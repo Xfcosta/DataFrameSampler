@@ -1,0 +1,34 @@
+\begin{table*}
+\caption{Random-forest decoder calibration diagnostics by dataset and categorical-cardinality bucket. These are boundary diagnostics for probabilistic decoding rather than guarantees of calibrated sampling.}
+\label{tab:decoder-calibration}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{llrrrrrrr}
+\toprule
+Dataset & Cardinality & Columns & Acc. & Top conf. & Conf.-acc. & NLL & Brier & ECE \\
+\midrule
+adult & binary & 2 & 0.608 & 0.844 & 0.236 & 1.831 & 0.561 & 0.236 \\
+adult & low & 4 & 0.847 & 0.873 & 0.026 & 1.319 & 0.238 & 0.047 \\
+adult & medium & 3 & 0.899 & 0.909 & 0.010 & 0.835 & 0.146 & 0.021 \\
+bank\_marketing & binary & 3 & 0.783 & 0.846 & 0.063 & 0.646 & 0.303 & 0.084 \\
+bank\_marketing & low & 7 & 0.934 & 0.947 & 0.014 & 0.406 & 0.099 & 0.023 \\
+bank\_marketing & medium & 1 & 0.412 & 0.596 & 0.184 & 6.806 & 0.809 & 0.184 \\
+breast\_cancer & binary & 1 & 0.977 & 0.987 & 0.010 & 0.086 & 0.045 & 0.016 \\
+heart\_disease & binary & 4 & 0.692 & 0.830 & 0.138 & 0.776 & 0.407 & 0.166 \\
+heart\_disease & low & 4 & 0.989 & 0.978 & -0.011 & 0.128 & 0.018 & 0.017 \\
+pima\_diabetes & binary & 1 & 0.667 & 0.819 & 0.152 & 0.868 & 0.407 & 0.152 \\
+synthetic\_correlated\_helpers & binary & 1 & 0.961 & 0.957 & -0.005 & 0.079 & 0.050 & 0.022 \\
+synthetic\_correlated\_helpers & low & 2 & 0.936 & 0.940 & 0.004 & 0.598 & 0.100 & 0.031 \\
+synthetic\_high\_cardinality & binary & 1 & 0.861 & 0.858 & -0.003 & 0.352 & 0.219 & 0.052 \\
+synthetic\_high\_cardinality & high & 1 & 0.694 & 0.612 & -0.083 & 3.235 & 0.419 & 0.092 \\
+synthetic\_high\_cardinality & low & 2 & 0.756 & 0.832 & 0.077 & 1.286 & 0.330 & 0.087 \\
+synthetic\_rare\_categories & binary & 1 & 0.761 & 0.853 & 0.092 & 0.835 & 0.307 & 0.095 \\
+synthetic\_rare\_categories & low & 2 & 0.658 & 0.797 & 0.139 & 1.435 & 0.420 & 0.150 \\
+synthetic\_sensitive\_identifier & binary & 1 & 0.983 & 0.979 & -0.005 & 0.223 & 0.027 & 0.009 \\
+synthetic\_sensitive\_identifier & high & 1 & 0.000 & 0.003 & 0.003 & 34.539 & 0.002 & 0.003 \\
+synthetic\_sensitive\_identifier & low & 2 & 0.378 & 0.615 & 0.238 & 3.592 & 0.820 & 0.244 \\
+titanic & binary & 4 & 0.891 & 0.912 & 0.021 & 0.412 & 0.173 & 0.050 \\
+titanic & low & 3 & 0.987 & 0.982 & -0.005 & 0.038 & 0.021 & 0.016 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table*}

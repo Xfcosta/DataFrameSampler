@@ -14,7 +14,7 @@ from sklearn.metrics import accuracy_score, balanced_accuracy_score, f1_score
 from dataframe_sampler import DataFrameSampler
 
 from .datasets import DatasetExperimentConfig
-from .manifold_validation import _train_test_dataframe_split
+from .manifold_validation import _train_test_dataframe_split, deterministic_dataframe_sample
 
 
 MECHANISM_VALIDATION_COLUMNS = [
@@ -66,6 +66,8 @@ def run_mechanism_validation_for_config(
     results_dir: str | Path,
     sampler_config: Mapping[str, Any] | None = None,
     test_size: float = 0.3,
+    max_train_rows: int = 800,
+    max_test_rows: int = 250,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     if len(dataframe) < 4:
         mechanism = _empty_mechanism_frame(config.dataset_name)
@@ -76,6 +78,16 @@ def run_mechanism_validation_for_config(
             target_column=config.target_column,
             test_size=test_size,
             random_state=config.random_state,
+        )
+        train = deterministic_dataframe_sample(
+            train,
+            max_rows=max_train_rows,
+            random_state=config.random_state,
+        )
+        test = deterministic_dataframe_sample(
+            test,
+            max_rows=max_test_rows,
+            random_state=config.random_state + 1,
         )
         mechanism, calibration = mechanism_validation_report(
             train=train,

@@ -43,6 +43,7 @@ def run_manifold_validation_for_config(
     results_dir: str | Path,
     sampler_config: Mapping[str, Any] | None = None,
     max_eval_points: int = 250,
+    max_train_rows: int = 800,
     test_size: float = 0.3,
     isomap_neighbors: int = 10,
     insertion_neighbors: int | None = None,
@@ -59,6 +60,11 @@ def run_manifold_validation_for_config(
     )
     if len(train) < 3 or real_test.empty:
         return _empty_validation_frame(config.dataset_name)
+    train = deterministic_dataframe_sample(
+        train,
+        max_rows=max_train_rows,
+        random_state=config.random_state,
+    )
 
     sampler_kwargs = dict(sampler_config or config.manual_sampler_config)
     sampler_kwargs.setdefault("random_state", config.random_state)
@@ -409,6 +415,14 @@ def deterministic_row_sample(values: np.ndarray, *, max_rows: int, random_state:
     rng = np.random.default_rng(random_state)
     indices = np.sort(rng.choice(len(values), size=max_rows, replace=False))
     return values[indices].copy()
+
+
+def deterministic_dataframe_sample(dataframe: pd.DataFrame, *, max_rows: int, random_state: int) -> pd.DataFrame:
+    if max_rows < 0:
+        raise ValueError("max_rows must be non-negative.")
+    if len(dataframe) <= max_rows:
+        return dataframe.reset_index(drop=True).copy()
+    return dataframe.sample(n=max_rows, random_state=random_state).sort_index().reset_index(drop=True)
 
 
 def _point_rows(

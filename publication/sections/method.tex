@@ -2,32 +2,46 @@
 
 \subsection{Latent Construction}
 
-Let $D$ be a dataframe with $m$ rows. Columns are split by a simple policy:
-numeric columns with more than two non-missing values are continuous; all other
-columns are categorical. Thus binary numeric, boolean, and string columns are
-categorical targets.
+Let $D$ be a dataframe with $m$ rows. We first impose an explicit type policy,
+because mixed-type generation is otherwise ambiguous at the boundary between
+binary numeric variables and categorical labels. Numeric columns with more than
+two non-missing values are treated as continuous; all other columns are treated
+as categorical. Thus binary numeric, boolean, and string columns are categorical
+targets, which prevents a stored $0/1$ code from being interpreted as a
+continuous coordinate.
 
-Continuous columns are median-imputed and standardized. Categorical columns are
-one-hot encoded for context. For each categorical column $C_j$, DataFrameSampler
-removes $C_j$'s own current block from the context and fits
+Continuous columns are median-imputed and standardized, while categorical
+columns are one-hot encoded to provide an initial context. For each categorical
+column $C_j$, DataFrameSampler removes $C_j$'s own current block from the
+context and fits
 \[
   z_j = f_j(X_{-j}) \in \mathbb{R}^{k_j}
 \]
 with scikit-learn Neighborhood Components Analysis using the labels of $C_j$ as
-the supervised target. The learned block replaces the previous one-hot block.
-This process is repeated for a configured number of iterations, yielding
+the supervised target. The learned block then replaces the previous one-hot
+block, so later projections see a context that contains already-compressed
+categorical representations rather than only sparse indicators. This process is
+repeated for a configured number of iterations, yielding
 \[
   Z = [X^{num} \mid z_1 \mid \cdots \mid z_q].
 \]
+In principle, the resulting matrix is not the solution to a global metric
+learning objective, because each categorical block is optimized independently.
+It is instead a recomposed empirical latent space whose usefulness must be
+checked by downstream diagnostics.
 
 \subsection{Decoding}
 
 The inverse map is approximate rather than algebraic. Continuous columns are
-inverse-scaled. For each categorical column, a \texttt{RandomForestClassifier}
-is trained from its final block $z_j$ to the observed category labels. During
-\texttt{inverse\_transform}, \texttt{predict\_proba} provides a distribution
-over fitted categories. The decoder either samples from that distribution or
-uses the most likely category.
+inverse-scaled, but categorical columns require a learned decoder because the
+NCA block is not an invertible encoding of the original labels. For each
+categorical column, a \texttt{RandomForestClassifier} is trained from its final
+block $z_j$ to the observed category labels. During \texttt{inverse\_transform},
+\texttt{predict\_proba} provides an empirical distribution over fitted
+categories, and the decoder either samples from that distribution or selects
+the most likely category. Note that these probabilities are model outputs, not
+calibrated likelihoods by construction; their quality is therefore evaluated as
+a boundary diagnostic.
 
 \subsection{Generation}
 
@@ -38,18 +52,20 @@ neighbour $C$ of $B$. It then applies
   A' = A + \lambda(C - B).
 \]
 The resulting latent point is clipped to fitted coordinate ranges and decoded
-back to a dataframe row. This is a local translation heuristic. It assumes the
-supervised latent space is locally linear enough for displacement transfer to
-remain plausible, but the method does not guarantee manifold preservation or
-constraint satisfaction.
+back to a dataframe row. This operation can be interpreted as local displacement
+transfer: the vector from $B$ to $C$ is treated as a small movement that may
+also be meaningful near $A$. However, this is only a local translation
+heuristic. It assumes that the supervised latent space is locally linear enough
+for displacement transfer to remain plausible, but it does not guarantee
+manifold preservation, marginal fidelity, or constraint satisfaction.
 
 \subsection{Manifold Validation}
 
 We evaluate extrapolation in the fitted latent space rather than in raw mixed
-columns. For a training latent matrix $Z_{train}$ and generated point
-$\tilde z$, the convex-hull test asks whether $\tilde z$ can be represented as
-a convex combination of training rows. Operationally, we solve the feasibility
-problem
+columns, because the generator itself operates in that numerical space. For a
+training latent matrix $Z_{train}$ and generated point $\tilde z$, the
+convex-hull test asks whether $\tilde z$ can be represented as a convex
+combination of training rows. Operationally, we solve the feasibility problem
 \[
   Z_{train}^{\top}\lambda=\tilde z,\qquad
   \lambda_i \ge 0,\qquad
@@ -59,10 +75,11 @@ Before solving, the training matrix is reduced to its affine rank with SVD so
 degenerate latent spaces are handled consistently.
 
 Manifold consistency is tested with a frozen Isomap geometry
-\cite{tenenbaum2000isomap}. Isomap is fit on training latent rows only. A
-held-out real or generated point is inserted by connecting it to nearest
-training neighbours, computing graph-geodesic distances to the fixed training
-graph, and embedding it with the fitted Isomap out-of-sample transform
+\cite{tenenbaum2000isomap}. Isomap is fit on training latent rows only, so the
+reference geometry is not allowed to adapt to generated points. A held-out real
+or generated point is inserted by connecting it to nearest training neighbours,
+computing graph-geodesic distances to the fixed training graph, and embedding
+it with the fitted Isomap out-of-sample transform
 \cite{bengio2003outofsample}. The normalized pointwise insertion stress is
 \[
   s(\tilde z)=
@@ -72,5 +89,7 @@ graph, and embedding it with the fitted Isomap out-of-sample transform
   },
 \]
 where $g_i$ is the inserted graph distance to training point $i$ and
-$\tilde e$ is the out-of-sample Isomap coordinate. This is an empirical
-criterion, not a guarantee.
+$\tilde e$ is the out-of-sample Isomap coordinate. In other words, the test asks
+whether a new point can be placed into the fixed manifold geometry without
+creating large distance distortions. This is an empirical criterion, not a
+guarantee.
