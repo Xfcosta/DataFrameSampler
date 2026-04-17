@@ -142,17 +142,19 @@ def _projection_frame(values: np.ndarray) -> pd.DataFrame:
 
 def _scatter_projection(ax, projection: pd.DataFrame, *, color: str, label: str, title: str, style: dict):
     if style["task"] == "classification":
-        for marker_label, marker in style["markers"].items():
+        for marker_label, marker_style in style["markers"].items():
             mask = style["labels"] == marker_label
             if mask.any():
+                filled = marker_style["filled"]
                 ax.scatter(
                     projection.loc[mask, "dim1"],
                     projection.loc[mask, "dim2"],
                     s=18,
                     alpha=0.52,
-                    color=color,
-                    marker=marker,
-                    linewidths=0.8 if marker == "x" else 0,
+                    facecolors=color if filled else "white",
+                    edgecolors=color,
+                    marker="o",
+                    linewidths=0.8 if not filled else 0,
                     label=f"{label} {marker_label}",
                 )
     else:
@@ -177,11 +179,15 @@ def _target_marker_style(dataframe: pd.DataFrame, *, target_column: str | None) 
     clean = target.dropna()
     unique_values = list(pd.unique(clean))
     if len(unique_values) == 2:
-        ordered = sorted(unique_values, key=lambda value: str(value))
+        negative, positive = _negative_positive_values(unique_values)
         return {
             "task": "classification",
-            "labels": target.map({ordered[0]: str(ordered[0]), ordered[1]: str(ordered[1])}).fillna("missing"),
-            "markers": {str(ordered[0]): "o", str(ordered[1]): "x", "missing": "o"},
+            "labels": target.map({negative: str(negative), positive: str(positive)}).fillna("missing"),
+            "markers": {
+                str(negative): {"filled": False},
+                str(positive): {"filled": True},
+                "missing": {"filled": False},
+            },
         }
     if pd.api.types.is_numeric_dtype(target):
         return {"task": "regression", "sizes": _regression_marker_sizes(target)}
@@ -200,3 +206,23 @@ def _regression_marker_sizes(target: pd.Series) -> pd.Series:
         return pd.Series(18.0, index=target.index)
     scaled = (numeric - minimum) / (maximum - minimum)
     return 10.0 + 34.0 * scaled
+
+
+def _negative_positive_values(values: list) -> tuple:
+    if all(isinstance(value, (bool, np.bool_)) for value in values):
+        return False, True
+    numeric = pd.to_numeric(pd.Series(values), errors="coerce")
+    if numeric.notna().all():
+        order = np.argsort(numeric.to_numpy(dtype=float))
+        return values[int(order[0])], values[int(order[-1])]
+
+    positive_tokens = ("1", "true", "yes", "y", "positive", "pos", "case", "malignant")
+    negative_tokens = ("0", "false", "no", "n", "negative", "neg", "control", "benign")
+    by_token = {str(value).strip().lower(): value for value in values}
+    positive_matches = [by_token[token] for token in positive_tokens if token in by_token]
+    negative_matches = [by_token[token] for token in negative_tokens if token in by_token]
+    if positive_matches and negative_matches:
+        return negative_matches[0], positive_matches[0]
+
+    ordered = sorted(values, key=lambda value: str(value))
+    return ordered[0], ordered[1]

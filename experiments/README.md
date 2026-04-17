@@ -11,10 +11,9 @@ preparation helpers for the paper.
   helpers, high-cardinality categoricals, rare categories, and sensitive
   identifiers.
 - `datasets.py`: dataset-specific parameters, including sampler configs,
-  direct numeric mappings, redundant columns to drop, vectorizing columns,
-  target columns, and row limits.
+  redundant columns to drop, target columns, and row limits.
 - `workflow.py`: reusable notebook workflow for loading, profiling, starter
-  sampling, baseline comparison, and output writing.
+  sampling, baseline comparison, manifold validation, and output writing.
 - `make_tables.py`: reusable table-generation functions for publication
   artifacts.
 - `plot_results.py`: reusable figure-generation functions for publication
@@ -22,6 +21,8 @@ preparation helpers for the paper.
 - `numeric_projection.py`: fitted-sampler numeric transformations and
   original/generated/superimposed 2D projection plots. It uses UMAP when
   available and PCA as a fallback.
+- `manifold_validation.py`: convex-hull and frozen-Isomap insertion-stress
+  diagnostics in the fitted DataFrameSampler latent space.
 - `predictive.py`: target-choice reporting and real-test predictive
   comparisons between models trained on real rows and models trained on
   synthetic rows generated from the real training split.
@@ -37,6 +38,8 @@ The primary comparison CSVs report four main measures: nearest-neighbor
 distance against natural real-data neighbor distances, real-versus-synthetic
 discrimination, utility lift from adding generated rows to real training data,
 and distribution similarity through histogram overlap/divergence summaries.
+The manifold validation CSVs report pointwise held-out-real and generated
+insertion stress plus convex-hull membership in the sampler latent space.
 
 ## Current Datasets
 
@@ -72,8 +75,8 @@ The notebooks are intentionally thin. Each notebook selects a dataset key from
 plots pairwise features only after the configured sampler has reduced every
 column to its numeric representation, states the configured target column, calls
 `run_configured_dataset_experiment`, and displays the returned profile, starter
-sample report, numeric projection triptych, baseline comparison, and predictive
-target evaluation.
+sample report, numeric projection triptych, baseline comparison, manifold
+validation summary, and predictive target evaluation.
 To add another dataset, add a `DatasetExperimentConfig`, create a small
 notebook that changes `DATASET_NAME`, then rerun the table and figure helpers:
 

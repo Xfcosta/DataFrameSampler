@@ -13,6 +13,7 @@ from dataframe_sampler import DataFrameSampler
 from .compare import run_dataset_comparison
 from .datasets import DatasetExperimentConfig
 from .instrumentation import measure_call
+from .manifold_validation import run_manifold_validation_for_config
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,7 @@ class DatasetExperimentResult:
     profile: pd.DataFrame
     starter_run: SamplerRun
     comparison: pd.DataFrame
+    manifold_validation: pd.DataFrame
     paths: ExperimentPaths
 
 
@@ -241,11 +243,21 @@ def run_configured_dataset_experiment(
         n_samples=config.n_generated,
         random_state=config.random_state,
     )
+    manifold_validation = run_manifold_validation_for_config(
+        config,
+        work,
+        results_dir=paths.results_dir,
+        sampler_config=sampler_config_with_random_state(
+            config.manual_sampler_config,
+            config.random_state,
+        ),
+    )
     return DatasetExperimentResult(
         dataframe=dataframe,
         working_dataframe=work,
         profile=dataset_profile(dataframe),
         starter_run=starter_run,
         comparison=comparison,
+        manifold_validation=manifold_validation,
         paths=paths,
     )

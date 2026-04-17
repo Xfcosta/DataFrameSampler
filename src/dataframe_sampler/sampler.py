@@ -444,7 +444,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
                 "n_estimators": 100,
                 "min_samples_leaf": 1,
                 "random_state": self.random_state,
-                "n_jobs": 1,
+                "n_jobs": -1,
             }
             kwargs.update(self.decoder_kwargs)
             decoder = RandomForestClassifier(**kwargs)

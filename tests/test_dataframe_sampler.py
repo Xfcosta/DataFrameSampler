@@ -161,6 +161,21 @@ def test_inverse_transform_sample_false_is_deterministic_and_valid():
     assert set(first["flag"]).issubset(set(df["flag"]))
 
 
+def test_random_forest_decoders_use_all_cores_by_default_and_allow_override():
+    df = make_mixed_dataframe()
+
+    default_sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=17).fit(df)
+    override_sampler = DataFrameSampler(
+        n_iterations=1,
+        n_neighbours=3,
+        random_state=17,
+        decoder_kwargs={"n_jobs": 2},
+    ).fit(df)
+
+    assert {decoder.n_jobs for decoder in default_sampler.decoders_.values()} == {-1}
+    assert {decoder.n_jobs for decoder in override_sampler.decoders_.values()} == {2}
+
+
 def test_fixed_random_state_reproducible_generation():
     df = make_mixed_dataframe()
     sampler1 = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=8).fit(df)

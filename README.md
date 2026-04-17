@@ -135,6 +135,7 @@ Constructor arguments:
 - `nca_kwargs`: optional keyword arguments for
   `NeighborhoodComponentsAnalysis`.
 - `decoder_kwargs`: optional keyword arguments for `RandomForestClassifier`.
+  Decoders default to `n_jobs=-1` to use all available cores.
 
 High-cardinality categorical columns are not dropped automatically.
 DataFrameSampler warns and proceeds, assuming such columns have been

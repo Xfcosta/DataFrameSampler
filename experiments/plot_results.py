@@ -17,6 +17,7 @@ FIGURES = ROOT / "figures"
 METHOD_LABELS = {
     "dataframe_sampler_default": "DFS default",
     "dataframe_sampler_manual": "DFS manual",
+    "latent_interpolation": "Latent interpolation",
     "row_bootstrap": "Bootstrap",
     "independent_columns": "Independent",
     "gaussian_copula_empirical": "Gaussian copula",
@@ -70,6 +71,19 @@ def load_comparisons(results_dir: str | Path = RESULTS) -> pd.DataFrame:
         ordered=True,
     )
     return data.sort_values(["dataset", "method_label"])
+
+
+def load_manifold_validations(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    results_path = Path(results_dir)
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(results_path.glob("*_manifold_validation.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No *_manifold_validation.csv files found. Run the notebooks first.")
+    data = pd.concat(frames, ignore_index=True)
+    data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
+    return data
 
 
 def plot_baseline_similarity(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
@@ -349,6 +363,61 @@ def plot_synthetic_category_stress(data: pd.DataFrame, figures_dir: str | Path =
     return output
 
 
+def plot_manifold_validation_stress(
+    data: pd.DataFrame,
+    figures_dir: str | Path = FIGURES,
+    *,
+    max_datasets: int = 6,
+) -> Path:
+    data = data.copy()
+    data["group"] = data.apply(_manifold_group_label, axis=1)
+    selected = [
+        dataset
+        for dataset in data["dataset"].drop_duplicates().tolist()
+        if not data[(data["dataset"] == dataset) & (data["group"] == "DFS out-hull")].empty
+    ]
+    if not selected:
+        selected = data["dataset"].drop_duplicates().tolist()
+    selected = selected[:max_datasets]
+    subset = data[data["dataset"].isin(selected) & data["stress"].notna()].copy()
+    if subset.empty:
+        raise FileNotFoundError("No finite manifold validation stress values found.")
+
+    groups = ["Held-out real", "DFS generated", "DFS out-hull", "Latent interpolation"]
+    fig, axes = plt.subplots(len(selected), 1, figsize=(10, max(3.2, 2.2 * len(selected))), sharex=True)
+    if len(selected) == 1:
+        axes = [axes]
+    for ax, dataset in zip(axes, selected):
+        frame = subset[subset["dataset"] == dataset]
+        values = [frame.loc[frame["group"] == group, "stress"].dropna().to_numpy() for group in groups]
+        labels = [group for group, group_values in zip(groups, values) if len(group_values)]
+        values = [group_values for group_values in values if len(group_values)]
+        ax.boxplot(values, tick_labels=labels, orientation="horizontal", showfliers=False)
+        ax.set_title(dataset)
+        ax.grid(axis="x", alpha=0.25)
+    axes[-1].set_xlabel("Normalized frozen-Isomap insertion stress")
+    fig.suptitle("Manifold validation: held-out real stress versus generated stress")
+    fig.tight_layout()
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "manifold_validation_stress.pdf"
+    fig.savefig(output, bbox_inches="tight")
+    plt.close(fig)
+    return output
+
+
+def _manifold_group_label(row: pd.Series) -> str:
+    if row["sample_type"] == "real_test":
+        return "Held-out real"
+    if row["method"] == "dataframe_sampler_manual" and bool(row.get("out_hull", False)):
+        return "DFS out-hull"
+    if row["method"] == "dataframe_sampler_manual":
+        return "DFS generated"
+    if row["method"] == "latent_interpolation":
+        return "Latent interpolation"
+    return str(row.get("method_label", row["method"]))
+
+
 def add_box(ax, x, y, title, body, width=0.24, height=0.25):
     patch = FancyBboxPatch(
         (x, y),
@@ -396,6 +465,10 @@ def generate_all_figures(
                 plot_synthetic_category_stress(data, figures_dir),
             ]
         )
+    try:
+        outputs.append(plot_manifold_validation_stress(load_manifold_validations(results_dir), figures_dir))
+    except FileNotFoundError:
+        pass
     return outputs
 
 

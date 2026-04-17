@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from experiments.manifold_validation import summarize_manifold_validation
 from experiments.synthetic_data import SYNTHETIC_DATASETS, materialize_synthetic_datasets
 
 
@@ -96,6 +97,7 @@ METHOD_LABELS = {
     "independent_columns": "Independent columns",
     "gaussian_copula_empirical": "Gaussian copula",
     "stratified_columns": "Stratified columns",
+    "latent_interpolation": "Latent interpolation",
 }
 
 DEFAULT_DATASETS = [
@@ -179,6 +181,18 @@ def load_comparisons(results_dir: str | Path = RESULTS) -> pd.DataFrame:
     ]:
         if column not in data:
             data[column] = pd.NA
+    return data
+
+
+def load_manifold_validations(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(Path(results_dir).glob("*_manifold_validation.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No manifold validation files found. Run the notebooks first.")
+    data = pd.concat(frames, ignore_index=True)
+    data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
     return data
 
 
@@ -492,13 +506,60 @@ def sensitive_overlap_count(
     return str(count)
 
 
+def write_manifold_validation_table(
+    validations: pd.DataFrame,
+    *,
+    tables_dir: str | Path = TABLES,
+) -> Path:
+    summary = summarize_manifold_validation(validations)
+    summary["method_label"] = summary["method"].map(METHOD_LABELS).fillna(summary["method"])
+    df = summary[
+        [
+            "dataset",
+            "method_label",
+            "out_hull_rate",
+            "real_stress_median",
+            "real_stress_q95",
+            "generated_stress_median",
+            "out_hull_stress_median",
+            "out_hull_acceptance_at_real_q95",
+        ]
+    ].copy()
+    df = df.rename(
+        columns={
+            "dataset": "Dataset",
+            "method_label": "Method",
+            "out_hull_rate": "Out-hull rate",
+            "real_stress_median": "Real stress med.",
+            "real_stress_q95": "Real stress q95",
+            "generated_stress_median": "Gen. stress med.",
+            "out_hull_stress_median": "Out-hull stress med.",
+            "out_hull_acceptance_at_real_q95": "Out-hull accept.",
+        }
+    )
+    return write_latex(
+        df,
+        Path(tables_dir) / "manifold_validation.tex",
+        "Frozen-Isomap manifold validation in DataFrameSampler latent space. Out-hull rate is the fraction of generated points outside the training convex hull. Out-hull accept is the fraction of out-of-hull generated points with insertion stress no larger than the held-out real 95th percentile. Validation uses at most 250 evaluated points per distribution.",
+        "tab:manifold-validation",
+        float_format="%.3f",
+        full_width=True,
+    )
+
+
 def write_ablation_table(*, tables_dir: str | Path = TABLES) -> Path:
     rows = [
         {
-            "Component": "Helper-column vectorization",
-            "Expected effect": "Better categorical context",
-            "Observed effect": "Planned",
-            "Claim status": "Not yet tested",
+            "Component": "Per-column NCA blocks",
+            "Expected effect": "Supervised categorical geometry",
+            "Observed effect": "Unit tested",
+            "Claim status": "Mechanism plausible",
+        },
+        {
+            "Component": "Frozen-Isomap validation",
+            "Expected effect": "Extrapolation evidence",
+            "Observed effect": "Implemented",
+            "Claim status": "Empirical diagnostic",
         },
         {
             "Component": "Mutual-neighbour fallback",
@@ -595,7 +656,7 @@ def generate_all_tables(
     Path(tables_dir).mkdir(parents=True, exist_ok=True)
     materialize_synthetic_datasets(processed_dir)
     comparisons = load_comparisons(results_dir)
-    return [
+    outputs = [
         write_dataset_table(
             processed_dir=processed_dir,
             tables_dir=tables_dir,
@@ -616,6 +677,17 @@ def generate_all_tables(
         write_ablation_table(tables_dir=tables_dir),
         write_limitations_table(tables_dir=tables_dir),
     ]
+    try:
+        outputs.insert(
+            -2,
+            write_manifold_validation_table(
+                load_manifold_validations(results_dir),
+                tables_dir=tables_dir,
+            ),
+        )
+    except FileNotFoundError:
+        pass
+    return outputs
 
 
 def main() -> None:

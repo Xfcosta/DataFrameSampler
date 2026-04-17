@@ -6,11 +6,32 @@ deep generative models such as CTGAN \cite{chawla2002smote,xu2019ctgan}. Larger
 systems such as SDV provide practical interfaces for several model families
 \cite{patki2016sdv}.
 
-DataFrameSampler sits closer to local interpolation and metric-learning
-methods. It uses scikit-learn components, including Neighborhood Components
-Analysis and nearest-neighbour search \cite{pedregosa2011scikit}. Optional ANN
-backends such as NN-Descent, HNSW, and Annoy can be used for larger datasets
+Classical oversampling is often interpolation-based. SMOTE constructs minority
+examples along line segments between neighbours \cite{chawla2002smote}, which
+keeps samples in familiar convex regions of the observed feature space.
+Manifold-aware oversampling was proposed to address cases where straight-line
+interpolation is a poor model of the data support, including early
+manifold-based sampling and later manifold-conformance work
+\cite{nguyen2005manifold,bellinger2018manifold}. Recent augmentation methods
+make the local-geometry connection more explicit: FOMA samples from estimated
+first-order tangent planes, while CEMS adds second-order curvature information
+for regression augmentation \cite{kaufman2024foma,kaufman2025cems}.
+
+DataFrameSampler sits close to this local-geometry family, but uses a different
+operator. It learns a supervised latent metric with scikit-learn components,
+including Neighborhood Components Analysis and nearest-neighbour search
+\cite{pedregosa2011scikit}, then transfers local neighbour displacements rather
+than explicitly estimating tangent spaces or curvature. Optional ANN backends
+such as NN-Descent, HNSW, and Annoy can be used for larger datasets
 \cite{dong2011efficient,malkov2018hnsw,bernhardsson2015annoy}.
+
+The validation protocol borrows from manifold learning. Isomap estimates
+manifold geometry through a neighbourhood graph, graph shortest paths, and
+classical MDS \cite{tenenbaum2000isomap}. Out-of-sample extensions for Isomap
+and related spectral methods make it possible to insert new points into a fixed
+embedding without refitting the eigensystem \cite{bengio2003outofsample}. We use
+this idea as an empirical diagnostic: generated points are tested for convex
+hull extrapolation and for low insertion stress in a frozen Isomap geometry.
 
 Privacy-preserving synthetic data addresses a stronger problem than this
 package claims to solve. Formal release mechanisms require explicit threat

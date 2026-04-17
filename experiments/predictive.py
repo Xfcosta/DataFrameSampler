@@ -206,14 +206,14 @@ def _numeric_model(task: str, *, random_state: int) -> Pipeline:
             n_estimators=100,
             min_samples_leaf=3,
             random_state=random_state,
-            n_jobs=1,
+            n_jobs=-1,
         )
         if task == "classification"
         else RandomForestRegressor(
             n_estimators=100,
             min_samples_leaf=3,
             random_state=random_state,
-            n_jobs=1,
+            n_jobs=-1,
         )
     )
     return Pipeline(

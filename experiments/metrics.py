@@ -281,7 +281,7 @@ def discrimination_test(
                         n_estimators=100,
                         min_samples_leaf=3,
                         random_state=random_state,
-                        n_jobs=1,
+                        n_jobs=-1,
                     ),
                 ),
             ]
@@ -640,14 +640,14 @@ def _make_predictive_model(task: str, features: pd.DataFrame, random_state: int)
             n_estimators=100,
             min_samples_leaf=3,
             random_state=random_state,
-            n_jobs=1,
+            n_jobs=-1,
         )
         if task == "classification"
         else RandomForestRegressor(
             n_estimators=100,
             min_samples_leaf=3,
             random_state=random_state,
-            n_jobs=1,
+            n_jobs=-1,
         )
     )
     return Pipeline([("features", make_feature_preprocessor(features)), ("model", estimator)])
@@ -810,4 +810,3 @@ def _count_code_lines(python_code: str | None) -> int | None:
     if python_code is None:
         return None
     return sum(1 for line in python_code.splitlines() if line.strip() and not line.strip().startswith("#"))
-

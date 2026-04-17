@@ -43,6 +43,38 @@ supervised latent space is locally linear enough for displacement transfer to
 remain plausible, but the method does not guarantee manifold preservation or
 constraint satisfaction.
 
+\subsection{Manifold Validation}
+
+We evaluate extrapolation in the fitted latent space rather than in raw mixed
+columns. For a training latent matrix $Z_{train}$ and generated point
+$\tilde z$, the convex-hull test asks whether $\tilde z$ can be represented as
+a convex combination of training rows. Operationally, we solve the feasibility
+problem
+\[
+  Z_{train}^{\top}\lambda=\tilde z,\qquad
+  \lambda_i \ge 0,\qquad
+  \sum_i \lambda_i = 1.
+\]
+Before solving, the training matrix is reduced to its affine rank with SVD so
+degenerate latent spaces are handled consistently.
+
+Manifold consistency is tested with a frozen Isomap geometry
+\cite{tenenbaum2000isomap}. Isomap is fit on training latent rows only. A
+held-out real or generated point is inserted by connecting it to nearest
+training neighbours, computing graph-geodesic distances to the fixed training
+graph, and embedding it with the fitted Isomap out-of-sample transform
+\cite{bengio2003outofsample}. The normalized pointwise insertion stress is
+\[
+  s(\tilde z)=
+  \sqrt{
+  \frac{\sum_i (g_i(\tilde z)-\|\tilde e-e_i\|_2)^2}
+       {\sum_i \|\tilde e-e_i\|_2^2}
+  },
+\]
+where $g_i$ is the inserted graph distance to training point $i$ and
+$\tilde e$ is the out-of-sample Isomap coordinate. This is an empirical
+criterion, not a guarantee.
+
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{how_pipeline.pdf}

@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
 from dataframe_sampler import DataFrameSampler
 from experiments.datasets import DatasetExperimentConfig
@@ -126,6 +127,10 @@ def test_plot_numeric_projection_triptych_uses_binary_target_markers():
     assert len(fig.axes[0].collections) == 2
     assert len(fig.axes[1].collections) == 2
     assert len(fig.axes[2].collections) == 4
+    negative_collection, positive_collection = fig.axes[0].collections
+    np.testing.assert_allclose(negative_collection.get_facecolors()[0][:3], [1.0, 1.0, 1.0])
+    assert not np.allclose(positive_collection.get_facecolors()[0][:3], [1.0, 1.0, 1.0])
+    assert negative_collection.get_linewidths()[0] > positive_collection.get_linewidths()[0]
     plt.close(fig)
 
 
