@@ -150,7 +150,7 @@ def mechanism_validation_report(
             }
         )
         decoder = sampler.decoders_[column]
-        probabilities = decoder.predict_proba(test_block)
+        probabilities = decoder.predict_proba(test_context)
         calibration_rows.append(
             {
                 **_calibration_metadata(metadata),
@@ -412,11 +412,9 @@ def _expected_calibration_error(confidence: np.ndarray, correct: np.ndarray, *, 
 
 def _categorical_block_offsets(sampler: DataFrameSampler) -> dict[str, tuple[int, int]]:
     offsets = {}
-    offset = len(sampler.numeric_columns_)
     for column in sampler.categorical_columns_:
-        width = sampler._components_for_column(column)
-        offsets[column] = (offset, offset + width)
-        offset += width
+        block_slice = sampler.latent_block_slices_[column]
+        offsets[column] = (block_slice.start, block_slice.stop)
     return offsets
 
 

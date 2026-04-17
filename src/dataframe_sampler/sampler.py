@@ -30,12 +30,17 @@ class NearestMutualNeighboursSampler(object):
         interpolation_factor=1,
         min_interpolation_factor=1,
         use_min_max_constraints=True,
+        use_numeric_std_constraints=True,
+        numeric_std_threshold=3.0,
+        numeric_constraint_indices=None,
         max_constraint_retries=3,
         random_state=None,
         max_attempts_factor=20,
     ):
         if interpolation_factor < min_interpolation_factor:
             raise ValueError("interpolation_factor must be >= min_interpolation_factor.")
+        if numeric_std_threshold <= 0:
+            raise ValueError("numeric_std_threshold must be positive.")
         if max_constraint_retries < 0:
             raise ValueError("max_constraint_retries must be non-negative.")
         self.nearest_mutual_neighbours_estimator = nearest_mutual_neighbours_estimator
@@ -43,6 +48,11 @@ class NearestMutualNeighboursSampler(object):
         self.interpolation_factor = interpolation_factor
         self.min_interpolation_factor = min_interpolation_factor
         self.use_min_max_constraints = use_min_max_constraints
+        self.use_numeric_std_constraints = use_numeric_std_constraints
+        self.numeric_std_threshold = numeric_std_threshold
+        self.numeric_constraint_indices = (
+            None if numeric_constraint_indices is None else np.asarray(numeric_constraint_indices, dtype=int)
+        )
         self.max_constraint_retries = max_constraint_retries
         self.random_state = random_state
         self.rng = make_random_state(random_state)
@@ -58,6 +68,7 @@ class NearestMutualNeighboursSampler(object):
         self.data_mtx = X.copy()
         self.data_min_ = np.min(X, axis=0)
         self.data_max_ = np.max(X, axis=0)
+        self._fit_numeric_std_constraints(X)
         self.targets = None if y is None else np.asarray(y).copy()
         self.sampling_probability = self.probability_estimator.fit_predict_proba(X, y)
         self.k_nearest_mutual_neighbours = self.nearest_mutual_neighbours_estimator.fit_predict(X, y)
@@ -79,7 +90,7 @@ class NearestMutualNeighboursSampler(object):
     def generate(self, data_mtx, k_nearest_mutual_neighbours, sampling_probability, interpolation_factor, min_interpolation_factor):
         idx1 = self._sample_anchor_index(sampling_probability)
         candidate = None
-        retries = self.max_constraint_retries if self.use_min_max_constraints else 0
+        retries = self.max_constraint_retries if self._uses_rejection_constraints() else 0
         for attempt in range(retries + 1):
             candidate = self._generate_from_anchor(
                 idx1,
@@ -88,7 +99,7 @@ class NearestMutualNeighboursSampler(object):
                 interpolation_factor,
                 min_interpolation_factor,
             )
-            if not self.use_min_max_constraints or self._satisfies_min_max_constraints(candidate):
+            if not self._uses_rejection_constraints() or self._satisfies_rejection_constraints(candidate):
                 self.constraint_retry_count_ += attempt
                 return candidate
         self.constraint_retry_count_ += retries
@@ -112,8 +123,39 @@ class NearestMutualNeighboursSampler(object):
         alpha = random_uniform(self.rng) * (interpolation_factor - min_interpolation_factor) + min_interpolation_factor
         return data_mtx[idx1] + alpha * (data_mtx[idx3] - data_mtx[idx2])
 
+    def _uses_rejection_constraints(self):
+        return bool(
+            self.use_min_max_constraints
+            or (self.use_numeric_std_constraints and self.numeric_constraint_indices is not None)
+        )
+
+    def _satisfies_rejection_constraints(self, candidate):
+        if self.use_min_max_constraints and not self._satisfies_min_max_constraints(candidate):
+            return False
+        if self.use_numeric_std_constraints and not self._satisfies_numeric_std_constraints(candidate):
+            return False
+        return True
+
     def _satisfies_min_max_constraints(self, candidate):
         return bool(np.all(candidate >= self.data_min_) and np.all(candidate <= self.data_max_))
+
+    def _fit_numeric_std_constraints(self, X):
+        if self.numeric_constraint_indices is None or len(self.numeric_constraint_indices) == 0:
+            self.numeric_constraint_indices = None
+            self.numeric_constraint_mean_ = None
+            self.numeric_constraint_std_ = None
+            return
+        numeric = X[:, self.numeric_constraint_indices]
+        self.numeric_constraint_mean_ = np.mean(numeric, axis=0)
+        std = np.std(numeric, axis=0)
+        self.numeric_constraint_std_ = np.where(std > 0, std, 1.0)
+
+    def _satisfies_numeric_std_constraints(self, candidate):
+        if self.numeric_constraint_indices is None:
+            return True
+        numeric = candidate[self.numeric_constraint_indices]
+        z_scores = np.abs((numeric - self.numeric_constraint_mean_) / self.numeric_constraint_std_)
+        return bool(np.all(z_scores <= self.numeric_std_threshold))
 
     def sample(self, n_samples, target=None):
         if not hasattr(self, "data_mtx"):
@@ -174,6 +216,9 @@ def ConcreteNearestMutualNeighboursSampler(
     min_interpolation_factor=1,
     metric="euclidean",
     use_min_max_constraints=True,
+    use_numeric_std_constraints=True,
+    numeric_std_threshold=3.0,
+    numeric_constraint_indices=None,
     max_constraint_retries=3,
     random_state=None,
     knn_backend="exact",
@@ -207,6 +252,9 @@ def ConcreteNearestMutualNeighboursSampler(
         interpolation_factor=interpolation_factor,
         min_interpolation_factor=min_interpolation_factor,
         use_min_max_constraints=use_min_max_constraints,
+        use_numeric_std_constraints=use_numeric_std_constraints,
+        numeric_std_threshold=numeric_std_threshold,
+        numeric_constraint_indices=numeric_constraint_indices,
         max_constraint_retries=max_constraint_retries,
         random_state=random_state,
     )
@@ -268,11 +316,22 @@ class LatentBootstrapSampler(object):
         return self.data_mtx[indices].copy()
 
 
+class PriorCategoricalClassifier(object):
+    def fit(self, X, y):
+        self.classes_, counts = np.unique(y, return_counts=True)
+        self.probabilities_ = counts.astype(float) / counts.sum()
+        return self
+
+    def predict_proba(self, X):
+        X = np.asarray(X)
+        return np.tile(self.probabilities_, (X.shape[0], 1))
+
+
 class DataFrameSampler(BaseEstimator, TransformerMixin):
     def __init__(
         self,
         n_components=2,
-        n_iterations=2,
+        n_iterations=1,
         n_neighbours=10,
         lambda_=1.0,
         knn_backend="exact",
@@ -280,17 +339,21 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         random_state=None,
         nca_kwargs=None,
         decoder_kwargs=None,
-        calibrate_decoders=True,
+        calibrate_decoders=False,
         calibration_kwargs=None,
         enforce_min_max_constraints=True,
+        enforce_numeric_std_constraints=True,
+        numeric_std_threshold=3.0,
         max_constraint_retries=3,
     ):
         if isinstance(n_components, int) and n_components < 1:
             raise ValueError("n_components must be at least 1.")
-        if n_iterations < 1:
-            raise ValueError("n_iterations must be at least 1.")
+        if n_iterations < 0:
+            raise ValueError("n_iterations must be non-negative.")
         if n_neighbours < 1:
             raise ValueError("n_neighbours must be at least 1.")
+        if numeric_std_threshold <= 0:
+            raise ValueError("numeric_std_threshold must be positive.")
         self.n_components = n_components
         self.n_iterations = n_iterations
         self.n_neighbours = n_neighbours
@@ -303,6 +366,8 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         self.calibrate_decoders = calibrate_decoders
         self.calibration_kwargs = dict(calibration_kwargs or {})
         self.enforce_min_max_constraints = enforce_min_max_constraints
+        self.enforce_numeric_std_constraints = enforce_numeric_std_constraints
+        self.numeric_std_threshold = numeric_std_threshold
         self.max_constraint_retries = max_constraint_retries
         self.rng = make_random_state(random_state)
 
@@ -320,6 +385,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         self._fit_iterative_projectors(initial_blocks)
         self.latent_data_mtx_ = self._blocks_to_latent(self._fit_blocks_)
         self.latent_dim_ = int(self.latent_data_mtx_.shape[1])
+        self.latent_block_slices_ = self._block_slices_for_blocks(self._fit_blocks_)
         self._fit_decoders(dataframe)
         self._fit_generator()
         return self
@@ -338,23 +404,18 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         self._ensure_fit()
         latent = self._validate_latent(Z)
         data = {}
-        offset = 0
-
         if self.numeric_columns_:
-            n_numeric = len(self.numeric_columns_)
-            numeric_scaled = latent[:, offset : offset + n_numeric]
+            numeric_slice = self.latent_block_slices_["__numeric__"]
+            numeric_scaled = latent[:, numeric_slice]
             numeric_values = self.numeric_scaler_.inverse_transform(numeric_scaled)
             for idx, column in enumerate(self.numeric_columns_):
                 data[column] = numeric_values[:, idx]
-            offset += n_numeric
 
         for column in self.categorical_columns_:
-            width = self._components_for_column(column)
-            block = latent[:, offset : offset + width]
             decoder = self.decoders_[column]
-            labels = self._decode_categorical_block(column, decoder, block, sample=sample)
+            context = self._decoder_input_from_latent(column, latent)
+            labels = self._decode_categorical_column(column, decoder, context, sample=sample)
             data[column] = labels
-            offset += width
 
         result = pd.DataFrame(data, columns=self.input_columns_)
         return self._restore_dtypes(result)
@@ -478,16 +539,18 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
     def _fit_decoders(self, dataframe):
         self.decoders_ = {}
         self.decoder_calibration_status_ = {}
-        offset = len(self.numeric_columns_)
         for column in self.categorical_columns_:
-            width = self._components_for_column(column)
-            block = self.latent_data_mtx_[:, offset : offset + width]
+            context = self._decoder_input_from_latent(column, self.latent_data_mtx_)
             labels = self._categorical_keys(dataframe[column]).to_numpy(dtype=str)
-            decoder = self._fit_decoder(column, block, labels)
+            decoder = self._fit_decoder(column, context, labels)
             self.decoders_[column] = decoder
-            offset += width
 
-    def _fit_decoder(self, column, block, labels):
+    def _fit_decoder(self, column, context, labels):
+        if context.shape[1] == 0:
+            decoder = PriorCategoricalClassifier().fit(context, labels)
+            self.decoder_calibration_status_[column] = "prior_only"
+            return decoder
+
         kwargs = {
             "n_estimators": 100,
             "min_samples_leaf": 1,
@@ -497,13 +560,13 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         kwargs.update(self.decoder_kwargs)
         decoder = RandomForestClassifier(**kwargs)
         if not self.calibrate_decoders:
-            decoder.fit(block, labels)
+            decoder.fit(context, labels)
             self.decoder_calibration_status_[column] = "disabled"
             return decoder
 
         unique_labels, counts = np.unique(labels, return_counts=True)
         if len(unique_labels) < 2:
-            decoder.fit(block, labels)
+            decoder.fit(context, labels)
             self.decoder_calibration_status_[column] = "skipped_one_class"
             return decoder
 
@@ -511,7 +574,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         if "cv" not in calibration_kwargs:
             min_class_count = int(np.min(counts))
             if min_class_count < 2:
-                decoder.fit(block, labels)
+                decoder.fit(context, labels)
                 self.decoder_calibration_status_[column] = "skipped_insufficient_class_count"
                 return decoder
             calibration_kwargs["cv"] = min(5, min_class_count)
@@ -519,7 +582,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         calibration_kwargs.setdefault("n_jobs", kwargs.get("n_jobs", -1))
         calibrated = _calibrated_classifier(decoder, calibration_kwargs)
         try:
-            calibrated.fit(block, labels)
+            calibrated.fit(context, labels)
         except Exception as exc:
             warnings.warn(
                 "Falling back to an uncalibrated random-forest decoder for categorical column %r "
@@ -528,7 +591,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
                 stacklevel=2,
             )
             decoder = RandomForestClassifier(**kwargs)
-            decoder.fit(block, labels)
+            decoder.fit(context, labels)
             self.decoder_calibration_status_[column] = "failed"
             return decoder
         self.decoder_calibration_status_[column] = "calibrated"
@@ -544,6 +607,11 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
             min_interpolation_factor=self.lambda_,
             metric="euclidean",
             use_min_max_constraints=self.enforce_min_max_constraints,
+            use_numeric_std_constraints=self.enforce_numeric_std_constraints,
+            numeric_std_threshold=self.numeric_std_threshold,
+            numeric_constraint_indices=np.arange(len(self.numeric_columns_), dtype=int)
+            if self.numeric_columns_
+            else None,
             max_constraint_retries=self.max_constraint_retries,
             random_state=self.random_state,
             knn_backend=self.knn_backend,
@@ -560,8 +628,8 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
             )
             self.generator_ = LatentBootstrapSampler(random_state=self.random_state).fit(self.latent_data_mtx_)
 
-    def _decode_categorical_block(self, column, decoder, block, sample):
-        probabilities = decoder.predict_proba(block)
+    def _decode_categorical_column(self, column, decoder, context, sample):
+        probabilities = decoder.predict_proba(context)
         classes = decoder.classes_
         if not sample:
             keys = classes[np.argmax(probabilities, axis=1)]
@@ -578,13 +646,37 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
 
     def _blocks_to_latent(self, blocks):
         ordered = []
-        if self.numeric_columns_:
-            ordered.append(blocks["__numeric__"])
-        for column in self.categorical_columns_:
-            ordered.append(blocks[column])
+        for key in self._ordered_block_keys(blocks):
+            ordered.append(blocks[key])
         if not ordered:
             return np.empty((self.n_fit_rows_, 0), dtype=float)
         return np.asarray(np.hstack(ordered), dtype=float)
+
+    def _decoder_input_from_latent(self, column, latent):
+        slices = [
+            block_slice
+            for key, block_slice in self.latent_block_slices_.items()
+            if key != column
+        ]
+        if not slices:
+            return np.empty((latent.shape[0], 0), dtype=float)
+        return np.hstack([latent[:, block_slice] for block_slice in slices])
+
+    def _block_slices_for_blocks(self, blocks):
+        slices = {}
+        offset = 0
+        for key in self._ordered_block_keys(blocks):
+            width = blocks[key].shape[1]
+            slices[key] = slice(offset, offset + width)
+            offset += width
+        return slices
+
+    def _ordered_block_keys(self, blocks):
+        keys = []
+        if self.numeric_columns_ and "__numeric__" in blocks:
+            keys.append("__numeric__")
+        keys.extend([column for column in self.categorical_columns_ if column in blocks])
+        return keys
 
     @staticmethod
     def _concat_blocks(blocks, keys, n_rows):

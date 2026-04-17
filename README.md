@@ -25,16 +25,21 @@ During `fit`:
    `sklearn.neighbors.NeighborhoodComponentsAnalysis` projection to predict
    `C_j`.
 4. The one-hot block for `C_j` is replaced by its learned latent block.
-5. The process repeats for `n_iterations`.
+5. The process repeats for `n_iterations`. If `n_iterations=0`, the initial
+   one-hot categorical blocks are kept as the latent categorical blocks.
 6. A `RandomForestClassifier` decoder is fit for each categorical column from
-   its final latent block back to the original categories, with probability
-   calibration enabled by default when the fitted class counts permit it.
+   the final latent context excluding that target column's own block. Optional
+   probability calibration can be enabled when calibrated decoder probabilities
+   are needed.
 
 The final latent matrix is:
 
 ```text
-Z = [standardized numeric columns | NCA block for categorical column 1 | ...]
+Z = [standardized numeric columns | categorical block 1 | ...]
 ```
+
+Categorical blocks are learned NCA blocks when `n_iterations > 0`, and one-hot
+blocks when `n_iterations = 0`.
 
 Generation uses the fitted latent matrix. For each synthetic row it picks an
 anchor row `A`, a mutual neighbor `B`, and a mutual neighbor `C` of `B`, then
@@ -47,6 +52,11 @@ A' = A + lambda_ * (C - B)
 `A'` is decoded back to a dataframe row. Numeric columns are inverse-scaled.
 Categorical columns are sampled from the decoder's predicted class
 probabilities.
+
+Generated latent candidates are checked against fitted numeric constraints by
+default. The sampler retries candidates that fall outside fitted latent min/max
+ranges or whose standardized numeric columns exceed the configured z-score
+threshold.
 
 This neighbor transport step is a heuristic. It assumes the learned latent space
 is locally linear enough for transferred displacements to stay near the
@@ -97,7 +107,7 @@ df = pd.DataFrame(
 
 sampler = DataFrameSampler(
     n_components=2,
-    n_iterations=2,
+    n_iterations=1,
     n_neighbours=3,
     lambda_=1.0,
     knn_backend="sklearn",
@@ -126,7 +136,8 @@ Constructor arguments:
 
 - `n_components`: integer categorical latent width, or a dictionary keyed by
   categorical column. Defaults to `2`.
-- `n_iterations`: number of NCA refinement rounds. Defaults to `2`.
+- `n_iterations`: number of NCA refinement rounds. Use `0` to keep the
+  initial one-hot categorical blocks. Defaults to `1`.
 - `n_neighbours`: nearest-neighbor count used for mutual-neighbor generation.
 - `lambda_`: multiplier for the transferred neighbor displacement.
 - `knn_backend`: one of `exact`, `sklearn`, `pynndescent`, `hnswlib`, or
@@ -138,12 +149,17 @@ Constructor arguments:
 - `decoder_kwargs`: optional keyword arguments for `RandomForestClassifier`.
   Decoders default to `n_jobs=-1` to use all available cores.
 - `calibrate_decoders`: whether to wrap categorical decoders with
-  `CalibratedClassifierCV` when feasible. Defaults to `True`.
+  `CalibratedClassifierCV` when feasible. Defaults to `False`.
 - `calibration_kwargs`: optional keyword arguments for
   `CalibratedClassifierCV`.
 - `enforce_min_max_constraints`: whether generated latent candidates that fall
   outside the fitted columnwise latent min/max range should be rejected and
   resampled when possible. Defaults to `True`.
+- `enforce_numeric_std_constraints`: whether generated latent candidates whose
+  numeric columns are improbable under the fitted numeric mean/std should be
+  rejected and resampled when possible. Defaults to `True`.
+- `numeric_std_threshold`: maximum absolute fitted numeric-column z-score before
+  retrying a generated candidate. Defaults to `3.0`.
 - `max_constraint_retries`: number of neighbour-chain retries before accepting
   an out-of-range latent candidate as-is. Defaults to `3`.
 
@@ -169,7 +185,8 @@ Options:
                                   generate the same number of samples as input.
   --n_components INTEGER RANGE    NCA latent dimensions per categorical column.
   --n_iterations INTEGER RANGE    Number of iterative categorical NCA
-                                  refinement rounds.
+                                  refinement rounds. Use 0 to keep one-hot
+                                  categorical blocks.
   --n_neighbours INTEGER RANGE    Number of neighbours.
   --lambda FLOAT                  Latent neighbour displacement multiplier.
   --random_state INTEGER          Optional random seed for reproducible output.
@@ -184,6 +201,13 @@ Options:
   --enforce_min_max_constraints / --no_enforce_min_max_constraints
                                   Reject and retry latent candidates outside
                                   fitted columnwise min/max ranges.
+  --enforce_numeric_std_constraints / --no_enforce_numeric_std_constraints
+                                  Reject and retry latent candidates with
+                                  improbable fitted numeric-column z-scores.
+  --numeric_std_threshold FLOAT RANGE
+                                  Maximum absolute fitted numeric-column
+                                  z-score before retrying a generated
+                                  candidate.
   --max_constraint_retries INTEGER RANGE
                                   Retries per generated row before accepting an
                                   out-of-range latent candidate.
@@ -198,7 +222,7 @@ dataframe-sampler \
   --output_filename generated.csv \
   --n_samples 100 \
   --n_components 2 \
-  --n_iterations 2 \
+  --n_iterations 1 \
   --n_neighbours 5 \
   --knn_backend sklearn \
   --random_state 42

@@ -43,10 +43,10 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 )
 @click.option(
     "--n_iterations",
-    type=click.IntRange(min=1, max_open=True, clamp=True),
-    default=2,
+    type=click.IntRange(min=0, max_open=True, clamp=True),
+    default=1,
     show_default=True,
-    help="Number of iterative categorical NCA refinement rounds.",
+    help="Number of iterative categorical NCA refinement rounds. Use 0 to keep one-hot categorical blocks.",
 )
 @click.option(
     "--n_neighbours",
@@ -77,7 +77,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 )
 @click.option(
     "--calibrate_decoders/--no_calibrate_decoders",
-    default=True,
+    default=False,
     show_default=True,
     help="Calibrate categorical decoder probabilities when feasible.",
 )
@@ -86,6 +86,19 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     default=True,
     show_default=True,
     help="Reject and retry latent candidates outside fitted columnwise min/max ranges.",
+)
+@click.option(
+    "--enforce_numeric_std_constraints/--no_enforce_numeric_std_constraints",
+    default=True,
+    show_default=True,
+    help="Reject and retry latent candidates with improbable fitted numeric-column z-scores.",
+)
+@click.option(
+    "--numeric_std_threshold",
+    type=click.FloatRange(min=0, min_open=True),
+    default=3.0,
+    show_default=True,
+    help="Maximum absolute fitted numeric-column z-score before retrying a generated candidate.",
 )
 @click.option(
     "--max_constraint_retries",
@@ -110,6 +123,8 @@ def dataframe_sampler_main(
     knn_backend_kwargs_filename,
     calibrate_decoders,
     enforce_min_max_constraints,
+    enforce_numeric_std_constraints,
+    numeric_std_threshold,
     max_constraint_retries,
 ):
     """
@@ -134,6 +149,8 @@ def dataframe_sampler_main(
             knn_backend_kwargs=knn_backend_kwargs,
             calibrate_decoders=calibrate_decoders,
             enforce_min_max_constraints=enforce_min_max_constraints,
+            enforce_numeric_std_constraints=enforce_numeric_std_constraints,
+            numeric_std_threshold=numeric_std_threshold,
             max_constraint_retries=max_constraint_retries,
         )
 
