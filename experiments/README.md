@@ -30,6 +30,8 @@ preparation helpers for the paper.
   diagnostics in the fitted DataFrameSampler latent space.
 - `mechanism_validation.py`: capped NCA-block ablations and random-forest
   decoder calibration diagnostics.
+- `imbalance_validation.py`: capped secondary class-rebalancing diagnostics for
+  selected binary target datasets.
 - `proposed_setups.py`: the three named DataFrameSampler setups used in the
   paper: fast, default, and accurate.
 - `sensitivity_validation.py`: a capped representative-dataset comparison of
@@ -56,6 +58,9 @@ NCA blocks and probability-quality diagnostics for categorical decoders. The
 sensitivity CSV reports the same primary measures for the three proposed
 setups on Adult Census Income only, so setup choice remains an illustrative
 speed--accuracy tradeoff rather than a full cross-dataset benchmark.
+The imbalance CSV reports a secondary fixed-protocol minority-class
+augmentation diagnostic on selected binary target datasets; it is not a full
+imbalance-learning benchmark.
 The optional deep-reference CSV reports CTGAN on Adult Census Income only; it
 is a high-capacity reference point, not a required notebook or CI artifact.
 
@@ -68,6 +73,9 @@ is a high-capacity reference point, not a required notebook or CI artifact.
   classification dataset.
 - Bank Marketing from the UCI Machine Learning Repository.
 - Heart Disease Cleveland from the UCI Machine Learning Repository.
+- Forest Covertype from scikit-learn's cached copy of the UCI Covertype
+  benchmark, with one-hot wilderness and soil indicators collapsed back to
+  categorical columns.
 - Four deterministic controlled synthetic datasets for claim-boundary testing.
 
 Run:
@@ -85,6 +93,7 @@ jupyter notebook experiments/notebooks/breast_cancer.ipynb
 jupyter notebook experiments/notebooks/pima_diabetes.ipynb
 jupyter notebook experiments/notebooks/bank_marketing.ipynb
 jupyter notebook experiments/notebooks/heart_disease.ipynb
+jupyter notebook experiments/notebooks/covertype.ipynb
 jupyter notebook experiments/notebooks/synthetic_controlled.ipynb
 ```
 

@@ -14,6 +14,7 @@ from .compare import run_dataset_comparison
 from .deep_reference import run_deep_reference_comparison_for_config
 from .datasets import DatasetExperimentConfig
 from .instrumentation import measure_call
+from .imbalance_validation import run_imbalance_validation_for_config
 from .manifold_validation import run_manifold_validation_for_config
 from .mechanism_validation import run_mechanism_validation_for_config
 from .sensitivity_validation import run_sensitivity_validation_for_config
@@ -50,6 +51,7 @@ class DatasetExperimentResult:
     mechanism_validation: pd.DataFrame
     decoder_calibration: pd.DataFrame
     sensitivity_validation: pd.DataFrame
+    imbalance_validation: pd.DataFrame
     deep_reference_comparison: pd.DataFrame
     paths: ExperimentPaths
 
@@ -278,6 +280,15 @@ def run_configured_dataset_experiment(
             config.random_state,
         ),
     )
+    imbalance_validation = run_imbalance_validation_for_config(
+        config,
+        work,
+        results_dir=paths.results_dir,
+        sampler_config=sampler_config_with_random_state(
+            config.sampler_config,
+            config.random_state,
+        ),
+    )
     deep_reference_comparison = (
         run_deep_reference_comparison_for_config(
             config,
@@ -297,6 +308,7 @@ def run_configured_dataset_experiment(
         mechanism_validation=mechanism_validation,
         decoder_calibration=decoder_calibration,
         sensitivity_validation=sensitivity_validation,
+        imbalance_validation=imbalance_validation,
         deep_reference_comparison=deep_reference_comparison,
         paths=paths,
     )

@@ -9,13 +9,16 @@ fitting one supervised Neighborhood Components Analysis block for each
 categorical column, treating binary variables as categorical even when they are
 stored numerically, and always excluding the target column from the context used
 to predict it. Generation then applies a local mutual-neighbour translation in
-the learned latent space, rejects and retries numerically implausible
-candidates under fitted constraints, and decodes the result with inverse
-numeric scaling and probabilistic random-forest categorical decoders. More
+the learned latent space: each generated row is constructed as an anchor row
+modified by an observed displacement between two neighbouring rows. The sampler
+rejects and retries numerically implausible candidates under fitted constraints
+and decodes the result with inverse numeric scaling and probabilistic
+random-forest categorical decoders. More
 precisely, DataFrameSampler is intended to make a small, inspectable
 construction feasible for low-stakes example-data workflows; therefore we
 structure the paper as a claim-specific evidence argument rather than as a
 single aggregate benchmark. The diagnostics include NCA-block ablations,
-decoder probability checks, and frozen-Isomap insertion stress, and they support
-only bounded empirical claims: the method has no global objective, no formal
-manifold-preservation guarantee, and no privacy guarantee.
+decoder probability checks, frozen-Isomap insertion stress, and a limited CTGAN
+reference comparison. They support only bounded empirical claims: the method
+has no global objective, no formal manifold-preservation guarantee, and no
+privacy guarantee.

@@ -10,6 +10,14 @@ method interpretation suggests. The boundary diagnostics ask whether local
 transport and default parameter choices remain stable enough for the restricted
 practical-use claim.
 
+The prepared public dataset suite is designed for coverage rather than
+leaderboard breadth. Adult is the running example, Titanic is a small
+illustrative case, Bank Marketing provides a mid-sized business benchmark, the
+medical datasets exercise small clinical-style regimes, and Covertype adds a
+larger public source table with continuous terrain measurements and categorical
+terrain context. The repeated diagnostics use deterministic row caps so that
+notebook execution remains practical.
+
 Current comparisons include DataFrameSampler plus row bootstrap, independent
 columns, Gaussian-copula empirical sampling, and target-stratified column
 sampling where a target exists. These baselines define concrete failure modes:
@@ -34,6 +42,28 @@ dataset, Adult Census Income. This keeps setup choice separate from the main
 cross-dataset evidence: fast, default, and accurate are practical operating
 points, not three additional methods to rank across every benchmark.
 
+\subsection{Secondary Diagnostic: Class Rebalancing}
+
+Because the transport operator is adjacent to oversampling-style local
+augmentation, we include a limited class-rebalancing diagnostic. This is a
+secondary use case, not the paper's primary claim. On selected binary target
+datasets, the protocol splits real data into train and held-out test rows,
+identifies the minority class in the training split, and adds synthetic
+minority rows until the training split reaches parity. DataFrameSampler is fit
+only on minority-class feature rows, and generated rows are then labelled as
+the minority class. The same held-out real test split is used to compare a
+classifier trained on real rows alone with classifiers trained on real plus
+DataFrameSampler-balanced rows, real plus a SMOTE-family reference when the
+optional dependency is available, and real plus stratified empirical minority
+rows. The reference uses SMOTENC when categorical features are present and
+ordinary SMOTE for numeric-only feature tables.
+
+The reported metrics are balanced accuracy, macro F1, minority recall, and
+binary PR-AUC where applicable. These quantities are minority-sensitive, but
+they do not convert the method into a general imbalance-learning optimizer.
+They test only whether traceable minority examples can be useful under one
+fixed rebalance protocol.
+
 \subsection{Comparison with High-Capacity Generative Models}
 
 We include CTGAN as an optional Adult-only reference model because modern deep
@@ -41,10 +71,23 @@ tabular generators are an important design point for reviewers and users.
 This comparison is deliberately limited. CTGAN is not treated as a target to
 beat, and we do not perform broad hyperparameter optimization. Instead, it is
 used to locate DataFrameSampler relative to a model with a global adversarial
-training objective, higher setup cost, and lower decomposition into inspectable
-components. The same primary metrics are reported for the reference run:
+training objective, a heavier dependency stack, and lower decomposition into
+inspectable components. The same primary metrics are reported for the
+reference run:
 distributional score, real-versus-synthetic discrimination, utility lift,
 runtime, and memory.
+
+Table~\ref{tab:deep-reference-comparison} reports the capped Adult reference
+run. CTGAN attains a distributional score close to the default
+DataFrameSampler run on the same dataset, but the discriminator separates
+CTGAN samples from real rows more easily, and the measured utility lift is
+negative in this run. This is not a general CTGAN conclusion: the model was not
+tuned, and only one representative dataset is used. The result instead
+illustrates the intended comparison role. A high-capacity model can occupy a
+nearby fidelity region while offering a different tradeoff: a global
+adversarial objective, an optional deep-learning dependency stack, and less
+component-level inspectability, rather than an explicit latent construction
+with auditable blocks and neighbour chains.
 
 \begin{figure}[t]
 \centering
@@ -129,5 +172,20 @@ not an additional cross-dataset superiority claim.}
 }{}
 
 \IfFileExists{tables/sensitivity_validation.tex}{\input{tables/sensitivity_validation}}{}
+
+\IfFileExists{../experiments/figures/imbalance_validation.pdf}{
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{imbalance_validation.pdf}
+\caption{Secondary class-rebalancing diagnostic on selected binary target
+datasets. The diagnostic compares real training only with real plus balanced
+minority augmentation from DataFrameSampler, a SMOTE-family reference, and a
+stratified empirical reference. Takeaway: this is boundary evidence for an
+oversampling-adjacent use case, not a new central imbalance-learning claim.}
+\label{fig:imbalance-validation}
+\end{figure}
+}{}
+
+\IfFileExists{tables/imbalance_validation.tex}{\input{tables/imbalance_validation}}{}
 
 \IfFileExists{tables/deep_reference_comparison.tex}{\input{tables/deep_reference_comparison}}{}

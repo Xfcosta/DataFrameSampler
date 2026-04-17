@@ -5,14 +5,20 @@ on iterative supervised NCA latent blocks and local mutual-neighbour transport.
 The resulting estimator has a direct sklearn-style API and a file-oriented CLI,
 but its modelling claim is intentionally narrow: it is a simple and inspectable
 tool for example-data workflows, not a formally private or globally optimized
-synthetic-data mechanism.
+synthetic-data mechanism. Its most direct interpretability interface is the
+analogy trace: each generated row is an anchor modified by an observed
+neighbour-pair displacement in the fitted latent space.
 
 The claim-specific evidence structure makes this conclusion more precise.
 Categorical NCA blocks are supported only where they improve held-out
 categorical prediction against simple baselines, decoder probabilities should
 still be interpreted through their measured diagnostic quality, and manifold
 evidence should be read as an insertion-stress diagnostic rather than as a
-preservation guarantee. Future work should therefore focus on stability of the
+preservation guarantee. The Adult CTGAN reference reinforces the same
+positioning: modern high-capacity tabular generators are relevant reference
+points, but the paper's contribution is not to win a leaderboard against them.
+It is to occupy an inspectable, low-setup point in the design space and to make
+its diagnostics explicit. Future work should therefore focus on stability of the
 iterative latent construction, stronger constraint-aware decoding,
 high-cardinality preprocessing, and alternatives to independent per-column
 decoders.

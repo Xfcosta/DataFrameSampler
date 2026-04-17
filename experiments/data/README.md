@@ -11,6 +11,9 @@ stored under `processed/`.
 
 The current datasets are public benchmark/example datasets:
 
-- Adult Census Income from the UCI Machine Learning Repository.
+- Adult Census Income, Wisconsin Diagnostic Breast Cancer, Bank Marketing, and
+  Heart Disease from the UCI Machine Learning Repository.
 - Titanic from the seaborn example datasets repository.
-
+- Pima Indians Diabetes from a public CSV mirror of the classic benchmark.
+- Forest Covertype from scikit-learn's cached UCI Covertype dataset, with
+  one-hot wilderness and soil indicators collapsed into categorical columns.

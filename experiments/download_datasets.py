@@ -6,6 +6,7 @@ import zipfile
 from pathlib import Path
 
 import pandas as pd
+from sklearn.datasets import fetch_covtype
 
 from experiments.synthetic_data import materialize_synthetic_datasets
 
@@ -79,6 +80,19 @@ HEART_DISEASE_COLUMNS = [
     "major_vessels",
     "thal",
     "heart_disease_raw",
+]
+
+COVERTYPE_NUMERIC_COLUMNS = [
+    "elevation",
+    "aspect",
+    "slope",
+    "horizontal_distance_to_hydrology",
+    "vertical_distance_to_hydrology",
+    "horizontal_distance_to_roadways",
+    "hillshade_9am",
+    "hillshade_noon",
+    "hillshade_3pm",
+    "horizontal_distance_to_fire_points",
 ]
 
 URLS = {
@@ -262,6 +276,47 @@ def prepare_heart_disease() -> pd.DataFrame:
     return heart
 
 
+def prepare_covertype() -> pd.DataFrame:
+    covtype = fetch_covtype(data_home=RAW / "covertype", as_frame=True)
+    frame = covtype.frame.copy()
+    feature_names = list(covtype.feature_names)
+
+    rename_columns = {
+        feature_names[index]: column
+        for index, column in enumerate(COVERTYPE_NUMERIC_COLUMNS)
+    }
+    frame = frame.rename(columns=rename_columns)
+
+    wilderness_columns = feature_names[10:14]
+    soil_columns = feature_names[14:54]
+    wilderness_codes = frame[wilderness_columns].to_numpy().argmax(axis=1) + 1
+    soil_codes = frame[soil_columns].to_numpy().argmax(axis=1) + 1
+    frame["wilderness_area"] = pd.Series(wilderness_codes, index=frame.index).map(
+        lambda value: f"wilderness_{value:02d}"
+    )
+    frame["soil_type"] = pd.Series(soil_codes, index=frame.index).map(
+        lambda value: f"soil_{value:02d}"
+    )
+    frame["cover_type"] = frame["Cover_Type"].map(lambda value: f"cover_{int(value)}")
+
+    covertype = frame[
+        [
+            *COVERTYPE_NUMERIC_COLUMNS,
+            "wilderness_area",
+            "soil_type",
+            "cover_type",
+        ]
+    ].copy()
+    for column in COVERTYPE_NUMERIC_COLUMNS:
+        covertype[column] = pd.to_numeric(covertype[column], errors="coerce")
+
+    output = PROCESSED / "covertype.csv"
+    PROCESSED.mkdir(parents=True, exist_ok=True)
+    covertype.to_csv(output, index=False, quoting=csv.QUOTE_MINIMAL)
+    print(f"Wrote {output} with shape {covertype.shape}")
+    return covertype
+
+
 def main() -> None:
     prepare_adult()
     prepare_titanic()
@@ -269,6 +324,7 @@ def main() -> None:
     prepare_pima_diabetes()
     prepare_bank_marketing()
     prepare_heart_disease()
+    prepare_covertype()
     materialize_synthetic_datasets(PROCESSED)
 
 

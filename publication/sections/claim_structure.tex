@@ -27,9 +27,10 @@ Claim & Evidence role & Instrument & Allowable conclusion \\
 Practical generation & Primary & API, CLI, runtime, simple baselines & Useful when low setup cost matters \\
 Distributional usefulness & Primary & Marginal, dependence, neighbour, discrimination tests & Dataset-specific similarity evidence \\
 Downstream usefulness & Primary & Utility lift on held-out real tasks & Utility only where lift is observed \\
+Class rebalancing & Secondary & Fixed minority augmentation diagnostic & Boundary evidence for oversampling-adjacent use \\
 NCA mechanism & Supporting & NCA-vs-PCA and majority prediction lift & Mechanism evidence only where lift is positive \\
 Decoder probabilities & Boundary & Log loss, Brier score, calibration error & Probabilities are diagnostic unless measured \\
-Local transport & Supporting and boundary & Convex hull and frozen-Isomap stress & Manifold consistency is diagnostic \\
+Analogy transport & Supporting and boundary & Analogy traces, convex hull, frozen-Isomap stress & Construction is inspectable; manifold consistency is diagnostic \\
 Privacy and constraints & Boundary & Row-proximity and exact-overlap checks & No formal privacy or constraint claim \\
 \bottomrule
 \end{tabular}

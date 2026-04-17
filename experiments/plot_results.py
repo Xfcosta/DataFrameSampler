@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from experiments.mechanism_validation import summarize_decoder_calibration, summarize_mechanism_validation
+from experiments.imbalance_validation import summarize_imbalance_validation
 from experiments.sensitivity_validation import summarize_sensitivity_validation
 from experiments.synthetic_data import SYNTHETIC_DATASETS
 
@@ -23,6 +24,10 @@ METHOD_LABELS = {
     "gaussian_copula_empirical": "Gaussian copula",
     "stratified_columns": "Stratified",
     "latent_bootstrap": "Latent bootstrap",
+    "real_train": "Real train",
+    "dataframe_sampler_balanced": "DataFrameSampler",
+    "smotenc_balanced": "SMOTE/SMOTENC",
+    "stratified_columns_balanced": "Stratified columns",
 }
 
 METHOD_ORDER = [
@@ -117,6 +122,19 @@ def load_sensitivity_validations(results_dir: str | Path = RESULTS) -> pd.DataFr
     if not frames:
         raise FileNotFoundError("No *_sensitivity_validation.csv files found. Run the notebooks first.")
     return pd.concat(frames, ignore_index=True)
+
+
+def load_imbalance_validations(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    results_path = Path(results_dir)
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(results_path.glob("*_imbalance_validation.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No *_imbalance_validation.csv files found. Run the selected notebooks first.")
+    data = pd.concat(frames, ignore_index=True)
+    data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
+    return data
 
 
 def plot_baseline_similarity(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
@@ -458,6 +476,37 @@ def plot_sensitivity_validation(data: pd.DataFrame, figures_dir: str | Path = FI
     return output
 
 
+def plot_imbalance_validation(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
+    summary = summarize_imbalance_validation(data)
+    if summary.empty:
+        raise FileNotFoundError("No valid imbalance validation rows found.")
+    summary["method_label"] = summary["method"].map(METHOD_LABELS).fillna(summary["method"])
+    datasets = list(summary["dataset"].drop_duplicates())
+    metrics = [
+        ("balanced_accuracy", "Balanced accuracy"),
+        ("macro_f1", "Macro F1"),
+        ("minority_recall", "Minority recall"),
+    ]
+    fig, axes = plt.subplots(len(datasets), len(metrics), figsize=(13, max(4.0, 2.3 * len(datasets))), sharex=False)
+    if len(datasets) == 1:
+        axes = axes.reshape(1, -1)
+    for row_idx, dataset in enumerate(datasets):
+        subset = summary[summary["dataset"] == dataset]
+        for col_idx, (metric, title) in enumerate(metrics):
+            ax = axes[row_idx, col_idx]
+            ax.barh(subset["method_label"].astype(str), subset[metric], color="#B279A2")
+            ax.set_title(f"{dataset}: {title}")
+            ax.grid(axis="x", alpha=0.25)
+    fig.suptitle("Secondary class-rebalancing diagnostic")
+    fig.tight_layout()
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "imbalance_validation.pdf"
+    fig.savefig(output, bbox_inches="tight")
+    plt.close(fig)
+    return output
+
+
 def generate_all_figures(
     *,
     results_dir: str | Path = RESULTS,
@@ -497,6 +546,10 @@ def generate_all_figures(
         pass
     try:
         outputs.append(plot_sensitivity_validation(load_sensitivity_validations(results_dir), figures_dir))
+    except FileNotFoundError:
+        pass
+    try:
+        outputs.append(plot_imbalance_validation(load_imbalance_validations(results_dir), figures_dir))
     except FileNotFoundError:
         pass
     return outputs

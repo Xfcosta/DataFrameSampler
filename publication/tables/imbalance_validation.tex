@@ -1,0 +1,28 @@
+\begin{table*}
+\caption{Secondary class-rebalancing diagnostic on selected binary target datasets. DataFrameSampler is fit only on minority-class feature rows, then generated rows are labelled as the minority class to rebalance the real training split; SMOTE is used for numeric-only data and SMOTENC when categorical features are present. Takeaway: imbalance results are boundary evidence for a secondary augmentation use case, not a claim that the method is a general imbalance-learning optimizer.}
+\label{tab:imbalance-validation}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{lllrrrrrrr}
+\toprule
+Dataset & Method & Minority & Train min. rate & Aug. min. rate & Bal. acc. & Macro F1 & Min. recall & PR AUC & Synth. rows \\
+\midrule
+adult & Real train & >50K & 0.234 & 0.234 & 0.686 & 0.714 & 0.419 & 0.702 & 0 \\
+adult & DataFrameSampler balanced & >50K & 0.234 & 0.500 & 0.790 & 0.767 & 0.735 & 0.685 & 638 \\
+adult & SMOTE/SMOTENC balanced & >50K & 0.234 & 0.500 & 0.756 & 0.734 & 0.684 & 0.666 & 638 \\
+adult & Stratified columns balanced & >50K & 0.234 & 0.500 & 0.806 & 0.781 & 0.761 & 0.709 & 638 \\
+bank\_marketing & Real train & yes & 0.113 & 0.113 & 0.662 & 0.715 & 0.333 & 0.689 & 0 \\
+bank\_marketing & DataFrameSampler balanced & yes & 0.113 & 0.500 & 0.857 & 0.757 & 0.842 & 0.661 & 930 \\
+bank\_marketing & SMOTE/SMOTENC balanced & yes & 0.113 & 0.500 & 0.827 & 0.779 & 0.737 & 0.611 & 930 \\
+bank\_marketing & Stratified columns balanced & yes & 0.113 & 0.500 & 0.839 & 0.776 & 0.772 & 0.660 & 930 \\
+heart\_disease & Real train & present & 0.458 & 0.458 & 0.801 & 0.801 & 0.786 & 0.876 & 0 \\
+heart\_disease & DataFrameSampler balanced & present & 0.458 & 0.500 & 0.772 & 0.769 & 0.810 & 0.880 & 18 \\
+heart\_disease & SMOTE/SMOTENC balanced & present & 0.458 & 0.500 & 0.803 & 0.802 & 0.810 & 0.880 & 18 \\
+heart\_disease & Stratified columns balanced & present & 0.458 & 0.500 & 0.791 & 0.790 & 0.786 & 0.880 & 18 \\
+pima\_diabetes & Real train & positive & 0.348 & 0.348 & 0.678 & 0.682 & 0.543 & 0.680 & 0 \\
+pima\_diabetes & DataFrameSampler balanced & positive & 0.348 & 0.500 & 0.720 & 0.713 & 0.679 & 0.677 & 163 \\
+pima\_diabetes & SMOTE/SMOTENC balanced & positive & 0.348 & 0.500 & 0.713 & 0.708 & 0.667 & 0.703 & 163 \\
+pima\_diabetes & Stratified columns balanced & positive & 0.348 & 0.500 & 0.722 & 0.714 & 0.691 & 0.690 & 163 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table*}

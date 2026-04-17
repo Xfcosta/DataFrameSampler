@@ -16,6 +16,10 @@ columns. Let $C_1,\ldots,C_q$ be the categorical columns under the type policy
 in Section~\ref{sec:problem-setting}. Each categorical column is first encoded
 as a one-hot block, and the initial context is the concatenation of
 standardized continuous coordinates and all one-hot blocks.
+The role of the learned blocks is to construct real-valued proxies for
+categorical variables so that rows with the same categorical label are mapped
+toward nearby points, making categorical variation compatible with local
+geometric operations.
 
 For each categorical column $C_j$, the sampler removes $C_j$'s own current
 block from the context and fits a supervised projection
@@ -39,45 +43,54 @@ The following pseudocode gives the fitted construction in operational form.
 It is deliberately written at the same level as the implementation, because
 reproducibility is part of the contribution.
 
-\begin{center}
-\begin{minipage}{0.92\textwidth}
-\textbf{Algorithm 1: Fitting the latent representation.}
-\begin{enumerate}
-\item Split the dataframe columns into continuous and categorical columns using
-the binary-as-categorical policy.
-\item Median-impute and standardize the continuous columns.
-\item Fill missing categorical values with a stable sentinel and one-hot encode
-each categorical column.
-\item Initialize the context as standardized continuous columns followed by all
-one-hot categorical blocks.
-\item For each iteration and each categorical column $C_j$, remove the current
-block for $C_j$, fit NCA to predict $C_j$ from the remaining context, and
-replace the block for $C_j$ with the learned block.
-\item Train one categorical decoder per $C_j$ from the final latent context
-with $C_j$'s own block removed.
-\end{enumerate}
-\end{minipage}
-\end{center}
+\begin{algorithm}[t]
+\caption{Fit the supervised composite latent representation.}
+\label{alg:fit-latent}
+\begin{algorithmic}[1]
+\Require Mixed-type dataframe $X$, iteration count $T$, block widths $\{k_j\}_{j=1}^q$
+\Ensure Fitted latent matrix $Z$, categorical decoders $\{g_j\}_{j=1}^q$
+\State Split columns into continuous columns and categorical columns using the binary-as-categorical policy.
+\State Median-impute and standardize continuous columns to obtain $X^{num}$.
+\State Fill categorical missing values with a sentinel and one-hot encode each categorical column.
+\State Initialize the context $H \gets [X^{num}\mid O_1 \mid \cdots \mid O_q]$.
+\For{$t = 1,\ldots,T$}
+  \For{categorical column $C_j$}
+    \State Remove $C_j$'s current block from $H$ to form $H_{-j}$.
+    \State Fit NCA projection $f_j:H_{-j}\rightarrow\mathbb{R}^{k_j}$ using labels $C_j$.
+    \State Replace $C_j$'s current block in $H$ with $f_j(H_{-j})$.
+  \EndFor
+\EndFor
+\State Set $Z \gets H$.
+\For{categorical column $C_j$}
+  \State Remove $C_j$'s final block from $Z$ to form $Z_{-j}$.
+  \State Fit random-forest decoder $g_j$ to predict $C_j$ from $Z_{-j}$.
+\EndFor
+\State \Return fitted preprocessing, projections, $Z$, and decoders $\{g_j\}_{j=1}^q$.
+\end{algorithmic}
+\end{algorithm}
 
-\begin{center}
-\begin{minipage}{0.92\textwidth}
-\textbf{Algorithm 2: Generating synthetic rows.}
-\begin{enumerate}
-\item Choose an anchor latent row $A$ from the fitted latent matrix.
-\item Sample a mutual neighbour $B$ of $A$, then sample a mutual neighbour $C$
-of $B$.
-\item Form the transported point
-\[
-  T(A;B,C)=A+\lambda(C-B).
-\]
-\item Reject and retry the neighbour chain if the candidate violates fitted
-latent range constraints or numeric standard-deviation checks, up to the
-configured retry budget.
-\item Decode the accepted latent point into continuous values by inverse
-scaling and categorical values by random-forest decoder probabilities.
-\end{enumerate}
-\end{minipage}
-\end{center}
+\begin{algorithm}[t]
+\caption{Generate synthetic rows by local displacement transfer.}
+\label{alg:generate}
+\begin{algorithmic}[1]
+\Require Fitted latent matrix $Z$, decoders $\{g_j\}_{j=1}^q$, sample count $m$, scale $\lambda$, retry budget $R$
+\Ensure Synthetic dataframe $\widetilde{X}$
+\For{$i = 1,\ldots,m$}
+  \State Sample anchor row $A$ from $Z$.
+  \For{$r = 0,\ldots,R$}
+    \State Sample a mutual neighbour $B$ of $A$.
+    \State Sample a mutual neighbour $C$ of $B$.
+    \State Form candidate $A' \gets A + \lambda(C-B)$.
+    \If{$A'$ satisfies fitted latent range and numeric z-score constraints}
+      \State \textbf{break}
+    \EndIf
+  \EndFor
+  \State Decode continuous coordinates of $A'$ by inverse scaling.
+  \State Decode each categorical column by sampling from $g_j(A'_{-j})$.
+\EndFor
+\State \Return decoded dataframe $\widetilde{X}$.
+\end{algorithmic}
+\end{algorithm}
 
 We use three named configurations when discussing practical setup choices. The
 \emph{fast} setup uses no NCA refinement iteration, no rejection retries, and
@@ -120,6 +133,19 @@ neighbour of $A$, and it can lie outside the convex hull of the training latent
 rows. The operator is nevertheless only a heuristic. It is meaningful when the
 learned latent space is locally regular enough for nearby displacements to be
 reused, and it can fail when this local-linearity assumption is violated.
+
+The same formula is also the method's main interpretability interface. If
+$D=T(A;B,C)$, then the generated point can be read as the observed-displacement
+analogy
+\[
+  D : A \approx C : B,
+\]
+or, in words, ``modify $A$ in the same fitted-latent direction by which $C$
+differs from $B$.'' This is an analogy over measured rows and fitted latent
+coordinates, not a semantic or causal statement about the underlying domain.
+Its practical value is that every generated row has a trace: the anchor $A$,
+the observed pair $(B,C)$, the displacement $C-B$, the accepted or rejected
+candidate, and the decoder probabilities used for categorical reconstruction.
 
 \subsection{Computational Complexity}
 

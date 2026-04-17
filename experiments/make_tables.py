@@ -7,6 +7,7 @@ import pandas as pd
 
 from experiments.manifold_validation import summarize_manifold_validation
 from experiments.mechanism_validation import summarize_decoder_calibration, summarize_mechanism_validation
+from experiments.imbalance_validation import summarize_imbalance_validation
 from experiments.proposed_setups import PROPOSED_SAMPLER_SETUPS
 from experiments.sensitivity_validation import summarize_sensitivity_validation
 from experiments.synthetic_data import SYNTHETIC_DATASETS, materialize_synthetic_datasets
@@ -118,6 +119,10 @@ METHOD_LABELS = {
     "stratified_columns": "Stratified columns",
     "latent_interpolation": "Latent interpolation",
     "latent_bootstrap": "Latent bootstrap",
+    "real_train": "Real train",
+    "dataframe_sampler_balanced": "DataFrameSampler balanced",
+    "smotenc_balanced": "SMOTE/SMOTENC balanced",
+    "stratified_columns_balanced": "Stratified columns balanced",
 }
 
 DEFAULT_DATASETS = [
@@ -162,6 +167,13 @@ DEFAULT_DATASETS = [
         domain="Medical diagnosis",
         sensitive="Heart-disease label",
         rationale="Small medical classification benchmark with mixed clinical variables",
+    ),
+    DatasetTableMetadata(
+        key="covertype",
+        name="Forest Covertype",
+        domain="Ecology / forest cover",
+        sensitive="None selected",
+        rationale="Large-scale public benchmark with collapsed categorical terrain indicators",
     ),
     *[
         DatasetTableMetadata(
@@ -246,14 +258,42 @@ def load_sensitivity_validations(results_dir: str | Path = RESULTS) -> pd.DataFr
     return pd.concat(frames, ignore_index=True)
 
 
-def load_deep_reference_comparisons(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+def load_imbalance_validations(results_dir: str | Path = RESULTS) -> pd.DataFrame:
     frames = [
         pd.read_csv(path)
-        for path in sorted(Path(results_dir).glob("*_deep_reference_comparison.csv"))
+        for path in sorted(Path(results_dir).glob("*_imbalance_validation.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No imbalance validation files found. Run the selected dataset notebooks first.")
+    data = pd.concat(frames, ignore_index=True)
+    data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
+    return data
+
+
+def load_deep_reference_comparisons(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    results_path = Path(results_dir)
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(results_path.glob("*_deep_reference_comparison.csv"))
     ]
     if not frames:
         raise FileNotFoundError("No deep reference comparison files found. Run the Adult CTGAN reference first.")
     data = pd.concat(frames, ignore_index=True)
+
+    reference_rows = []
+    for dataset in sorted(data["dataset"].dropna().unique()):
+        baseline_path = results_path / f"{dataset}_baseline_comparison.csv"
+        if not baseline_path.exists():
+            continue
+        baseline = pd.read_csv(baseline_path)
+        reference_rows.append(
+            baseline[
+                baseline["method"].isin(["dataframe_sampler", "gaussian_copula_empirical"])
+            ]
+        )
+    if reference_rows:
+        data = pd.concat([*reference_rows, data], ignore_index=True, sort=False)
+
     data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data.get("method_label", data["method"]))
     return data
 
@@ -752,6 +792,61 @@ def write_sensitivity_validation_table(
     )
 
 
+def write_imbalance_validation_table(
+    validations: pd.DataFrame,
+    *,
+    tables_dir: str | Path = TABLES,
+) -> Path:
+    summary = summarize_imbalance_validation(validations)
+    if summary.empty:
+        summary = validations.copy()
+    summary["method_label"] = summary["method"].map(METHOD_LABELS).fillna(summary["method"])
+    df = summary[
+        [
+            "dataset",
+            "method_label",
+            "minority_class",
+            "train_minority_rate",
+            "augmented_minority_rate",
+            "balanced_accuracy",
+            "macro_f1",
+            "minority_recall",
+            "pr_auc",
+            "synthetic_rows",
+        ]
+    ].copy()
+    method_order = {
+        "Real train": 0,
+        "DataFrameSampler balanced": 1,
+        "SMOTE/SMOTENC balanced": 2,
+        "Stratified columns balanced": 3,
+    }
+    df["_method_order"] = df["method_label"].map(method_order).fillna(99)
+    df = df.sort_values(["dataset", "_method_order", "method_label"]).drop(columns="_method_order")
+    df = df.rename(
+        columns={
+            "dataset": "Dataset",
+            "method_label": "Method",
+            "minority_class": "Minority",
+            "train_minority_rate": "Train min. rate",
+            "augmented_minority_rate": "Aug. min. rate",
+            "balanced_accuracy": "Bal. acc.",
+            "macro_f1": "Macro F1",
+            "minority_recall": "Min. recall",
+            "pr_auc": "PR AUC",
+            "synthetic_rows": "Synth. rows",
+        }
+    )
+    return write_latex(
+        df,
+        Path(tables_dir) / "imbalance_validation.tex",
+        "Secondary class-rebalancing diagnostic on selected binary target datasets. DataFrameSampler is fit only on minority-class feature rows, then generated rows are labelled as the minority class to rebalance the real training split; SMOTE is used for numeric-only data and SMOTENC when categorical features are present. Takeaway: imbalance results are boundary evidence for a secondary augmentation use case, not a claim that the method is a general imbalance-learning optimizer.",
+        "tab:imbalance-validation",
+        float_format="%.3f",
+        full_width=True,
+    )
+
+
 def write_deep_reference_table(
     comparisons: pd.DataFrame,
     *,
@@ -784,7 +879,7 @@ def write_deep_reference_table(
     return write_latex(
         df,
         Path(tables_dir) / "deep_reference_comparison.tex",
-        "Adult high-capacity reference comparison. CTGAN is included as an optional SDV-based reference model with a global adversarial objective, not as a leaderboard target. Takeaway: the comparison locates DataFrameSampler against a modern deep generator while preserving the paper's emphasis on inspectability and setup cost.",
+        "Adult high-capacity reference comparison. CTGAN is included as an optional SDV-based reference model with a global adversarial objective, not as a leaderboard target; DataFrameSampler and Gaussian copula rows are included from the same Adult baseline artifact for scale. Takeaway: the comparison locates DataFrameSampler against a modern deep generator while preserving the paper's emphasis on inspectability and setup cost.",
         "tab:deep-reference-comparison",
         float_format="%.3f",
         full_width=True,
@@ -963,6 +1058,16 @@ def generate_all_tables(
             -2,
             write_sensitivity_validation_table(
                 load_sensitivity_validations(results_dir),
+                tables_dir=tables_dir,
+            ),
+        )
+    except FileNotFoundError:
+        pass
+    try:
+        outputs.insert(
+            -2,
+            write_imbalance_validation_table(
+                load_imbalance_validations(results_dir),
                 tables_dir=tables_dir,
             ),
         )

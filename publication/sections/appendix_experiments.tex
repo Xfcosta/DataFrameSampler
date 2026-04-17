@@ -36,7 +36,10 @@ running example because it is a familiar, moderately sized, mixed-type dataset
 with interpretable categorical and numerical dependencies. Titanic is used for
 small illustrative figures, while the medical, business, and controlled
 datasets test whether the same diagnostics remain legible across different
-regimes. This design keeps the paper method-focused rather than turning it
+regimes. Covertype is included to cover a larger public source table without
+changing the paper into a scale study: the full prepared table is retained, but
+the notebook workflow uses a deterministic cap when running repeated
+diagnostics. This design keeps the paper method-focused rather than turning it
 into a domain-specific benchmark study.
 
 Table~\ref{tab:methods} records the comparison methods used throughout the
@@ -255,6 +258,32 @@ separate methods with cross-dataset performance claims.}
 The corresponding numerical summary is reported in
 Table~\ref{tab:sensitivity-validation}. Its role is to show local stability,
 not to select a globally optimal configuration.
+}{}
+
+\subsection{Secondary Class-Rebalancing Diagnostic}
+
+The class-rebalancing diagnostic is included because local displacement
+generation is adjacent to oversampling methods, especially SMOTE-style
+interpolation. We keep the diagnostic deliberately small. It uses only selected
+binary target datasets, one fixed train/test protocol, and one fixed rebalance
+target: generate enough minority-class rows to bring the real training split to
+parity. DataFrameSampler is fit on minority-class feature rows only, so the
+generated examples are traceable analogies among observed minority examples.
+The comparison to a SMOTE-family reference is reported when the optional
+\texttt{imbalanced-learn} dependency is available; it uses SMOTENC for
+mixed-type feature tables and ordinary SMOTE for numeric-only feature tables.
+
+\IfFileExists{../experiments/figures/imbalance_validation.pdf}{
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{imbalance_validation.pdf}
+\caption{Appendix class-rebalancing diagnostic. Balanced accuracy, macro F1,
+and minority recall are evaluated on held-out real rows after adding synthetic
+minority rows to the real training split. Takeaway: the diagnostic tests a
+secondary oversampling-adjacent use case without changing the paper into an
+imbalance-learning benchmark.}
+\label{fig:appendix-imbalance-validation}
+\end{figure*}
 }{}
 
 \subsection{Frozen-Manifold And Extrapolation Diagnostics}

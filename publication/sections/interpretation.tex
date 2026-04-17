@@ -26,6 +26,81 @@ less formal than a tangent-space model, but it has an operational advantage:
 the sampled anchor, neighbour chain, displacement, and decoded categorical
 probabilities are all inspectable.
 
+\subsection{Analogy-Based Interpretation}
+
+The generation operator is not only a geometric mechanism; it is also the
+primary explanation interface for individual samples. A generated row is
+constructed from four concrete latent rows: the anchor $A$, the first observed
+neighbour $B$, the second observed neighbour $C$, and the candidate
+$D=T(A;B,C)$. The relation can be read as
+\[
+  D : A \approx C : B,
+\]
+meaning that $D$ changes from $A$ in the same fitted-latent direction that
+$C$ changes from $B$. This is a data-driven displacement analogy. It does not
+assert that the change is causal, semantically named, or valid outside the
+local metric context; it only records how one observed local difference was
+reused to construct a new row.
+
+\begin{table}[t]
+\centering
+\caption{Analogy trace for one generated row. The entries are roles in the
+fitted latent construction, not domain-level causal explanations. Takeaway:
+individual samples are inspectable because each one can be traced to a concrete
+anchor and an observed neighbour-pair displacement.}
+\label{tab:analogy-trace}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Symbol & Role & Interpretation \\
+\midrule
+$A$ & Anchor row & Observed row to be modified \\
+$B$ & Source neighbour & Observed row where the local displacement starts \\
+$C$ & Second neighbour & Observed row where the local displacement ends \\
+$C-B$ & Displacement & Fitted-latent change transferred to the anchor \\
+$D=T(A;B,C)$ & Generated candidate & Anchor modified by the observed displacement \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+This analogy trace distinguishes the sampler from generators that expose only
+global fitted parameters or a sampled latent vector. The trace is not enough to
+prove realism, but it gives a user a concrete object to inspect when a row looks
+implausible: the issue can be localized to the anchor choice, the neighbour
+pair, the scale $\lambda$, the rejection constraints, or the decoder
+probabilities.
+
+Table~\ref{tab:adult-analogy-example} shows one concrete Adult Census Income
+trace from a deterministic fitted run. The row values are displayed only for a
+small set of human-readable columns; the actual operator is applied in the
+fitted latent space before decoding. This example illustrates the analogy
+$D : A \approx C : B$ in concrete tabular terms.
+
+\begin{table}[t]
+\centering
+\caption{Concrete Adult analogy trace for one generated row. The neighbour
+pair changes from a 50-year-old, high-income handlers-cleaners row to a
+56-year-old, lower-income craft-repair row; the generated row applies a similar
+observed displacement to the 62-year-old anchor. Takeaway: the generation step
+can be read as a traceable observed-displacement analogy over real examples.}
+\label{tab:adult-analogy-example}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}lp{0.72\textwidth}@{}}
+\toprule
+Role & Displayed values \\
+\midrule
+$A$ (anchor) & age=62, education=HS-grad, occupation=Farming-fishing, hours/week=40, income=$>$50K \\
+$B$ (neighbour) & age=50, education=HS-grad, occupation=Handlers-cleaners, hours/week=40, income=$>$50K \\
+$C$ (neighbour) & age=56, education=HS-grad, occupation=Craft-repair, hours/week=40, income=$\leq$50K \\
+$D$ (generated) & age=68, education=HS-grad, occupation=Craft-repair, hours/week=40, income=$\leq$50K \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
 \subsection{Relation to Local Linear Transport}
 
 The operator $T(A;B,C)=A+\lambda(C-B)$ can be read as applying a learned local

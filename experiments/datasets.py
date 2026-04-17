@@ -91,6 +91,19 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
             "knn_backend": "sklearn",
         },
     ),
+    "covertype": DatasetExperimentConfig(
+        dataset_name="covertype",
+        title="Forest Covertype",
+        data_filename="covertype.csv",
+        target_column="cover_type",
+        working_sample_size=1500,
+        n_generated=1000,
+        random_state=56,
+        sampler_config={
+            "n_neighbours": 8,
+            "knn_backend": "sklearn",
+        },
+    ),
     "synthetic_correlated_helpers": DatasetExperimentConfig(
         dataset_name="synthetic_correlated_helpers",
         title="Controlled correlated helpers",

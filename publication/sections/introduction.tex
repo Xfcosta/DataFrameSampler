@@ -25,7 +25,20 @@ generation, and tools whose evidence or configuration surface is organized
 around stronger fidelity, augmentation, or release claims.
 
 \paragraph{HOW.}
-DataFrameSampler addresses this gap by using one explicit latent construction
+The central design problem is how to include categorical variables in a simple
+geometric sampling rule. If all variables were continuous, one could generate
+new rows by applying local displacements directly in Euclidean space.
+Categorical variables break this picture because they do not admit a natural
+notion of interpolation or displacement. The method therefore constructs a
+proxy representation: each categorical column is replaced by real-valued
+coordinates in which nearby points are encouraged to share the same category,
+so that neighbourhoods correspond to categorical agreement.
+In this representation, the full dataframe becomes a numerical vector space,
+and the same displacement rule can be applied uniformly to all coordinates.
+After sampling, the real-valued proxies are mapped back to categories using a
+learned decoder.
+
+DataFrameSampler implements this idea with one explicit latent construction
 throughout. Non-binary numeric columns are median-imputed and standardized,
 while every categorical column, including booleans and numeric two-valued
 columns such as $0/1$, is treated as a supervised target. For each categorical
@@ -33,9 +46,12 @@ target the method learns a Neighborhood Components Analysis block from the
 remaining columns, composes these blocks with the numeric coordinates, generates
 candidate latent rows by local mutual-neighbour displacement, and decodes the
 result through inverse numeric scaling and random-forest categorical
-classification. In practice, this gives a small estimator whose mechanism can
-be inspected as fitted blocks, neighbour chains, rejection diagnostics, and
-per-column decoders, rather than as a single opaque generative objective.
+classification. The displacement can be read as an observed analogy: construct
+a new row from anchor $A$ by applying the same latent change that takes an
+observed neighbour $B$ to another observed neighbour $C$. In practice, this
+gives a small estimator whose mechanism can be inspected as fitted blocks,
+analogy traces, rejection diagnostics, and per-column decoders, rather than as
+a single opaque generative objective.
 
 \paragraph{Contributions.}
 The paper makes four contributions, each tied to a bounded claim. First, we
@@ -44,9 +60,10 @@ provide a direct \texttt{DataFrameSampler} estimator with \texttt{fit},
 we define an iterative per-categorical-column NCA latent construction for
 mixed-type dataframes, with binary variables treated as categorical targets
 rather than continuous coordinates. Third, we use a local mutual-neighbour
-transport rule in the learned space as an inspectable generation heuristic,
+transport rule in the learned space as an inspectable analogy operator,
 including rejection-and-retry constraints for fitted numeric ranges and
-standardized numeric outliers. Fourth, we organize the empirical section around
+standardized numeric outliers. Each generated row can therefore be described by
+the concrete anchor and observed displacement that produced it. Fourth, we organize the empirical section around
 claim-specific evidence: distributional similarity, downstream utility,
 neighbour-distance behaviour, NCA-block mechanism evidence, decoder probability
 diagnostics, and extrapolative manifold consistency are interpreted only within

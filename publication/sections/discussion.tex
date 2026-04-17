@@ -2,8 +2,11 @@
 
 The strongest conclusion supported by the evidence is a practical-use claim.
 DataFrameSampler is a small, mixed-type dataframe sampler whose behaviour can
-be inspected through fitted latent blocks, neighbour chains, decoder
-probabilities, rejection counts, and ordinary dataframe outputs. The evaluation
+be inspected through fitted latent blocks, analogy traces, decoder
+probabilities, rejection counts, and ordinary dataframe outputs. Each generated
+row can be explained constructively as an anchor modified by an observed
+neighbour-pair displacement, which is a stronger interface than merely reporting
+that a sample came from a fitted black-box distribution. The evaluation
 therefore supports the claim that the method can be useful for tests,
 demonstrations, notebooks, and exploratory workflows when low setup cost and
 auditable construction are more important than formal release guarantees.
@@ -25,9 +28,9 @@ optional calibration and calibration diagnostics expose probability quality but
 do not impose cross-column consistency. It can therefore occur that a generated
 row is locally plausible for each decoder while violating a structured
 constraint that spans several columns. Likewise, a mutual-neighbour displacement
-is easy to inspect because it can be described by an anchor, a neighbour chain,
-and a latent displacement, but that same simplicity means the method remains a
-heuristic rather than a formal manifold sampler.
+is easy to inspect because it can be described as $D:A\approx C:B$, but that
+same simplicity means the analogy is an observed latent displacement, not a
+semantic or causal explanation and not a formal manifold sampler.
 
 The allowable conclusion is therefore deliberately conservative. The paper
 does not establish general superiority over synthetic-data systems, formal
