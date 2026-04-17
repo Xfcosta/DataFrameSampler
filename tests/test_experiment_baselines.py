@@ -90,7 +90,6 @@ def test_run_dataset_comparison_writes_simple_baseline_summary(tmp_path):
         target_column="target",
         results_dir=tmp_path,
         dataframe_sampler_config={
-            "n_bins": 3,
             "n_neighbours": 2,
             "knn_backend": "sklearn",
             "random_state": 1,
@@ -122,31 +121,3 @@ def test_run_dataset_comparison_writes_simple_baseline_summary(tmp_path):
     for method in summary["method"]:
         assert (tmp_path / f"toy_{method}_generated.csv").exists()
 
-
-def test_run_dataset_comparison_includes_llm_assisted_configuration(tmp_path):
-    df = make_baseline_dataframe()
-
-    summary = run_dataset_comparison(
-        df,
-        dataset_name="toy",
-        target_column="target",
-        results_dir=tmp_path,
-        dataframe_sampler_config={
-            "n_bins": 3,
-            "n_neighbours": 2,
-            "knn_backend": "sklearn",
-            "random_state": 1,
-        },
-        llm_assisted_config={
-            "n_bins": 4,
-            "n_neighbours": 2,
-            "knn_backend": "sklearn",
-            "embedding_method": "pca",
-            "random_state": 1,
-        },
-        n_samples=10,
-        random_state=1,
-    )
-
-    assert "dataframe_sampler_llm_assisted" in set(summary["method"])
-    assert (tmp_path / "toy_dataframe_sampler_llm_assisted_generated.csv").exists()

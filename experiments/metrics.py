@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -528,35 +527,6 @@ def practicality_metrics(
     )
 
 
-def anonymization_safeguard_metrics(
-    source: pd.DataFrame,
-    candidate: pd.DataFrame,
-    columns: Sequence[str],
-    *,
-    replacement_report: Mapping[str, Any] | None = None,
-) -> pd.DataFrame:
-    """Measure exact/normalized overlap and optional replacement consistency."""
-    rows = []
-    mappings = _extract_report_mappings(replacement_report)
-    for column in columns:
-        source_values = set(source[column].dropna())
-        candidate_values = set(candidate[column].dropna())
-        normalized_source = {_normalize_value(value) for value in source_values}
-        normalized_candidate = {_normalize_value(value) for value in candidate_values}
-        mapping = mappings.get(column, {})
-        rows.append(
-            {
-                "column": column,
-                "exact_source_overlap_count": len(source_values & candidate_values),
-                "normalized_source_overlap_count": len(normalized_source & normalized_candidate),
-                "replacement_collision_count": _replacement_collision_count(mapping, normalized_source),
-                "repeated_value_consistency_rate": _repeated_value_consistency(mapping),
-                "manual_review_required": True,
-            }
-        )
-    return pd.DataFrame(rows)
-
-
 def distributional_similarity_report(real: pd.DataFrame, synthetic: pd.DataFrame) -> dict[str, Any]:
     """Convenience wrapper returning all distributional metric families."""
     return {
@@ -841,33 +811,3 @@ def _count_code_lines(python_code: str | None) -> int | None:
         return None
     return sum(1 for line in python_code.splitlines() if line.strip() and not line.strip().startswith("#"))
 
-
-def _extract_report_mappings(replacement_report: Mapping[str, Any] | None) -> dict[str, dict[Any, Any]]:
-    if not replacement_report:
-        return {}
-    mappings = replacement_report.get("mappings", replacement_report)
-    if not isinstance(mappings, Mapping):
-        return {}
-    return {
-        column: dict(mapping)
-        for column, mapping in mappings.items()
-        if isinstance(mapping, Mapping)
-    }
-
-
-def _replacement_collision_count(mapping: Mapping[Any, Any], normalized_source: set[str]) -> int:
-    return sum(1 for replacement in mapping.values() if _normalize_value(replacement) in normalized_source)
-
-
-def _repeated_value_consistency(mapping: Mapping[Any, Any]) -> float:
-    if not mapping:
-        return np.nan
-    replacements_by_source = {}
-    for source, replacement in mapping.items():
-        replacements_by_source.setdefault(source, set()).add(replacement)
-    consistent = sum(1 for replacements in replacements_by_source.values() if len(replacements) == 1)
-    return consistent / len(replacements_by_source)
-
-
-def _normalize_value(value: Any) -> str:
-    return re.sub(r"\s+", " ", str(value).strip().lower())

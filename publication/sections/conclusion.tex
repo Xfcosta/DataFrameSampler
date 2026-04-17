@@ -1,19 +1,11 @@
 \section{Conclusion}
 
-This paper stub introduced DataFrameSampler, a lightweight package for
-generating mixed-type tabular samples through vectorization, discretization,
-local neighbour sampling, and bin-level decoding. The implementation provides a
-practical Python API and CLI, configurable embedding and nearest-neighbour
-backends, CSV/Parquet I/O, optional LLM-assisted configuration, and
-sensitive-value replacement before sampling.
+DataFrameSampler 2.0 is a lightweight mixed-type dataframe sampler based on
+iterative supervised NCA latent blocks and local mutual-neighbour transport. It
+provides a direct sklearn-style API and a CLI while keeping the modelling claim
+narrow: the method is simple, inspectable, and useful for example-data
+workflows, but it is heuristic and not privacy-preserving.
 
-The central argument is that simple and inspectable generation has value in its
-own right. For business and medical software workflows, a human-understandable
-mechanism can be preferable when the goal is to create examples for testing,
-demonstration, training, and exploratory modelling under explicit governance
-constraints.
-
-The next step is to complete the empirical evaluation and characterize where
-the method is useful, where it fails, and how its configuration choices affect
-nearest-neighbour closeness, real-versus-synthetic distinguishability, utility
-lift, distribution similarity, and ease of review.
+Future work should evaluate stability of the iterative latent construction,
+constraint-aware decoding, stronger diagnostics for high-cardinality
+categoricals, and alternatives to independent per-column decoders.

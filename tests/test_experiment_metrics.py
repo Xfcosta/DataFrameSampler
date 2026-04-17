@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 
 from experiments.metrics import (
-    anonymization_safeguard_metrics,
     categorical_similarity,
     classification_scores,
     dependence_similarity,
@@ -114,8 +113,8 @@ def test_inspectability_and_practicality_metrics():
 
     inspectability = inspectability_metrics(traces)
     practicality = practicality_metrics(
-        configuration={"n_bins": 10, "embedding_method": "pca"},
-        python_code="sampler.fit(df)\ngenerated = sampler.sample(10)\n",
+        configuration={"n_components": 2, "n_iterations": 2},
+        python_code="sampler.fit(df)\ngenerated = sampler.generate(10)\n",
         cli_command="dataframe-sampler -i input.csv -o output.csv -n 10",
         fit_seconds=0.5,
         sample_seconds=0.2,
@@ -128,26 +127,6 @@ def test_inspectability_and_practicality_metrics():
     assert practicality["lines_of_python"] == 2
     assert practicality["cli_command_length"] == 7
 
-
-def test_anonymization_safeguard_metrics_counts_overlap_and_collisions():
-    source = pd.DataFrame({"name": ["Alice Smith", "Bob Jones", "Alice Smith"]})
-    candidate = pd.DataFrame({"name": ["Nora Vale", "Bob Jones", "Iris Lane"]})
-    report = {
-        "mappings": {
-            "name": {
-                "Alice Smith": "Nora Vale",
-                "Bob Jones": "Bob Jones",
-            }
-        }
-    }
-
-    metrics = anonymization_safeguard_metrics(source, candidate, ["name"], replacement_report=report)
-
-    assert metrics.loc[0, "exact_source_overlap_count"] == 1
-    assert metrics.loc[0, "normalized_source_overlap_count"] == 1
-    assert metrics.loc[0, "replacement_collision_count"] == 1
-    assert metrics.loc[0, "repeated_value_consistency_rate"] == 1.0
-    assert metrics.loc[0, "manual_review_required"] == True
 
 
 def test_primary_measure_report_contains_four_experiment_measures():

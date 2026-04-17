@@ -10,19 +10,16 @@ import pandas as pd
 from scipy.stats import gaussian_kde
 from sklearn.neighbors import NearestNeighbors
 
-from dataframe_sampler import ConcreteDataFrameSampler
+from dataframe_sampler import DataFrameSampler
 
 
 DEFAULT_TWO_DIMENSIONAL_SAMPLER_KWARGS = {
-    "n_bins": 60,
     "n_neighbours": 8,
-    "sampled_columns": None,
+    "n_components": 2,
+    "n_iterations": 2,
     "random_state": None,
     "knn_backend": "sklearn",
     "knn_backend_kwargs": None,
-    "embedding_method": "pca",
-    "embedding_kwargs": None,
-    "numeric_decode_strategy": "continuous",
 }
 
 
@@ -111,14 +108,14 @@ def generate_two_dimensional_sample(
     *,
     n_samples: int | None = None,
     random_state: int = 42,
-    sampler_factory: Callable[..., object] = ConcreteDataFrameSampler,
+    sampler_factory: Callable[..., object] = DataFrameSampler,
     sampler_kwargs: dict | None = None,
 ) -> pd.DataFrame:
     kwargs = {**DEFAULT_TWO_DIMENSIONAL_SAMPLER_KWARGS, "random_state": random_state}
     kwargs.update(sampler_kwargs or {})
     sampler = sampler_factory(**kwargs)
     sampler.fit(dataframe)
-    return sampler.sample(n_samples=n_samples or len(dataframe))
+    return sampler.generate(n_samples=n_samples or len(dataframe))
 
 
 def run_two_dimensional_suite(

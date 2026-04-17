@@ -17,7 +17,6 @@ FIGURES = ROOT / "figures"
 METHOD_LABELS = {
     "dataframe_sampler_default": "DFS default",
     "dataframe_sampler_manual": "DFS manual",
-    "dataframe_sampler_llm_assisted": "DFS LLM-style",
     "row_bootstrap": "Bootstrap",
     "independent_columns": "Independent",
     "gaussian_copula_empirical": "Gaussian copula",
@@ -27,7 +26,6 @@ METHOD_LABELS = {
 METHOD_ORDER = [
     "dataframe_sampler_default",
     "dataframe_sampler_manual",
-    "dataframe_sampler_llm_assisted",
     "row_bootstrap",
     "independent_columns",
     "gaussian_copula_empirical",
@@ -142,7 +140,7 @@ def plot_what_context(figures_dir: str | Path = FIGURES) -> Path:
     ax.axis("off")
     boxes = [
         ("Source table", "Adult / Titanic\\nMixed numeric + categorical\\nGovernance constraint", 0.04, 0.55),
-        ("Sampler", "DataFrameSampler\\ninspectable bin-space\\nconfiguration choices", 0.38, 0.55),
+        ("Sampler", "DataFrameSampler\\ninspectable NCA latent-space\\nconfiguration choices", 0.38, 0.55),
         ("Example data", "Generated table\\nsame schema\\nfor non-production use", 0.72, 0.55),
         ("Uses", "Tests\\nDashboards\\nDemos\\nNotebooks", 0.72, 0.15),
         ("Review", "Explicit caveat:\\nnot formal privacy\\nnot clinical simulator", 0.38, 0.15),
@@ -167,14 +165,13 @@ def plot_how_pipeline(figures_dir: str | Path = FIGURES) -> Path:
     ax.axis("off")
     steps = [
         ("Dataframe", "pandas / CSV\\nAdult, Titanic"),
-        ("Optional\\nanonymization", "selected columns\\nsurrogate values"),
-        ("Vectorize", "numeric + categorical\\ncategorical embeddings"),
-        ("Encode bins", "latent integer\\nbin-space"),
+        ("Encode context", "standardize numerics\\none-hot categoricals"),
+        ("NCA blocks", "per-categorical\\nsupervised latent"),
         ("Neighbour chain", "anchor -> neighbour\\n-> neighbour"),
-        ("Decode", "bins back to\\ncolumn values"),
+        ("Decode", "inverse scale\\nRF categorical draw"),
         ("Output + trace", "same schema\\nexplainable path"),
     ]
-    xs = [0.02, 0.17, 0.32, 0.47, 0.62, 0.77, 0.90]
+    xs = [0.03, 0.21, 0.39, 0.57, 0.75, 0.90]
     for idx, ((title, body), x) in enumerate(zip(steps, xs)):
         add_box(ax, x, 0.52, title, body, width=0.11, height=0.28)
         if idx < len(steps) - 1:
@@ -182,7 +179,7 @@ def plot_how_pipeline(figures_dir: str | Path = FIGURES) -> Path:
     ax.text(
         0.5,
         0.18,
-        "Inspectable generation: anchor row + neighbour chain + latent difference + decoded bins",
+        "Inspectable generation: anchor row + neighbour chain + latent difference + decoded values",
         ha="center",
         va="center",
         fontsize=11,
@@ -191,30 +188,6 @@ def plot_how_pipeline(figures_dir: str | Path = FIGURES) -> Path:
     figures_path = Path(figures_dir)
     figures_path.mkdir(parents=True, exist_ok=True)
     output = figures_path / "how_pipeline.pdf"
-    fig.savefig(output, bbox_inches="tight")
-    plt.close(fig)
-    return output
-
-
-def plot_llm_configuration_flow(figures_dir: str | Path = FIGURES) -> Path:
-    fig, ax = plt.subplots(figsize=(11, 5.2))
-    ax.axis("off")
-    boxes = [
-        ("Dataframe profile", "names, dtypes\\nmissingness\\nexamples", 0.05, 0.56),
-        ("LLM recommendation", "vectorizing dict\\nsampled columns\\nembedding + KNN", 0.36, 0.56),
-        ("User overrides", "explicit CLI/API\\nchoices win", 0.67, 0.56),
-        ("Sampler config", "fixed dictionary\\nrecorded in notebook", 0.36, 0.16),
-    ]
-    for title, body, x, y in boxes:
-        add_box(ax, x, y, title, body, width=0.22, height=0.25)
-    add_arrow(ax, (0.27, 0.69), (0.36, 0.69))
-    add_arrow(ax, (0.58, 0.69), (0.67, 0.69))
-    add_arrow(ax, (0.78, 0.56), (0.58, 0.29))
-    add_arrow(ax, (0.47, 0.56), (0.47, 0.41))
-    ax.set_title("LLM-assisted configuration flow", pad=14)
-    figures_path = Path(figures_dir)
-    figures_path.mkdir(parents=True, exist_ok=True)
-    output = figures_path / "llm_configuration_flow.pdf"
     fig.savefig(output, bbox_inches="tight")
     plt.close(fig)
     return output
@@ -345,7 +318,6 @@ def plot_synthetic_category_stress(data: pd.DataFrame, figures_dir: str | Path =
             [
                 "dataframe_sampler_default",
                 "dataframe_sampler_manual",
-                "dataframe_sampler_llm_assisted",
                 "independent_columns",
             ]
         )
@@ -416,7 +388,6 @@ def generate_all_figures(
         plot_baseline_similarity(data, figures_dir),
         plot_configuration_competitors(data, figures_dir),
         plot_utility_cost_frontier(data, figures_dir),
-        plot_llm_configuration_flow(figures_dir),
     ]
     if any(data["dataset"].isin([spec.key for spec in SYNTHETIC_DATASETS])):
         outputs.extend(

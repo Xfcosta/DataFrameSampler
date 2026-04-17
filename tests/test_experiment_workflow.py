@@ -38,7 +38,6 @@ def make_workflow_config(**overrides):
         n_generated=6,
         random_state=1,
         manual_sampler_config={
-            "n_bins": 3,
             "n_neighbours": 2,
             "knn_backend": "sklearn",
         },
@@ -75,7 +74,7 @@ def test_working_dataframe_uses_full_frame_when_sample_size_is_none():
     assert sampled.equals(df.reset_index(drop=True))
 
 
-def test_prepare_dataframe_applies_direct_mappings_and_drops_aliases():
+def test_prepare_dataframe_drops_aliases_without_binary_numeric_mapping():
     df = pd.DataFrame(
         {
             "pclass": [1, 3],
@@ -86,17 +85,13 @@ def test_prepare_dataframe_applies_direct_mappings_and_drops_aliases():
     )
     config = make_workflow_config(
         drop_columns=("class",),
-        direct_numeric_mappings={
-            "sex": {"female": 0.0, "male": 1.0},
-            "alone": {False: 0.0, True: 1.0},
-        },
     )
 
     prepared = prepare_dataframe_for_experiment(df, config)
 
     assert list(prepared.columns) == ["pclass", "sex", "alone"]
-    assert prepared["sex"].tolist() == [0.0, 1.0]
-    assert prepared["alone"].tolist() == [0.0, 1.0]
+    assert prepared["sex"].tolist() == ["female", "male"]
+    assert prepared["alone"].tolist() == [False, True]
 
 
 def test_quick_similarity_report_handles_numeric_and_categorical_columns():
@@ -128,14 +123,12 @@ def test_run_starter_sampler_writes_reusable_outputs(tmp_path):
     assert (tmp_path / "toy_runtime_start.csv").exists()
 
 
-def test_vectorization_plan_reports_one_hot_embedding_for_categoricals():
+def test_vectorization_plan_reports_categorical_nca_blocks():
     df = make_workflow_dataframe()
     config = make_workflow_config(
         manual_sampler_config={
-            "n_bins": 3,
             "n_neighbours": 2,
             "knn_backend": "sklearn",
-            "embedding_method": "pca",
         }
     )
 
@@ -143,12 +136,12 @@ def test_vectorization_plan_reports_one_hot_embedding_for_categoricals():
 
     assert columns_requiring_vectorization(df) == ["group"]
     group = plan.loc[plan["column"] == "group"].iloc[0]
-    assert group["strategy"] == "one_hot_embedding"
-    assert group["embedding_method"] == "pca"
-    assert "one-hot encoded" in group["decision"]
+    assert group["strategy"] == "categorical_nca"
+    assert group["latent_components"] == 2
+    assert "supervised NCA" in group["decision"]
 
 
-def test_vectorization_plan_marks_high_cardinality_categoricals_as_dropped():
+def test_vectorization_plan_marks_high_cardinality_categoricals_as_warning():
     df = pd.DataFrame(
         {
             "age": np.arange(80),
@@ -157,46 +150,25 @@ def test_vectorization_plan_marks_high_cardinality_categoricals_as_dropped():
     )
     config = make_workflow_config(
         manual_sampler_config={
-            "n_bins": 3,
             "n_neighbours": 2,
             "knn_backend": "sklearn",
-            "max_categorical_unique": 20,
         }
     )
     plan = vectorization_plan(df, config)
 
     identifier = plan.loc[plan["column"] == "identifier"].iloc[0]
 
-    assert identifier["strategy"] == "drop_high_cardinality"
-    assert "discarded" in identifier["decision"]
+    assert identifier["strategy"] == "categorical_nca"
+    assert identifier["high_cardinality_warning"]
+    assert "warns but proceeds" in identifier["decision"]
 
 
-def test_vectorization_plan_reports_configured_direct_mapping():
-    df = pd.DataFrame({"sex": [0.0, 1.0], "age": [20, 30]})
-    config = make_workflow_config(
-        direct_numeric_mappings={"sex": {"female": 0.0, "male": 1.0}},
-        manual_sampler_config={
-            "n_bins": 3,
-            "n_neighbours": 2,
-            "knn_backend": "sklearn",
-        },
-    )
-
-    plan = vectorization_plan(df, config)
-    row = plan.loc[plan["column"] == "sex"].iloc[0]
-
-    assert row["strategy"] == "direct_mapping"
-    assert "'female'->0" in row["direct_mapping"]
-
-
-def test_preprocessing_plan_reports_drops_and_direct_mappings():
+def test_preprocessing_plan_reports_drops_only():
     config = make_workflow_config(
         drop_columns=("class",),
-        direct_numeric_mappings={"sex": {"female": 0.0, "male": 1.0}},
     )
 
     plan = preprocessing_plan(config)
 
-    assert set(plan["action"]) == {"drop", "direct_numeric_mapping"}
+    assert set(plan["action"]) == {"drop"}
     assert "class" in set(plan["column"])
-    assert "sex" in set(plan["column"])

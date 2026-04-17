@@ -1,104 +1,51 @@
 \section{Experiments}
 
-The empirical section reports only the subset of results needed to support the
-paper's main point: DataFrameSampler is useful when users need a simple,
-inspectable generator for mixed-type examples, not when they need an
-unqualified claim of synthetic-data superiority. The complete result tables,
-runtime and memory measurements, and controlled-regime figures are placed in
-Appendix~\ref{app:experiments}.
+The empirical scaffold evaluates DataFrameSampler as a practical example-data
+generator rather than as a universal synthetic-data winner. The primary
+measures are nearest-neighbour distance, real-versus-synthetic discrimination,
+downstream utility lift, and distributional similarity.
 
 \begin{table*}[t]
 \centering
-\caption{Claim-specific evidence plan. The table states what each paper claim
-requires before it can be made strongly.}
+\caption{Claim-specific evidence plan.}
 \label{tab:claim-evidence}
 \scriptsize
-\begin{tabular}{@{}p{0.13\textwidth}p{0.14\textwidth}p{0.20\textwidth}p{0.20\textwidth}p{0.17\textwidth}@{}}
+\begin{tabular}{@{}p{0.14\textwidth}p{0.16\textwidth}p{0.24\textwidth}p{0.22\textwidth}p{0.16\textwidth}@{}}
 \toprule
-Claim & Type & Primary evidence & Supporting or boundary evidence & Allowable conclusion \\
+Claim & Type & Primary evidence & Boundary evidence & Allowable conclusion \\
 \midrule
-Simplicity & Practical-use & Quick-start commands, lines of code, configuration steps & Runtime, dependency burden, tuning budget & Preferable when low setup cost matters \\
-Inspectability & Mechanism-supported & Row-level traces linking outputs to neighbour chains and bins & Failure cases where traces reveal implausible rows & Generated examples are auditable under the traced mechanism \\
-Utility & Regime-specific & Utility lift from adding generated rows to real training data & Distribution similarity and dataset descriptors & Useful only where lift is observed \\
-Safeguard & Boundary & Nearest-neighbour distance and discrimination tests & Exact identifier-overlap checks for selected columns & No formal privacy claim; suspicious closeness must be checked \\
-LLM configuration & Practical-use & Valid configuration rate and override preservation & Manual/default comparisons and weak recommendation analysis & Reduces configuration burden when profiles are informative \\
+Simplicity & Practical-use & API, CLI, configuration count & Runtime and dependency burden & Useful when low setup cost matters \\
+Inspectability & Mechanism-supported & Latent blocks and neighbour chains & Implausible local translations & Outputs are auditable under the mechanism \\
+Utility & Regime-specific & Utility lift on held-out real tasks & Dataset descriptors & Useful only where lift is observed \\
+Safeguard & Boundary & NN distance and discrimination & Exact-value overlap checks outside the model & No formal privacy claim \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-\subsection{Evaluation Focus}
-
-The evaluation uses Adult Census Income and Titanic as public mixed-type
-examples and four deterministic controlled datasets as boundary tests. For each
-dataset, we run DataFrameSampler with default, manual, and fixed LLM-style
-configurations, plus simple references: row bootstrap, independent columns,
-Gaussian-copula empirical sampling, and target-stratified column sampling where
-a target exists. The complete tables are deliberately separated from the main
-text so that the paper does not become a benchmark catalogue. The main summary
-uses four measures: a nearest-neighbour distance test, a discrimination test, a
-utility lift test, and a distribution similarity test. These tests deliberately
-separate three ideas that are often conflated: rows should not be suspiciously
-close to individual source rows, generated rows should not be trivially
-distinguishable from real rows, generated rows should improve a held-out
-real-data task if they are useful, and feature distributions should remain
-similar enough for example-data workflows.
-
-\subsection{Illustrative Results}
-
-The current experiment scaffold includes Adult Census Income and Titanic as
-initial mixed-type datasets. For each dataset, we compare simple baselines
-against three DataFrameSampler configurations: default settings, a manual
-configuration, and a fixed LLM-style configuration recorded in the notebook for
-reproducibility. The LLM-style condition should be read as an experiment proxy
-for the kind of structured recommendation returned by the LLM interface; the
-notebooks do not call an external API during execution.
+Current comparisons include DataFrameSampler default and manual configurations
+plus simple baselines: row bootstrap, independent columns, Gaussian-copula
+empirical sampling, and target-stratified column sampling where a target exists.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{distribution_dashboard.pdf}
-\caption{Distributional dashboard for the Titanic starter experiment using the
-manual DataFrameSampler configuration. The figure pairs numeric histogram
-overlap, categorical frequency comparison, and numeric correlation difference
-to make the similarity claim inspectable rather than dependent on a single
-score.}
+\caption{Distributional dashboard for a starter experiment. The dashboard pairs
+numeric histogram overlap, categorical frequency comparison, and numeric
+correlation differences.}
 \label{fig:distribution-dashboard}
 \end{figure*}
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{configuration_competitors.pdf}
-\caption{Configuration competitors for DataFrameSampler on the primary
-experiment measures. Default, manual, and
-LLM-style configurations expose the configuration burden that motivates the
-LLM-assisted interface. These preliminary results are not a claim that one
-configuration is generally best; they show that configuration choice changes
-the four primary measures as well as sampling time.}
+\caption{DataFrameSampler configuration competitors on the primary experiment
+measures.}
 \label{fig:configuration-competitors}
 \end{figure*}
-
-\subsection{Controlled Synthetic Regimes}
-
-To separate mechanism behaviour from the idiosyncrasies of public datasets, we
-also construct four deterministic synthetic tables. These datasets are not used
-as evidence that the method handles all real deployments. Their role is to
-create known stressors: numeric variables with embedded categorical columns,
-high-cardinality categorical values, deliberately rare categories, and a
-sensitive identifier column. The controlled identifier dataset is particularly
-important for bounding the anonymization claim: without the anonymization layer,
-all compared generators can re-emit exact source identifiers because the
-identifier is part of the source schema.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{synthetic_category_stress.pdf}
-\caption{Categorical stress tests on the controlled synthetic datasets. The
-coverage and rare-preservation metrics make high-cardinality and rare-category
-failure modes visible without relying on a single aggregate score.}
+\caption{Categorical stress tests on controlled synthetic datasets.}
 \label{fig:synthetic-category-stress}
 \end{figure*}
-
-The controlled results show the intended interpretation pattern. Row bootstrap
-is a useful reference because it can score well by reusing rows; independent
-columns can preserve marginals while breaking dependencies; and the controlled
-identifier dataset shows why anonymization must be treated as a separate
-pre-generation step rather than inferred from distributional similarity.

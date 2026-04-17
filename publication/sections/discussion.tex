@@ -1,61 +1,16 @@
 \section{Discussion}
 
-DataFrameSampler is designed for transparency and ease of use rather than for
-formal generative modelling optimality. This is a deliberate trade-off. In many
-business and medical software contexts, the most useful synthetic data tool is
-not necessarily the most expressive generator, but the one that teams can run,
-inspect, explain, and constrain. A local-neighbour bin-space mechanism gives
-users a concrete account of how examples are created, which can make review and
-failure analysis more realistic than with opaque generated rows.
+DataFrameSampler 2.0 trades global optimality for a modular and inspectable
+construction. Each categorical block is optimized independently, so the
+concatenated space has no joint objective. Iterative refinement can improve the
+context available to later projections, but it has no monotonic guarantee.
 
-This transparency should not be confused with privacy. The bin-level decoder
-can emit exact source values for columns that are not replaced, which makes the
-generated output unsuitable as a privacy mechanism by itself. The
-sensitive-value replacement layer addresses one narrow failure mode: exact
-re-emission of selected source values. It should be understood as a practical
-safeguard for direct identifiers, not as a comprehensive anonymization method.
-Business and medical deployments should still apply their normal governance,
-data protection, and disclosure review procedures.
+The decoder is also mismatched to the encoder: random forests approximate
+$p(C_j \mid z_j)$ independently for each categorical column. Generated rows can
+therefore violate cross-column constraints that were not learned by the local
+geometry or the independent decoders.
 
-The method also depends on the quality of the latent representation. If
-categorical values are represented only by frequency, semantically unrelated
-categories with similar frequencies can become indistinguishable. Helper-column
-embeddings address this limitation when meaningful numeric context exists, but
-they also require appropriate configuration. The optional LLM-assisted mode is
-intended to reduce configuration burden, not to replace user review. Its
-recommendations are most useful when column names and example values reveal the
-role of each field; they may be poor when names are opaque, columns are heavily
-coded, or domain constraints are absent from the dataframe profile.
-
-Approximate nearest-neighbour backends improve scalability, but can alter the
-local graph used by the sampler. For this reason, exact and scikit-learn
-backends remain useful baselines, especially for small datasets and experiments
-where reproducibility is more important than throughput.
-
-The preliminary Adult and Titanic comparisons in
-Figures~\ref{fig:appendix-baseline-similarity} and
-\ref{fig:configuration-competitors}, together with the distribution dashboard
-in Figure~\ref{fig:distribution-dashboard} and the utility-lift cost summary in
-Figure~\ref{fig:appendix-utility-cost-frontier}, illustrate why the paper should avoid
-a single leaderboard claim. Row bootstrap is strong on several similarity
-metrics because it directly reuses source rows, but that behaviour is precisely
-what limits it as a synthetic example generator for governed workflows.
-Independent column sampling can preserve univariate distributions while
-weakening association structure. DataFrameSampler configurations introduce a
-different trade-off: they are slower than the simplest baselines, but the
-generation mechanism remains inspectable and configuration choices visibly
-change nearest-neighbour distance, discrimination, utility lift, and
-distribution-similarity behaviour.
-
-The intended use cases are therefore pragmatic: test fixtures, workflow
-demonstrations, training material, integration tests, dashboard prototypes, and
-early-stage modelling experiments. The method should not be presented as a
-drop-in replacement for a validated clinical data simulator, a regulated
-statistical disclosure control process, or a differentially private synthetic
-data release.
-
-Future work includes more systematic evaluation, stronger privacy-aware
-decoding strategies, constraint-aware sampling, richer LLM prompts that capture
-domain constraints, and stronger model serialization formats. The current
-fitted model is serialized with pickle, which should only be loaded from
-trusted sources.
+The generator is intentionally simple. A mutual-neighbour displacement is easy
+to inspect, but it is a heuristic, not a formal manifold sampler. This makes the
+method suitable for tests, demonstrations, notebooks, and exploratory workflows,
+not for regulated privacy-preserving data release.

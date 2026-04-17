@@ -27,7 +27,7 @@ METHOD_METADATA = [
     {
         "method": "DFS default",
         "package": "DataFrameSampler",
-        "family": "Latent bin-space sampler",
+        "family": "Supervised NCA latent-space sampler",
         "mixed": "Yes",
         "setup": "Low",
         "inspectability": "High",
@@ -36,20 +36,11 @@ METHOD_METADATA = [
     {
         "method": "DFS manual",
         "package": "DataFrameSampler",
-        "family": "Latent bin-space sampler",
+        "family": "Supervised NCA latent-space sampler",
         "mixed": "Yes",
         "setup": "Medium",
         "inspectability": "High",
         "optional": "None",
-    },
-    {
-        "method": "DFS LLM-style",
-        "package": "DataFrameSampler",
-        "family": "Latent bin-space sampler",
-        "mixed": "Yes",
-        "setup": "Low/medium",
-        "inspectability": "High",
-        "optional": "OpenAI for live mode",
     },
     {
         "method": "Row bootstrap",
@@ -101,7 +92,6 @@ METHOD_METADATA = [
 METHOD_LABELS = {
     "dataframe_sampler_default": "DFS default",
     "dataframe_sampler_manual": "DFS manual",
-    "dataframe_sampler_llm_assisted": "DFS LLM-style",
     "row_bootstrap": "Row bootstrap",
     "independent_columns": "Independent columns",
     "gaussian_copula_empirical": "Gaussian copula",
@@ -364,8 +354,7 @@ def write_runtime_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = T
     ].copy()
     setup_steps = {
         "DFS default": "1 config",
-        "DFS manual": "Category embedding",
-        "DFS LLM-style": "LLM-style dict",
+        "DFS manual": "NCA config",
         "Row bootstrap": "None",
         "Independent columns": "None",
         "Gaussian copula": "None",
@@ -510,12 +499,6 @@ def write_ablation_table(*, tables_dir: str | Path = TABLES) -> Path:
             "Expected effect": "Better categorical context",
             "Observed effect": "Planned",
             "Claim status": "Not yet tested",
-        },
-        {
-            "Component": "LLM-style configuration",
-            "Expected effect": "Lower setup burden",
-            "Observed effect": "Starter metrics only",
-            "Claim status": "Exploratory",
         },
         {
             "Component": "Mutual-neighbour fallback",

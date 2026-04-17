@@ -7,70 +7,60 @@
 Dataset & Method & KS & Cat. TV & Assoc. diff. & Hist. overlap & Caveat \\
 \midrule
 adult & DFS default & 0.037 & 0.043 & 0.049 & 0.918 & Generated sample \\
-adult & DFS LLM-style & 0.021 & 0.034 & 0.090 & 0.965 & Generated sample \\
 adult & DFS manual & 0.023 & 0.036 & 0.065 & 0.968 & Generated sample \\
 adult & Gaussian copula & 0.034 & 0.027 & 0.106 & 0.953 & Numeric copula only \\
 adult & Independent columns & 0.018 & 0.024 & 0.105 & 0.969 & Breaks dependencies \\
 adult & Row bootstrap & 0.016 & 0.026 & 0.030 & 0.974 & Reuses source rows \\
 adult & Stratified columns & 0.023 & 0.024 & 0.073 & 0.963 & Generated sample \\
 bank\_marketing & DFS default & 0.042 & 0.032 & 0.036 & 0.944 & Generated sample \\
-bank\_marketing & DFS LLM-style & 0.057 & 0.038 & 0.087 & 0.937 & Generated sample \\
 bank\_marketing & DFS manual & 0.067 & 0.040 & 0.088 & 0.923 & Generated sample \\
 bank\_marketing & Gaussian copula & 0.036 & 0.020 & 0.100 & 0.953 & Numeric copula only \\
 bank\_marketing & Independent columns & 0.018 & 0.015 & 0.121 & 0.976 & Breaks dependencies \\
 bank\_marketing & Row bootstrap & 0.013 & 0.015 & 0.024 & 0.978 & Reuses source rows \\
 bank\_marketing & Stratified columns & 0.020 & 0.015 & 0.109 & 0.972 & Generated sample \\
 breast\_cancer & DFS default & 0.050 & 0.007 & 0.061 & 0.916 & Generated sample \\
-breast\_cancer & DFS LLM-style & 0.052 & 0.002 & 0.100 & 0.922 & Generated sample \\
 breast\_cancer & DFS manual & 0.052 & 0.014 & 0.106 & 0.932 & Generated sample \\
 breast\_cancer & Gaussian copula & 0.032 & 0.009 & 0.084 & 0.954 & Numeric copula only \\
 breast\_cancer & Independent columns & 0.036 & 0.007 & 0.369 & 0.943 & Breaks dependencies \\
 breast\_cancer & Row bootstrap & 0.038 & 0.007 & 0.017 & 0.946 & Reuses source rows \\
 breast\_cancer & Stratified columns & 0.034 & 0.016 & 0.184 & 0.948 & Generated sample \\
 heart\_disease & DFS default & 0.057 & 0.046 & 0.075 & 0.869 & Generated sample \\
-heart\_disease & DFS LLM-style & 0.039 & 0.023 & 0.122 & 0.925 & Generated sample \\
 heart\_disease & DFS manual & 0.047 & 0.029 & 0.123 & 0.918 & Generated sample \\
 heart\_disease & Gaussian copula & 0.046 & 0.032 & 0.124 & 0.926 & Numeric copula only \\
 heart\_disease & Independent columns & 0.038 & 0.021 & 0.151 & 0.934 & Breaks dependencies \\
 heart\_disease & Row bootstrap & 0.036 & 0.022 & 0.052 & 0.937 & Reuses source rows \\
 heart\_disease & Stratified columns & 0.038 & 0.026 & 0.078 & 0.930 & Generated sample \\
 pima\_diabetes & DFS default & 0.043 & 0.003 & 0.043 & 0.906 & Generated sample \\
-pima\_diabetes & DFS LLM-style & 0.033 & 0.016 & 0.075 & 0.939 & Generated sample \\
 pima\_diabetes & DFS manual & 0.046 & 0.026 & 0.080 & 0.932 & Generated sample \\
 pima\_diabetes & Gaussian copula & 0.042 & 0.025 & 0.085 & 0.936 & Numeric copula only \\
 pima\_diabetes & Independent columns & 0.030 & 0.026 & 0.194 & 0.950 & Breaks dependencies \\
 pima\_diabetes & Row bootstrap & 0.031 & 0.022 & 0.031 & 0.948 & Reuses source rows \\
 pima\_diabetes & Stratified columns & 0.030 & 0.010 & 0.119 & 0.946 & Generated sample \\
 synthetic\_correlated\_helpers & DFS default & 0.028 & 0.023 & 0.299 & 0.933 & Generated sample \\
-synthetic\_correlated\_helpers & DFS LLM-style & 0.059 & 0.040 & 0.043 & 0.919 & Generated sample \\
 synthetic\_correlated\_helpers & DFS manual & 0.046 & 0.035 & 0.069 & 0.930 & Generated sample \\
 synthetic\_correlated\_helpers & Gaussian copula & 0.036 & 0.027 & 0.459 & 0.950 & Numeric copula only \\
 synthetic\_correlated\_helpers & Independent columns & 0.037 & 0.035 & 0.713 & 0.944 & Breaks dependencies \\
 synthetic\_correlated\_helpers & Row bootstrap & 0.031 & 0.020 & 0.013 & 0.944 & Reuses source rows \\
 synthetic\_correlated\_helpers & Stratified columns & 0.034 & 0.026 & 0.191 & 0.938 & Generated sample \\
 synthetic\_high\_cardinality & DFS default & 0.037 & 0.079 & 0.320 & 0.934 & Generated sample \\
-synthetic\_high\_cardinality & DFS LLM-style & 0.032 & 0.073 & 0.066 & 0.945 & Generated sample \\
 synthetic\_high\_cardinality & DFS manual & 0.044 & 0.093 & 0.042 & 0.935 & Generated sample \\
 synthetic\_high\_cardinality & Gaussian copula & 0.046 & 0.072 & 0.414 & 0.928 & Numeric copula only \\
 synthetic\_high\_cardinality & Independent columns & 0.029 & 0.065 & 0.544 & 0.947 & Breaks dependencies \\
 synthetic\_high\_cardinality & Row bootstrap & 0.024 & 0.046 & 0.017 & 0.960 & Reuses source rows \\
 synthetic\_high\_cardinality & Stratified columns & 0.018 & 0.065 & 0.201 & 0.966 & Generated sample \\
 synthetic\_rare\_categories & DFS default & 0.031 & 0.037 & 0.042 & 0.926 & Generated sample \\
-synthetic\_rare\_categories & DFS LLM-style & 0.021 & 0.017 & 0.070 & 0.949 & Generated sample \\
 synthetic\_rare\_categories & DFS manual & 0.035 & 0.025 & 0.079 & 0.948 & Generated sample \\
 synthetic\_rare\_categories & Gaussian copula & 0.033 & 0.023 & 0.187 & 0.949 & Numeric copula only \\
 synthetic\_rare\_categories & Independent columns & 0.021 & 0.015 & 0.346 & 0.950 & Breaks dependencies \\
 synthetic\_rare\_categories & Row bootstrap & 0.020 & 0.021 & 0.024 & 0.951 & Reuses source rows \\
 synthetic\_rare\_categories & Stratified columns & 0.027 & 0.053 & 0.166 & 0.942 & Generated sample \\
 synthetic\_sensitive\_identifier & DFS default & 0.034 & 0.187 & 0.085 & 0.938 & Generated sample \\
-synthetic\_sensitive\_identifier & DFS LLM-style & 0.030 & 0.185 & 0.084 & 0.937 & Generated sample \\
 synthetic\_sensitive\_identifier & DFS manual & 0.045 & 0.169 & 0.068 & 0.931 & Generated sample \\
 synthetic\_sensitive\_identifier & Gaussian copula & 0.043 & 0.164 & 0.088 & 0.931 & Numeric copula only \\
 synthetic\_sensitive\_identifier & Independent columns & 0.028 & 0.166 & 0.142 & 0.954 & Breaks dependencies \\
 synthetic\_sensitive\_identifier & Row bootstrap & 0.046 & 0.166 & 0.026 & 0.946 & Reuses source rows \\
 synthetic\_sensitive\_identifier & Stratified columns & 0.025 & 0.164 & 0.059 & 0.955 & Generated sample \\
 titanic & DFS default & 0.038 & 0.047 & 0.062 & 0.951 & Generated sample \\
-titanic & DFS LLM-style & 0.040 & 0.120 & 0.169 & 0.956 & Generated sample \\
 titanic & DFS manual & 0.051 & 0.036 & 0.149 & 0.944 & Generated sample \\
 titanic & Gaussian copula & 0.037 & 0.018 & 0.232 & 0.959 & Numeric copula only \\
 titanic & Independent columns & 0.015 & 0.027 & 0.243 & 0.980 & Breaks dependencies \\

@@ -6,7 +6,7 @@ This synthetic dataset is designed to expose exact source-value reuse risk. It i
 
 ### patient_id
 
-`patient_id` is a unique synthetic patient-like identifier. It is intentionally sensitive in the experiment design and should normally be anonymized or excluded before generating examples.
+`patient_id` is a unique synthetic patient-like identifier. It is intentionally sensitive in the experiment design and should normally be excluded before generating examples.
 
 ### age
 

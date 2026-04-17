@@ -1,174 +1,53 @@
 \section{Method}
 
-\subsection{Column Vectorization}
+\subsection{Latent Construction}
 
-Let $D$ be an input dataframe with $m$ rows and $d$ columns. Numeric columns are
-converted to floating point values and missing values are imputed with the
-column median. Before vectorization, columns with a clear human scale can be
-encoded directly: booleans become $0/1$, binary labels such as female/male can
-be encoded as $0/1$, ordinal labels such as passenger class can be encoded as
-$1/2/3$, and derived ordered labels such as woman/child/man can be encoded as
-$0/0.5/1$. Redundant aliases are removed at the same stage so that the latent
-geometry does not overweight one fact. In the Titanic notebook, for example,
-\texttt{pclass}, \texttt{embark\_town}, and \texttt{survived} are preserved,
-while their aliases \texttt{class}, \texttt{embarked}, and \texttt{alive} are
-dropped. For a remaining non-numeric column $c$, DataFrameSampler uses a single
-categorical conversion policy. If the alphabet is large relative to the number
-of rows, the column is treated as identifier-like and discarded before fitting.
-In the implementation this default threshold is an alphabet larger than both
-50 distinct values and 30\% of the row count. Binary non-numeric columns are
-mapped to $0/1$. All other non-numeric columns are one-hot encoded over the
-training categories. An embedding function
+Let $D$ be a dataframe with $m$ rows. Columns are split by a simple policy:
+numeric columns with more than two non-missing values are continuous; all other
+columns are categorical. Thus binary numeric, boolean, and string columns are
+categorical targets.
+
+Continuous columns are median-imputed and standardized. Categorical columns are
+one-hot encoded for context. For each categorical column $C_j$, DataFrameSampler
+removes $C_j$'s own current block from the context and fits
 \[
-  f: \{0,1\}^{q} \rightarrow \mathbb{R}
+  z_j = f_j(X_{-j}) \in \mathbb{R}^{k_j}
 \]
-maps each one-hot category vector to a scalar used to discretize column $c$.
-The default is PCA with one component, but the implementation can use several
-scikit-learn reducers, including MDS, Kernel PCA, Isomap, locally linear
-embedding, and related methods. Users may also supply custom objects
-implementing a scikit-learn-like \texttt{fit\_transform},
-\texttt{fit}/\texttt{transform}, or \texttt{transform} interface.
-
-The converter is fitted once and then reused for later data. For inductive
-reducers such as PCA, the fitted reducer can transform later one-hot rows
-directly. Some manifold methods only expose \texttt{fit\_transform}; for these
-methods the implementation first learns the category-to-scalar mapping on the
-training set and then fits a \texttt{RandomForestRegressor} from one-hot
-category indicators to the embedded values. This makes the vectorizer usable on
-test or production data with the same schema while keeping the categorical
-geometry one-dimensional.
-
-The notebooks report this policy explicitly as a vectorization plan before any
-sampling results are shown: numeric, direct mapping, high-cardinality discard,
-binary mapping, or one-hot embedding. Pairwise exploratory plots are drawn after
-this numeric reduction step, using the same transformed coordinates used by the
-sampler, so visual inspection refers to the operative latent geometry rather
-than only to raw numeric columns.
-
-\subsection{Discretization And Decoding}
-
-After vectorization, each column is discretized into up to $b$ bins using a
-one-dimensional binning procedure. Each row $x_i$ is encoded as an integer
-latent vector
+with scikit-learn Neighborhood Components Analysis using the labels of $C_j$ as
+the supervised target. The learned block replaces the previous one-hot block.
+This process is repeated for a configured number of iterations, yielding
 \[
-  z_i \in \{0, \ldots, b-1\}^{d}.
+  Z = [X^{num} \mid z_1 \mid \cdots \mid z_q].
 \]
-For every column and bin, the encoder stores the original observed values that
-fell into that bin. Decoding a generated latent vector therefore consists of
-sampling original values from the selected bins. If a generated bin is empty,
-the implementation searches for the nearest non-empty bin in that column.
 
-\subsection{Neighbour-Based Latent Sampling}
+\subsection{Decoding}
 
-Let $Z = \{z_i\}_{i=1}^{m}$ be the encoded latent matrix. DataFrameSampler builds
-a nearest-neighbour graph in this latent space. By default, only mutual
-nearest-neighbour relationships are retained. If a row has no mutual neighbours,
-a nearest-neighbour fallback is used to preserve sampleability.
+The inverse map is approximate rather than algebraic. Continuous columns are
+inverse-scaled. For each categorical column, a \texttt{RandomForestClassifier}
+is trained from its final block $z_j$ to the observed category labels. During
+\texttt{inverse\_transform}, \texttt{predict\_proba} provides a distribution
+over fitted categories. The decoder either samples from that distribution or
+uses the most likely category.
 
-The geometric intuition is that the encoded rows lie on an empirical manifold
-inside the discretized latent space. Around any row, mutual nearest neighbours
-provide a local, symmetric estimate of which observations occupy the same
-small neighbourhood of that manifold. A difference vector between two nearby
-neighbours is therefore treated as a first-order approximation to a direction in
-the local tangent space. Sampling transfers such a local tangent direction to a
-nearby anchor point, with the aim of moving along the empirical manifold rather
-than jumping to an unrelated part of the latent space. This is a modelling
-intuition and an inspectable construction, not a formal guarantee that generated
-rows remain on a smooth manifold.
+\subsection{Generation}
 
-To generate a new latent row, the sampler selects an anchor row $z_a$, a
-neighbour $z_b$ of that anchor, and a neighbour $z_c$ of $z_b$. It then forms
+Generation operates only in the fitted latent matrix. For each synthetic row,
+the sampler chooses an anchor $A$, a mutual neighbour $B$, and a mutual
+neighbour $C$ of $B$. It then applies
 \[
-  \tilde{z} = z_a + \alpha (z_c - z_b),
+  A' = A + \lambda(C - B).
 \]
-where $\alpha$ is sampled from a configured interpolation range. The generated
-latent vector is rounded to integer bin indexes, clipped to valid ranges, and
-decoded back to the original dataframe space.
-
-The operation is intentionally simple to inspect. For a generated example, the
-user can identify the anchor row, the neighbour chain, the latent difference
-that was transferred, and the bins used during decoding. This is an important
-design choice for applied domains where generated examples may be shown to
-business users, clinicians, auditors, or software teams that need a concrete
-explanation rather than a black-box generation claim.
-
-\subsection{Generation Trace}
-
-For a generated row $\tilde{x}$, a trace is defined as the tuple
-\[
-  \tau(\tilde{x}) = (a, b, c, z_a, z_b, z_c, \tilde{z}, B),
-\]
-where $a$, $b$, and $c$ are the anchor and neighbour indexes, $z_a$, $z_b$, and
-$z_c$ are their latent bin vectors, $\tilde{z}$ is the generated latent vector,
-and $B$ records the per-column bins used for decoding. This trace is the object
-that supports the paper's inspectability claim: it connects an output row to a
-small number of source rows and a simple arithmetic operation.
-
-The operational procedure is:
-\begin{enumerate}
-  \item optionally replace selected sensitive columns and verify no exact or
-  normalized overlap with source values;
-  \item vectorize the dataframe and encode each column into bins;
-  \item build the nearest-neighbour graph, using fallback nearest neighbours
-  when mutual-neighbour search leaves a row isolated;
-  \item sample an anchor-neighbour chain and transfer a local latent difference;
-  \item clip and decode the generated bin vector into a dataframe row;
-  \item verify selected anonymized columns against the original source values
-  before returning or saving generated rows.
-\end{enumerate}
+The resulting latent point is clipped to fitted coordinate ranges and decoded
+back to a dataframe row. This is a local translation heuristic. It assumes the
+supervised latent space is locally linear enough for displacement transfer to
+remain plausible, but the method does not guarantee manifold preservation or
+constraint satisfaction.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{how_pipeline.pdf}
-\caption{DataFrameSampler pipeline. The diagram exposes the intermediate
-objects that make the mechanism inspectable: selected sensitive-value
-replacement, vectorization, bin encoding, neighbour-chain sampling, decoding,
-and the generated-row trace.}
+\caption{DataFrameSampler 2.0 pipeline. The sampler standardizes continuous
+columns, learns supervised NCA blocks for categorical columns, transports local
+neighbour displacements in latent space, and decodes the generated point.}
 \label{fig:how-pipeline}
 \end{figure*}
-
-\subsection{LLM-Assisted Configuration}
-
-Choosing sampled columns and spotting identifier-like fields can require
-semantic knowledge of column roles. The package therefore includes an optional
-OpenAI-assisted mode that treats configuration as a structured recommendation
-task. The helper sends a compact dataframe profile to an LLM, including column
-names, dtypes, missing counts, unique counts, examples, and basic numeric
-summaries. The model returns a JSON-compatible configuration containing sampled
-columns, an embedding method, a nearest-neighbour backend, and short rationales.
-
-The LLM is not part of the generative model itself. It is used only to reduce
-the friction of selecting a reasonable configuration. Explicit user choices
-take precedence over model recommendations. In the command-line interface, the
-\texttt{-A} flag asks the model to fill only those options that were not already
-specified by the user. In the Python API, the same helper returns a dictionary
-that can be inspected, edited, logged, or passed into the sampler.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{llm_configuration_flow.pdf}
-\caption{LLM-assisted configuration flow. The LLM receives a dataframe profile
-and proposes configuration fields, but explicit user overrides remain
-authoritative.}
-\label{fig:llm-configuration}
-\end{figure}
-
-\subsection{Sensitive-Value Replacement}
-
-For workflows involving direct identifiers, the package can replace selected
-sensitive columns before fitting the sampler. Let $S$ be the set of columns
-marked for replacement. For each $c \in S$, the implementation extracts the
-distinct non-null source values and asks an LLM to produce surrogate values of
-the same broad type, such as plausible names, organizations, or labels. The
-surrogate mapping is then applied to the dataframe before vectorization,
-discretization, neighbour construction, or sampling occurs.
-
-After replacement, the implementation checks that no generated surrogate value
-has exact or normalized string overlap with the original values in the selected
-columns. The sampler is then fit on the surrogate dataframe. Generated samples
-are checked again against the original source values before being returned or
-written to disk. This design ensures that the core sampler never needs to ingest
-the original sensitive values for those columns. The procedure reduces exact
-identifier re-emission in selected columns, but it is not a formal privacy
-guarantee and does not provide differential privacy, $k$-anonymity, or
-protection against linkage attacks.

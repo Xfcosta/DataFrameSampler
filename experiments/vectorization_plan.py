@@ -4,29 +4,22 @@ from collections.abc import Mapping
 from typing import Any
 
 import pandas as pd
-from pandas.api.types import is_numeric_dtype
+from pandas.api.types import is_bool_dtype, is_numeric_dtype
 
 from .datasets import DatasetExperimentConfig
 
 
-DEFAULT_MAX_CATEGORICAL_FRACTION = 0.3
-DEFAULT_MAX_CATEGORICAL_UNIQUE = 50
+DEFAULT_HIGH_CARDINALITY_FRACTION = 0.3
+DEFAULT_HIGH_CARDINALITY_UNIQUE = 50
 
 
-VECTORIZATION_RATIONALES: dict[str, dict[str, str]] = {
+NCA_RATIONALES: dict[str, dict[str, str]] = {
     "adult": {
-        "workclass": "Employment sector has a compact alphabet, so it is one-hot encoded and embedded to one numeric coordinate.",
-        "education": "Education has a compact alphabet, so it is one-hot encoded and embedded to one numeric coordinate.",
-        "occupation": "Occupation has a compact alphabet, so it is one-hot encoded and embedded to one numeric coordinate.",
-        "marital_status": "Marital status has a compact alphabet, so it is one-hot encoded and embedded to one numeric coordinate.",
-        "relationship": "Household relationship has a compact alphabet, so it is one-hot encoded and embedded to one numeric coordinate.",
-        "race": "Race has a compact alphabet, so it is one-hot encoded and embedded to one numeric coordinate.",
-        "sex": "Sex is directly encoded as a binary numeric column before sampling.",
-        "native_country": "Native country has a moderate alphabet, so it is one-hot encoded and embedded to one numeric coordinate.",
-        "income": "Income is directly encoded as a binary target column before sampling.",
+        "sex": "Binary columns are categorical targets in DataFrameSampler 2.0 and receive a supervised NCA latent block.",
+        "income": "The binary income label is treated as a categorical target and receives a supervised NCA latent block.",
     },
     "synthetic_sensitive_identifier": {
-        "patient_id": "Patient IDs are unique identifiers and should be discarded by the high-cardinality rule.",
+        "patient_id": "High-cardinality identifiers are warned about and still used unless the user preprocesses them.",
     },
 }
 
@@ -37,55 +30,43 @@ def vectorization_plan(
     *,
     config_key: str = "manual_sampler_config",
 ) -> pd.DataFrame:
-    """Return a human-readable plan for dataframe column vectorization."""
+    """Return a human-readable plan for DataFrameSampler 2.0 latent construction."""
     sampler_config = _sampler_config(config, config_key)
-    embedding_method = sampler_config.get("embedding_method", "pca")
-    max_categorical_fraction = sampler_config.get("max_categorical_fraction", DEFAULT_MAX_CATEGORICAL_FRACTION)
-    max_categorical_unique = sampler_config.get("max_categorical_unique", DEFAULT_MAX_CATEGORICAL_UNIQUE)
-    direct_mappings = config.direct_numeric_mappings or {}
+    n_components = sampler_config.get("n_components", 2)
     rows: list[dict[str, Any]] = []
 
     for column in dataframe.columns:
-        dtype = str(dataframe[column].dtype)
-        unique = int(dataframe[column].nunique(dropna=True))
+        series = dataframe[column]
+        dtype = str(series.dtype)
+        unique = int(series.nunique(dropna=True))
         alphabet_fraction = unique / len(dataframe) if len(dataframe) else 0.0
-        direct_mapping = column in direct_mappings
+        high_cardinality = _is_high_cardinality(unique, len(dataframe))
 
-        if direct_mapping:
-            strategy = "direct_mapping"
-            effective_embedding = ""
-            decision = "Column is converted with an explicit configured numeric mapping before binning."
-        elif is_numeric_dtype(dataframe[column]):
-            strategy = "direct_numeric"
-            effective_embedding = ""
-            decision = "Column is already numeric in the implementation and is discretized directly."
-        elif _is_high_cardinality(unique, len(dataframe), max_categorical_fraction, max_categorical_unique):
-            strategy = "drop_high_cardinality"
-            effective_embedding = ""
-            decision = "Non-numeric alphabet is large relative to row count, so the column is discarded before sampling."
-        elif unique == 2:
-            strategy = "binary_mapping"
-            effective_embedding = ""
-            decision = "Binary non-numeric column is mapped to 0/1 before binning."
+        if _is_numeric_non_binary(series):
+            strategy = "standardized_numeric"
+            latent_components = 1
+            decision = "Non-binary numeric column is median-imputed and standardized into the latent matrix."
         else:
-            strategy = "one_hot_embedding"
-            effective_embedding = _embedding_for_column(embedding_method, column)
+            strategy = "categorical_nca"
+            latent_components = _components_for_column(n_components, column)
             decision = (
-                "Non-numeric column has a manageable alphabet, so categories are one-hot encoded "
-                f"and reduced to one dimension with {effective_embedding} before binning."
+                "Column is treated as categorical, one-hot encoded for context, "
+                "and represented by a supervised NCA latent block."
             )
+            if high_cardinality:
+                decision += " It is high-cardinality, so the sampler warns but proceeds."
 
-        rationale = VECTORIZATION_RATIONALES.get(config.dataset_name, {}).get(column, decision)
+        rationale = NCA_RATIONALES.get(config.dataset_name, {}).get(column, decision)
         rows.append(
             {
                 "column": column,
                 "dtype": dtype,
                 "unique": unique,
-                "missing": int(dataframe[column].isna().sum()),
+                "missing": int(series.isna().sum()),
                 "alphabet_fraction": alphabet_fraction,
                 "strategy": strategy,
-                "embedding_method": effective_embedding,
-                "direct_mapping": _mapping_summary(direct_mappings.get(column, {})),
+                "latent_components": latent_components,
+                "high_cardinality_warning": bool(high_cardinality and strategy == "categorical_nca"),
                 "rationale": rationale,
                 "decision": decision,
             }
@@ -94,7 +75,7 @@ def vectorization_plan(
 
 
 def preprocessing_plan(config: DatasetExperimentConfig) -> pd.DataFrame:
-    """Return configured column drops and direct numeric encodings."""
+    """Return configured column drops before DataFrameSampler fitting."""
     rows: list[dict[str, Any]] = []
     for column in config.drop_columns:
         rows.append(
@@ -105,44 +86,32 @@ def preprocessing_plan(config: DatasetExperimentConfig) -> pd.DataFrame:
                 "reason": "Redundant alias or duplicate target representation removed before sampling.",
             }
         )
-    for column, mapping in (config.direct_numeric_mappings or {}).items():
-        rows.append(
-            {
-                "column": column,
-                "action": "direct_numeric_mapping",
-                "mapping": _mapping_summary(mapping),
-                "reason": "Column has an explicit binary, ordinal, or human-defined numeric scale.",
-            }
-        )
     return pd.DataFrame(rows, columns=["column", "action", "mapping", "reason"])
 
 
 def columns_requiring_vectorization(dataframe: pd.DataFrame) -> list[str]:
-    """Return columns that are non-numeric under the package vectorizer rules."""
-    return [column for column in dataframe.columns if not is_numeric_dtype(dataframe[column])]
+    """Return columns treated as categorical NCA targets by DataFrameSampler 2.0."""
+    return [column for column in dataframe.columns if not _is_numeric_non_binary(dataframe[column])]
 
 
 def _sampler_config(config: DatasetExperimentConfig, key: str) -> Mapping[str, Any]:
-    if key == "manual_sampler_config":
-        return config.manual_sampler_config
-    if key == "llm_assisted_config":
-        return config.llm_assisted_config or {}
-    raise ValueError("config_key must be 'manual_sampler_config' or 'llm_assisted_config'.")
+    if key != "manual_sampler_config":
+        raise ValueError("config_key must be 'manual_sampler_config'.")
+    return config.manual_sampler_config
 
 
-def _embedding_for_column(embedding_method: Any, column: str) -> str:
-    if isinstance(embedding_method, Mapping):
-        return str(embedding_method.get(column, "pca"))
-    return str(embedding_method)
+def _components_for_column(n_components: Any, column: str) -> int:
+    if isinstance(n_components, Mapping):
+        return int(n_components.get(column, 2))
+    return int(n_components)
 
 
-def _is_high_cardinality(unique: int, row_count: int, fraction: float, max_unique: int) -> bool:
-    limit = max(max_unique, int(row_count * fraction))
+def _is_numeric_non_binary(series: pd.Series) -> bool:
+    if is_bool_dtype(series) or not is_numeric_dtype(series):
+        return False
+    return len(series.dropna().unique()) > 2
+
+
+def _is_high_cardinality(unique: int, row_count: int) -> bool:
+    limit = max(DEFAULT_HIGH_CARDINALITY_UNIQUE, int(row_count * DEFAULT_HIGH_CARDINALITY_FRACTION))
     return unique > limit
-
-
-def _mapping_summary(mapping: Mapping[Any, float]) -> str:
-    if not mapping:
-        return ""
-    items = list(mapping.items())
-    return ", ".join(f"{key!r}->{value:g}" for key, value in items[:8])

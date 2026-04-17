@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from dataframe_sampler import ConcreteDataFrameSampler
+from dataframe_sampler import DataFrameSampler
 
 from .baselines import BaselineSpec, simple_baselines
 from .instrumentation import measure_call
@@ -21,7 +21,6 @@ def run_dataset_comparison(
     target_column: str | None,
     results_dir: str | Path,
     dataframe_sampler_config: Mapping[str, Any] | None = None,
-    llm_assisted_config: Mapping[str, Any] | None = None,
     n_samples: int = 1000,
     random_state: int = 42,
 ) -> pd.DataFrame:
@@ -30,7 +29,6 @@ def run_dataset_comparison(
     results_dir.mkdir(parents=True, exist_ok=True)
     method_specs = dataframe_sampler_configuration_competitors(
         manual_config=dataframe_sampler_config,
-        llm_assisted_config=llm_assisted_config,
         random_state=random_state,
     )
     method_specs.extend(simple_baselines(target_column=target_column, random_state=random_state))
@@ -39,7 +37,10 @@ def run_dataset_comparison(
     for spec in method_specs:
         fit = measure_call(lambda: spec.estimator.fit(dataframe))
 
-        sample = measure_call(lambda: spec.estimator.sample(n_samples=n_samples))
+        if isinstance(spec.estimator, DataFrameSampler):
+            sample = measure_call(lambda: spec.estimator.generate(n_samples=n_samples))
+        else:
+            sample = measure_call(lambda: spec.estimator.sample(n_samples=n_samples))
         synthetic = sample.value
 
         synthetic_path = results_dir / f"{dataset_name}_{spec.name}_generated.csv"
@@ -67,23 +68,16 @@ def run_dataset_comparison(
 def dataframe_sampler_configuration_competitors(
     *,
     manual_config: Mapping[str, Any] | None = None,
-    llm_assisted_config: Mapping[str, Any] | None = None,
     random_state: int = 42,
 ) -> list[BaselineSpec]:
-    """Return DataFrameSampler default/manual/LLM-style configuration competitors."""
+    """Return DataFrameSampler default and manual configuration competitors."""
     default_config = {"random_state": random_state}
     manual = dict(manual_config or {})
     manual.setdefault("random_state", random_state)
     specs = [
-        BaselineSpec("dataframe_sampler_default", ConcreteDataFrameSampler(**default_config)),
-        BaselineSpec("dataframe_sampler_manual", ConcreteDataFrameSampler(**manual)),
+        BaselineSpec("dataframe_sampler_default", DataFrameSampler(**default_config)),
+        BaselineSpec("dataframe_sampler_manual", DataFrameSampler(**manual)),
     ]
-    if llm_assisted_config is not None:
-        llm_config = dict(llm_assisted_config)
-        llm_config.setdefault("random_state", random_state)
-        specs.append(
-            BaselineSpec("dataframe_sampler_llm_assisted", ConcreteDataFrameSampler(**llm_config))
-        )
     return specs
 
 

@@ -2,12 +2,9 @@ import sys
 
 import click
 
-from .anonymization import anonymize_columns_with_openai, assert_no_value_overlap
 from .io import read_dataframe
-from .llm import suggest_sampler_config_with_openai
-from .sampler import ConcreteDataFrameSampler
+from .sampler import DataFrameSampler
 from .utils import yaml_load
-from .vectorizer import EMBEDDING_METHODS
 
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -37,18 +34,33 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     default=100,
     help="Number of samples to generate. If 0 then generate the same number of samples as there are in input.",
 )
-@click.option("--n_bins", type=click.IntRange(min=1, max_open=True, clamp=True), default=9, help="Number of bins.")
+@click.option(
+    "--n_components",
+    type=click.IntRange(min=1, max_open=True, clamp=True),
+    default=2,
+    show_default=True,
+    help="NCA latent dimensions per categorical column.",
+)
+@click.option(
+    "--n_iterations",
+    type=click.IntRange(min=1, max_open=True, clamp=True),
+    default=2,
+    show_default=True,
+    help="Number of iterative categorical NCA refinement rounds.",
+)
 @click.option(
     "--n_neighbours",
     type=click.IntRange(min=1, max_open=True, clamp=True),
     default=5,
     help="Number of neighbours.",
 )
-@click.option("--sampled_columns", "-c", multiple=True, help="Selected columns to generate.")
 @click.option(
-    "--anonymize_columns",
-    multiple=True,
-    help="Sensitive columns to replace with OpenAI-generated surrogate values before fitting.",
+    "--lambda",
+    "lambda_",
+    type=float,
+    default=1.0,
+    show_default=True,
+    help="Latent neighbour displacement multiplier.",
 )
 @click.option("--random_state", type=int, help="Optional random seed for reproducible output.")
 @click.option(
@@ -63,43 +75,20 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     type=click.Path(exists=True),
     help="Path to backend-specific KNN options serialized in YAML.",
 )
-@click.option(
-    "--embedding_method",
-    type=click.Choice(EMBEDDING_METHODS, case_sensitive=False),
-    default="pca",
-    show_default=True,
-    help="Embedding method for one-hot categorical columns.",
-)
-@click.option(
-    "--embedding_kwargs_filename",
-    type=click.Path(exists=True),
-    help="Path to embedding-method options serialized in YAML.",
-)
-@click.option(
-    "--auto_config",
-    "-A",
-    is_flag=True,
-    help="Use OpenAI to choose omitted sampled columns, embedding method, and KNN backend.",
-)
-@click.version_option("0.5.1", "--version", "-v")
-@click.pass_context
+@click.version_option("2.0.0", "--version", "-v")
 def dataframe_sampler_main(
-    ctx,
     input_filename,
     output_filename,
     input_model_filename,
     output_model_filename,
     n_samples,
-    n_bins,
+    n_components,
+    n_iterations,
     n_neighbours,
-    sampled_columns,
-    anonymize_columns,
+    lambda_,
     random_state,
     knn_backend,
     knn_backend_kwargs_filename,
-    embedding_method,
-    embedding_kwargs_filename,
-    auto_config,
 ):
     """
     Generate a dataframe file similar to the input CSV or Parquet file.
@@ -107,50 +96,23 @@ def dataframe_sampler_main(
     if not input_filename and not input_model_filename:
         raise click.UsageError("Provide --input_filename to fit a model or --input_model_filename to load one.")
 
-    sampled_columns = list(sampled_columns) if len(sampled_columns) else None
-    anonymize_columns = list(anonymize_columns)
     knn_backend_kwargs = yaml_load(fname=knn_backend_kwargs_filename) if knn_backend_kwargs_filename else None
-    embedding_kwargs = yaml_load(fname=embedding_kwargs_filename) if embedding_kwargs_filename else None
     df = read_dataframe(input_filename) if input_filename else None
 
-    if auto_config:
-        if df is None:
-            raise click.UsageError("--auto_config requires --input_filename so the dataframe can be profiled.")
-        if input_model_filename:
-            raise click.UsageError("--auto_config cannot be combined with --input_model_filename.")
-
-        llm_config = suggest_sampler_config_with_openai(df)
-        if sampled_columns is None:
-            sampled_columns = llm_config["sampled_columns"]
-        if _is_default_parameter(ctx, "embedding_method"):
-            embedding_method = llm_config["embedding_method"]
-        if _is_default_parameter(ctx, "knn_backend"):
-            knn_backend = llm_config["knn_backend"]
-        click.echo("Auto configuration: %s" % llm_config["notes"], err=True)
-
     if input_model_filename:
-        sampler = ConcreteDataFrameSampler().load(input_model_filename)
+        sampler = DataFrameSampler().load(input_model_filename)
     else:
-        sampler = ConcreteDataFrameSampler(
-            n_bins=n_bins,
+        sampler = DataFrameSampler(
+            n_components=n_components,
+            n_iterations=n_iterations,
             n_neighbours=n_neighbours,
-            sampled_columns=sampled_columns,
+            lambda_=lambda_,
             random_state=random_state,
             knn_backend=knn_backend,
             knn_backend_kwargs=knn_backend_kwargs,
-            embedding_method=embedding_method,
-            embedding_kwargs=embedding_kwargs,
         )
 
     if input_filename:
-        source_df = df
-        if anonymize_columns:
-            df, anonymization_report = anonymize_columns_with_openai(
-                dataframe=df,
-                source_dataframe=source_df,
-                columns=anonymize_columns,
-            )
-            click.echo("Anonymized columns before fitting: %s" % ", ".join(anonymization_report["columns"]), err=True)
         sampler.fit(df)
         sampler.save(output_model_filename)
         if n_samples == 0:
@@ -158,9 +120,7 @@ def dataframe_sampler_main(
     elif n_samples == 0:
         raise click.UsageError("--n_samples=0 requires --input_filename so the input row count is known.")
 
-    generated_df = sampler.sample_to_file(n_samples=n_samples, filename=output_filename)
-    if input_filename and anonymize_columns:
-        assert_no_value_overlap(source_df, generated_df, anonymize_columns)
+    sampler.generate_to_file(n_samples=n_samples, filename=output_filename)
 
 
 def main():
@@ -168,7 +128,3 @@ def main():
         dataframe_sampler_main.main(["--help"])
     else:
         dataframe_sampler_main()
-
-
-def _is_default_parameter(ctx, parameter_name):
-    return ctx.get_parameter_source(parameter_name) == click.core.ParameterSource.DEFAULT

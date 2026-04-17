@@ -47,24 +47,21 @@ def test_generate_two_dimensional_sample_uses_dataframe_sampler():
         real,
         n_samples=25,
         random_state=3,
-        sampler_kwargs={"n_bins": 12, "n_neighbours": 4},
+        sampler_kwargs={"n_neighbours": 4},
     )
 
     assert generated.shape == (25, 2)
     assert list(generated.columns) == ["x", "y"]
 
 
-def test_default_sampler_kwargs_expose_concrete_sampler_parameters():
+def test_default_sampler_kwargs_expose_dataframe_sampler_parameters():
     assert {
-        "n_bins",
         "n_neighbours",
-        "sampled_columns",
+        "n_components",
+        "n_iterations",
         "random_state",
         "knn_backend",
         "knn_backend_kwargs",
-        "embedding_method",
-        "embedding_kwargs",
-        "numeric_decode_strategy",
     } == set(DEFAULT_TWO_DIMENSIONAL_SAMPLER_KWARGS)
 
 
@@ -72,7 +69,7 @@ def test_two_dimensional_suite_summarises_and_plots():
     results = run_two_dimensional_suite(
         random_state=4,
         n_samples=30,
-        sampler_kwargs={"n_bins": 12, "n_neighbours": 4},
+        sampler_kwargs={"n_neighbours": 4},
     )
     summary = two_dimensional_summary(results)
     fig = plot_two_dimensional_suite(results)
@@ -93,7 +90,7 @@ def test_nearest_neighbor_distance_report_compares_generated_and_real_distances(
         real,
         n_samples=20,
         random_state=6,
-        sampler_kwargs={"n_bins": 10, "n_neighbours": 4},
+        sampler_kwargs={"n_neighbours": 4},
     )
 
     report = nearest_neighbor_distance_report(real, generated)
@@ -120,7 +117,7 @@ def test_nearest_neighbor_distance_histogram_can_disable_log_scale():
         real,
         n_samples=20,
         random_state=9,
-        sampler_kwargs={"n_bins": 10, "n_neighbours": 4},
+        sampler_kwargs={"n_neighbours": 4},
     )
 
     fig = plot_nearest_neighbor_distance_histogram(real, generated, bins=12, log=False)
@@ -134,7 +131,7 @@ def test_nearest_neighbor_distance_summary_reports_each_suite_case():
     results = run_two_dimensional_suite(
         random_state=7,
         n_samples=20,
-        sampler_kwargs={"n_bins": 10, "n_neighbours": 4},
+        sampler_kwargs={"n_neighbours": 4},
     )
 
     summary = nearest_neighbor_distance_summary(results)

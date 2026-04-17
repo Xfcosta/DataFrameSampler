@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from dataframe_sampler import ConcreteDataFrameSampler
+from dataframe_sampler import DataFrameSampler
 from experiments.datasets import DatasetExperimentConfig
 from experiments.numeric_projection import (
     numeric_view,
@@ -36,12 +36,12 @@ def make_mixed_dataframe():
 
 def test_numeric_view_uses_fitted_sampler_transform():
     df = make_mixed_dataframe()
-    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=1)
+    sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=1)
     sampler.fit(df)
 
     numeric = numeric_view(df.head(4), sampler)
 
-    assert numeric.shape == (4, 3)
+    assert numeric.shape == (4, 4)
     assert all(dtype.kind in {"i", "u", "f"} for dtype in numeric.dtypes)
 
 
@@ -54,24 +54,22 @@ def test_numeric_view_from_config_fits_configured_sampler():
         target_column=None,
         random_state=1,
         manual_sampler_config={
-            "n_bins": 4,
             "n_neighbours": 3,
             "knn_backend": "sklearn",
-            "embedding_method": "pca",
         },
     )
 
     numeric = numeric_view_from_config(df, config)
 
-    assert numeric.shape == df.shape
+    assert numeric.shape == (len(df), 4)
     assert all(dtype.kind in {"i", "u", "f"} for dtype in numeric.dtypes)
 
 
 def test_project_numeric_views_returns_shared_two_dimensional_frames():
     df = make_mixed_dataframe()
-    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=1)
+    sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=1)
     sampler.fit(df)
-    generated = sampler.sample(n_samples=5)
+    generated = sampler.generate(n_samples=5)
 
     original_projection, generated_projection, reducer_name = project_numeric_views(
         numeric_view(df, sampler),
@@ -87,9 +85,9 @@ def test_project_numeric_views_returns_shared_two_dimensional_frames():
 
 def test_plot_numeric_projection_triptych_returns_three_panel_figure():
     df = make_mixed_dataframe()
-    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=1)
+    sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=1)
     sampler.fit(df)
-    generated = sampler.sample(n_samples=5)
+    generated = sampler.generate(n_samples=5)
 
     fig = plot_numeric_projection_triptych(
         sampler,
@@ -112,9 +110,9 @@ def test_plot_numeric_projection_triptych_returns_three_panel_figure():
 def test_plot_numeric_projection_triptych_uses_binary_target_markers():
     df = make_mixed_dataframe()
     df["target"] = [0, 1] * 6
-    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=1)
+    sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=1)
     sampler.fit(df)
-    generated = sampler.sample(n_samples=6)
+    generated = sampler.generate(n_samples=6)
 
     fig = plot_numeric_projection_triptych(
         sampler,
@@ -134,9 +132,9 @@ def test_plot_numeric_projection_triptych_uses_binary_target_markers():
 def test_plot_numeric_projection_triptych_uses_regression_target_sizes():
     df = make_mixed_dataframe()
     df["target"] = [float(value) for value in range(len(df))]
-    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=1)
+    sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=1)
     sampler.fit(df)
-    generated = sampler.sample(n_samples=6)
+    generated = sampler.generate(n_samples=6)
 
     fig = plot_numeric_projection_triptych(
         sampler,

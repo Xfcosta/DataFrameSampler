@@ -7,71 +7,61 @@
 Dataset & Method & Fit s & Sample s & Fit peak MB & Sample peak MB & Peak MB & Commands/LOC & Tuning/config \\
 \midrule
 adult & DFS default & 4.435 & 68.171 & 121.321 & 1.221 & 121.321 & Notebook cell & 1 config \\
-adult & DFS LLM-style & 1.884 & 37.106 & 13.739 & 1.224 & 13.739 & Notebook cell & LLM-style dict \\
-adult & DFS manual & 2.814 & 54.654 & 13.730 & 1.222 & 13.730 & Notebook cell & Category embedding \\
+adult & DFS manual & 2.814 & 54.654 & 13.730 & 1.222 & 13.730 & Notebook cell & NCA config \\
 adult & Gaussian copula & 0.240 & 0.089 & 0.763 & 0.529 & 0.763 & Notebook cell & None \\
 adult & Independent columns & 0.001 & 0.028 & 0.291 & 0.472 & 0.472 & Notebook cell & None \\
 adult & Row bootstrap & 0.001 & 0.002 & 0.578 & 0.250 & 0.578 & Notebook cell & None \\
 adult & Stratified columns & 0.008 & 1.634 & 0.973 & 1.119 & 1.119 & Notebook cell & Target column \\
 bank\_marketing & DFS default & 3.896 & 52.644 & 175.408 & 1.469 & 175.408 & Notebook cell & 1 config \\
-bank\_marketing & DFS LLM-style & 1.248 & 43.309 & 20.411 & 1.489 & 20.411 & Notebook cell & LLM-style dict \\
-bank\_marketing & DFS manual & 1.590 & 53.122 & 20.413 & 1.488 & 20.413 & Notebook cell & Category embedding \\
+bank\_marketing & DFS manual & 1.590 & 53.122 & 20.413 & 1.488 & 20.413 & Notebook cell & NCA config \\
 bank\_marketing & Gaussian copula & 0.399 & 0.107 & 1.316 & 0.757 & 1.316 & Notebook cell & None \\
 bank\_marketing & Independent columns & 0.001 & 0.028 & 0.486 & 0.633 & 0.633 & Notebook cell & None \\
 bank\_marketing & Row bootstrap & 0.001 & 0.002 & 0.969 & 0.343 & 0.969 & Notebook cell & None \\
 bank\_marketing & Stratified columns & 0.007 & 2.663 & 1.579 & 1.380 & 1.579 & Notebook cell & Target column \\
 breast\_cancer & DFS default & 0.272 & 3.317 & 7.639 & 0.411 & 7.639 & Notebook cell & 1 config \\
-breast\_cancer & DFS LLM-style & 0.290 & 2.220 & 1.929 & 0.413 & 1.929 & Notebook cell & LLM-style dict \\
-breast\_cancer & DFS manual & 0.383 & 2.866 & 1.915 & 0.411 & 1.915 & Notebook cell & Category embedding \\
+breast\_cancer & DFS manual & 0.383 & 2.866 & 1.915 & 0.411 & 1.915 & Notebook cell & NCA config \\
 breast\_cancer & Gaussian copula & 0.218 & 0.097 & 0.624 & 0.713 & 0.713 & Notebook cell & None \\
 breast\_cancer & Independent columns & 0.001 & 0.023 & 0.142 & 0.575 & 0.575 & Notebook cell & None \\
 breast\_cancer & Row bootstrap & 0.000 & 0.001 & 0.276 & 0.288 & 0.288 & Notebook cell & None \\
 breast\_cancer & Stratified columns & 0.005 & 1.001 & 0.449 & 1.381 & 1.381 & Notebook cell & Target column \\
 heart\_disease & DFS default & 0.223 & 2.619 & 2.099 & 0.348 & 2.099 & Notebook cell & 1 config \\
-heart\_disease & DFS LLM-style & 0.396 & 1.832 & 0.508 & 0.348 & 0.508 & Notebook cell & LLM-style dict \\
-heart\_disease & DFS manual & 0.388 & 1.728 & 0.502 & 0.349 & 0.502 & Notebook cell & Category embedding \\
+heart\_disease & DFS manual & 0.388 & 1.728 & 0.502 & 0.349 & 0.502 & Notebook cell & NCA config \\
 heart\_disease & Gaussian copula & 0.067 & 0.048 & 0.109 & 0.167 & 0.167 & Notebook cell & None \\
 heart\_disease & Independent columns & 0.001 & 0.027 & 0.037 & 0.148 & 0.148 & Notebook cell & None \\
 heart\_disease & Row bootstrap & 0.001 & 0.002 & 0.071 & 0.077 & 0.077 & Notebook cell & None \\
 heart\_disease & Stratified columns & 0.008 & 0.393 & 0.128 & 0.361 & 0.361 & Notebook cell & Target column \\
 pima\_diabetes & DFS default & 0.215 & 1.361 & 11.801 & 0.245 & 11.801 & Notebook cell & 1 config \\
-pima\_diabetes & DFS LLM-style & 0.270 & 1.307 & 1.620 & 0.244 & 1.620 & Notebook cell & LLM-style dict \\
-pima\_diabetes & DFS manual & 0.174 & 1.500 & 1.607 & 0.245 & 1.607 & Notebook cell & Category embedding \\
+pima\_diabetes & DFS manual & 0.174 & 1.500 & 1.607 & 0.245 & 1.607 & Notebook cell & NCA config \\
 pima\_diabetes & Gaussian copula & 0.068 & 0.039 & 0.267 & 0.283 & 0.283 & Notebook cell & None \\
 pima\_diabetes & Independent columns & 0.001 & 0.008 & 0.056 & 0.222 & 0.222 & Notebook cell & None \\
 pima\_diabetes & Row bootstrap & 0.000 & 0.001 & 0.112 & 0.130 & 0.130 & Notebook cell & None \\
 pima\_diabetes & Stratified columns & 0.004 & 0.429 & 0.208 & 0.562 & 0.562 & Notebook cell & Target column \\
 synthetic\_correlated\_helpers & DFS default & 0.128 & 1.161 & 7.165 & 0.200 & 7.165 & Notebook cell & 1 config \\
-synthetic\_correlated\_helpers & DFS LLM-style & 0.134 & 0.600 & 0.967 & 0.201 & 0.967 & Notebook cell & LLM-style dict \\
-synthetic\_correlated\_helpers & DFS manual & 0.147 & 0.752 & 0.958 & 0.201 & 0.958 & Notebook cell & Category embedding \\
+synthetic\_correlated\_helpers & DFS manual & 0.147 & 0.752 & 0.958 & 0.201 & 0.958 & Notebook cell & NCA config \\
 synthetic\_correlated\_helpers & Gaussian copula & 0.045 & 0.027 & 0.127 & 0.129 & 0.129 & Notebook cell & None \\
 synthetic\_correlated\_helpers & Independent columns & 0.000 & 0.006 & 0.030 & 0.097 & 0.097 & Notebook cell & None \\
 synthetic\_correlated\_helpers & Row bootstrap & 0.000 & 0.001 & 0.062 & 0.060 & 0.062 & Notebook cell & None \\
 synthetic\_correlated\_helpers & Stratified columns & 0.004 & 0.146 & 0.126 & 0.271 & 0.271 & Notebook cell & Target column \\
 synthetic\_high\_cardinality & DFS default & 0.153 & 1.224 & 7.183 & 0.255 & 7.183 & Notebook cell & 1 config \\
-synthetic\_high\_cardinality & DFS LLM-style & 0.162 & 0.968 & 0.982 & 0.254 & 0.982 & Notebook cell & LLM-style dict \\
-synthetic\_high\_cardinality & DFS manual & 0.174 & 1.006 & 0.972 & 0.255 & 0.972 & Notebook cell & Category embedding \\
+synthetic\_high\_cardinality & DFS manual & 0.174 & 1.006 & 0.972 & 0.255 & 0.972 & Notebook cell & NCA config \\
 synthetic\_high\_cardinality & Gaussian copula & 0.046 & 0.024 & 0.131 & 0.144 & 0.144 & Notebook cell & None \\
 synthetic\_high\_cardinality & Independent columns & 0.001 & 0.009 & 0.035 & 0.115 & 0.115 & Notebook cell & None \\
 synthetic\_high\_cardinality & Row bootstrap & 0.000 & 0.001 & 0.071 & 0.068 & 0.071 & Notebook cell & None \\
 synthetic\_high\_cardinality & Stratified columns & 0.003 & 0.179 & 0.139 & 0.303 & 0.303 & Notebook cell & Target column \\
 synthetic\_rare\_categories & DFS default & 0.156 & 1.070 & 7.135 & 0.199 & 7.135 & Notebook cell & 1 config \\
-synthetic\_rare\_categories & DFS LLM-style & 0.175 & 0.702 & 0.940 & 0.198 & 0.940 & Notebook cell & LLM-style dict \\
-synthetic\_rare\_categories & DFS manual & 0.128 & 0.682 & 0.930 & 0.199 & 0.930 & Notebook cell & Category embedding \\
+synthetic\_rare\_categories & DFS manual & 0.128 & 0.682 & 0.930 & 0.199 & 0.930 & Notebook cell & NCA config \\
 synthetic\_rare\_categories & Gaussian copula & 0.041 & 0.023 & 0.127 & 0.128 & 0.128 & Notebook cell & None \\
 synthetic\_rare\_categories & Independent columns & 0.001 & 0.007 & 0.030 & 0.102 & 0.102 & Notebook cell & None \\
 synthetic\_rare\_categories & Row bootstrap & 0.000 & 0.001 & 0.062 & 0.060 & 0.062 & Notebook cell & None \\
 synthetic\_rare\_categories & Stratified columns & 0.004 & 0.181 & 0.125 & 0.290 & 0.290 & Notebook cell & Target column \\
 synthetic\_sensitive\_identifier & DFS default & 0.144 & 1.582 & 7.167 & 0.259 & 7.167 & Notebook cell & 1 config \\
-synthetic\_sensitive\_identifier & DFS LLM-style & 0.226 & 1.124 & 0.970 & 0.258 & 0.970 & Notebook cell & LLM-style dict \\
-synthetic\_sensitive\_identifier & DFS manual & 0.177 & 0.890 & 0.960 & 0.258 & 0.960 & Notebook cell & Category embedding \\
+synthetic\_sensitive\_identifier & DFS manual & 0.177 & 0.890 & 0.960 & 0.258 & 0.960 & Notebook cell & NCA config \\
 synthetic\_sensitive\_identifier & Gaussian copula & 0.042 & 0.024 & 0.131 & 0.144 & 0.144 & Notebook cell & None \\
 synthetic\_sensitive\_identifier & Independent columns & 0.001 & 0.012 & 0.035 & 0.118 & 0.118 & Notebook cell & None \\
 synthetic\_sensitive\_identifier & Row bootstrap & 0.001 & 0.001 & 0.071 & 0.068 & 0.071 & Notebook cell & None \\
 synthetic\_sensitive\_identifier & Stratified columns & 0.004 & 0.223 & 0.140 & 0.316 & 0.316 & Notebook cell & Target column \\
 titanic & DFS default & 0.560 & 10.704 & 15.947 & 0.931 & 15.947 & Notebook cell & 1 config \\
-titanic & DFS LLM-style & 0.434 & 14.723 & 2.212 & 0.983 & 2.212 & Notebook cell & LLM-style dict \\
-titanic & DFS manual & 0.437 & 11.610 & 2.210 & 0.931 & 2.210 & Notebook cell & Category embedding \\
+titanic & DFS manual & 0.437 & 11.610 & 2.210 & 0.931 & 2.210 & Notebook cell & NCA config \\
 titanic & Gaussian copula & 0.127 & 0.112 & 0.286 & 0.446 & 0.446 & Notebook cell & None \\
 titanic & Independent columns & 0.001 & 0.019 & 0.095 & 0.389 & 0.389 & Notebook cell & None \\
 titanic & Row bootstrap & 0.001 & 0.002 & 0.188 & 0.225 & 0.225 & Notebook cell & None \\

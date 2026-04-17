@@ -1,49 +1,23 @@
 \section{Implementation}
 
-DataFrameSampler is implemented as a Python package with a \texttt{src/}
-layout. The public library entry point is \texttt{ConcreteDataFrameSampler},
-which wires together the vectorizer, encoder/decoder, and latent sampler. A
-command-line interface exposes the same functionality for CSV and Parquet
-files.
+The public library entry point is \texttt{DataFrameSampler}. The estimator
+accepts pandas dataframes in \texttt{fit} and \texttt{transform};
+\texttt{transform} returns a NumPy latent matrix; \texttt{inverse\_transform}
+accepts a NumPy matrix and returns a dataframe; \texttt{generate} returns a
+synthetic dataframe.
 
-The implementation is organized into focused modules:
-
+The implementation is organized around:
 \begin{itemize}
-  \item \texttt{vectorizer.py}: numeric conversion and categorical
-  vectorization;
-  \item \texttt{encoding.py}: bin encoding and bin-level decoding;
-  \item \texttt{neighbours.py}: mutual-neighbour estimation and probability
-  estimation;
-  \item \texttt{knn.py}: exact, scikit-learn, and optional approximate
-  nearest-neighbour backends;
-  \item \texttt{sampler.py}: high-level dataframe sampling API;
+  \item \texttt{sampler.py}: NCA latent learning, decoding, model persistence,
+  and neighbour-transport generation;
+  \item \texttt{neighbours.py}: mutual-neighbour estimation and sampling
+  probabilities;
+  \item \texttt{knn.py}: exact, scikit-learn, and optional approximate nearest
+  neighbour backends;
   \item \texttt{io.py}: CSV and Parquet dataframe I/O;
-  \item \texttt{llm.py}: optional OpenAI-assisted configuration;
-  \item \texttt{anonymization.py}: optional LLM-generated surrogate replacement
-  for selected sensitive columns.
+  \item \texttt{cli.py}: file-oriented command-line workflow.
 \end{itemize}
 
-Optional dependencies are imported lazily. For example, Parquet support requires
-an installed engine such as PyArrow, and the LLM auto-configuration mode
-requires the OpenAI Python package and an \texttt{OPENAI\_API\_KEY} environment
-variable. Approximate nearest-neighbour backends are also optional.
-
-The command-line interface supports explicit user configuration and automatic
-configuration. Explicit user parameters take precedence over LLM-generated
-recommendations. This is intended to make automated configuration useful while
-keeping the user in control of high-impact choices.
-
-The anonymization layer is exposed through both the Python API and the command
-line. In Python, users call \texttt{anonymize\_columns\_with\_openai} to obtain
-an anonymized dataframe and a replacement report before constructing the
-sampler. In the CLI, the \texttt{--anonymize\_columns} option can be supplied
-multiple times. When present, these replacements are performed before
-\texttt{fit}; the generated output is then checked with
-\texttt{assert\_no\_value\_overlap} before being saved.
-
-The LLM configuration path is intentionally inspectable. The helper returns
-ordinary Python data structures rather than hidden state, and the CLI reports
-which options were filled automatically. This allows users to combine
-automation with manual constraints, for example by explicitly choosing the
-sampled columns while allowing the model to recommend an embedding method and
-nearest-neighbour backend.
+Version 2.0 exposes one direct estimator and removes auxiliary configuration,
+column-selection, embedding-method-selection, and bin-encoding workflows. The
+CLI therefore exposes only the NCA and neighbour-transport parameters.

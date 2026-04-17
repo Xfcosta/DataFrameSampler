@@ -3,23 +3,11 @@ import pandas as pd
 import pytest
 from click.testing import CliRunner
 
-import dataframe_sampler.cli as cli_module
-from dataframe_sampler import (
-    ColumnDataFrameEncoderDecoder,
-    ConcreteDataFrameSampler,
-    DataFrameSampler,
-    DataFrameEncoderDecoder,
-    DataFrameVectorizer,
-    NearestMutualNeighboursEstimator,
-    anonymize_columns_with_openai,
-    assert_no_value_overlap,
-    dataframe_sampler_main,
-    find_nearest_neighbours,
-    profile_dataframe_for_llm,
-    read_dataframe,
-    suggest_sampler_config_with_openai,
-    write_dataframe,
-)
+from dataframe_sampler import DataFrameSampler
+from dataframe_sampler.cli import dataframe_sampler_main
+from dataframe_sampler.io import read_dataframe, write_dataframe
+from dataframe_sampler.knn import find_nearest_neighbours
+from dataframe_sampler.neighbours import NearestMutualNeighboursEstimator
 
 
 def make_mixed_dataframe():
@@ -40,126 +28,161 @@ def make_mixed_dataframe():
                 "senior",
                 "senior",
             ],
+            "flag": [0, 1] * 6,
             "score": [3, 4, 5, 10, 11, 12, 17, 18, 19, 24, 25, 26],
         }
     )
 
 
-def make_sensitive_dataframe():
-    return pd.DataFrame(
-        {
-            "personName": ["Alice Smith", "Bob Jones", "Alice Smith", "Dana Ray"],
-            "age": [21, 35, 21, 48],
-            "score": [3, 10, 3, 17],
-        }
-    )
+def test_dataframe_sampler_fit_transform_inverse_and_generate_contract():
+    df = make_mixed_dataframe()
+    sampler = DataFrameSampler(n_components=2, n_iterations=1, n_neighbours=3, random_state=1)
+
+    returned = sampler.fit(df)
+    latent = sampler.transform(df.head(4))
+    decoded = sampler.inverse_transform(latent, sample=False)
+    generated = sampler.generate(n_samples=5)
+
+    assert returned is sampler
+    assert isinstance(latent, np.ndarray)
+    assert latent.shape == (4, 6)
+    assert isinstance(decoded, pd.DataFrame)
+    assert list(decoded.columns) == list(df.columns)
+    assert list(generated.columns) == list(df.columns)
+    assert len(generated) == 5
+    assert not hasattr(sampler, "sample")
 
 
-class FixedLatentSampler:
-    def fit(self, X):
-        self.fit_shape = X.shape
-        return self
+def test_generate_none_uses_fit_row_count():
+    df = make_mixed_dataframe()
+    sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=2).fit(df)
 
-    def sample(self, n_samples):
-        return np.array([[0.25, 0.75], [1.5, 2.25]])[:n_samples]
+    generated = sampler.generate()
+
+    assert len(generated) == len(df)
 
 
-def test_vectorizer_keeps_numeric_columns_and_embeds_categories():
+def test_fit_rejects_non_dataframe_and_empty_dataframe():
+    sampler = DataFrameSampler()
+
+    with pytest.raises(TypeError, match="pandas DataFrame"):
+        sampler.fit(np.array([[1, 2]]))
+    with pytest.raises(ValueError, match="at least one row"):
+        sampler.fit(pd.DataFrame())
+
+
+def test_fit_accepts_single_row_dataframe_and_generate_replays_latent_shape():
+    df = pd.DataFrame({"flag": [1], "label": ["only"]})
+    sampler = DataFrameSampler(n_iterations=1, random_state=21).fit(df)
+
+    latent = sampler.transform(df)
+    generated = sampler.generate()
+
+    assert latent.shape == (1, 4)
+    assert len(generated) == 1
+    assert list(generated.columns) == ["flag", "label"]
+    assert generated["flag"].isin([1]).all()
+    assert generated["label"].isin(["only"]).all()
+
+
+def test_binary_columns_are_categorical_regardless_of_dtype():
     df = pd.DataFrame(
         {
-            "value": [1.0, 2.0, 3.0, 4.0],
-            "label": ["a", "b", "a", "c"],
+            "binary_object": ["yes", "no", "yes", "no", "yes", "no"],
+            "binary_bool": [True, False, True, False, True, False],
+            "binary_numeric": [0, 1, 0, 1, 0, 1],
+            "two_value_numeric": [10.0, 20.0, 10.0, 20.0, 10.0, 20.0],
+            "continuous": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
         }
     )
 
-    transformed = DataFrameVectorizer().fit_transform(df)
+    sampler = DataFrameSampler(n_iterations=1, n_neighbours=2, random_state=3).fit(df)
 
-    assert transformed["value"].tolist() == [1.0, 2.0, 3.0, 4.0]
-    assert transformed["label"].dtype.kind == "f"
-    assert transformed["label"].nunique() == 3
-
-
-def test_vectorizer_maps_binary_categories_to_zero_one():
-    df = pd.DataFrame(
-        {
-            "value": [1.0, 2.0, 3.0, 4.0],
-            "flag": ["yes", "no", "yes", "no"],
-        }
-    )
-
-    transformed = DataFrameVectorizer().fit_transform(df)
-
-    assert sorted(transformed["flag"].unique()) == [0.0, 1.0]
+    assert sampler.numeric_columns_ == ["continuous"]
+    assert sampler.categorical_columns_ == [
+        "binary_object",
+        "binary_bool",
+        "binary_numeric",
+        "two_value_numeric",
+    ]
+    assert sampler.latent_dim_ == 1 + 4 * 2
 
 
-def test_vectorizer_discards_high_cardinality_identifier_columns():
+def test_per_column_n_components_controls_latent_width():
+    df = make_mixed_dataframe()
+    sampler = DataFrameSampler(
+        n_components={"band": 3, "flag": 1},
+        n_iterations=1,
+        n_neighbours=3,
+        random_state=4,
+    ).fit(df)
+
+    latent = sampler.transform(df)
+
+    assert sampler.numeric_columns_ == ["age", "score"]
+    assert latent.shape[1] == 2 + 3 + 1
+
+
+def test_high_cardinality_categorical_warns_but_proceeds():
     df = pd.DataFrame(
         {
             "value": np.arange(80, dtype=float),
-            "address": [f"person-{idx}" for idx in range(80)],
-            "group": ["a", "b", "c", "d"] * 20,
+            "code": [f"code-{idx}" for idx in range(80)],
         }
     )
 
-    vectorizer = DataFrameVectorizer(max_categorical_fraction=0.3, max_categorical_unique=20)
-    transformed = vectorizer.fit_transform(df)
+    with pytest.warns(UserWarning, match="high-cardinality"):
+        sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=5).fit(df)
 
-    assert "address" not in transformed
-    assert vectorizer.dropped_columns_ == ["address"]
-    assert set(transformed.columns) == {"value", "group"}
+    assert "code" in sampler.categorical_columns_
 
 
-def test_column_encoder_decoder_round_trips_through_known_bins():
-    encoder = ColumnDataFrameEncoderDecoder(n_bins=2)
-    column_values = np.array(["low", "low", "high", "high"])
-    vectorizing_values = np.array([1, 2, 9, 10])
+def test_unknown_categories_transform_without_crashing():
+    df = make_mixed_dataframe()
+    sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=6).fit(df)
+    new_df = df.head(2).copy()
+    new_df.loc[:, "band"] = ["new-a", "new-b"]
 
-    encoder.fit(column_values, vectorizing_values)
-    encoded = encoder.encode(vectorizing_values)
-    decoded = encoder.decode(encoded)
+    latent = sampler.transform(new_df)
 
-    assert encoded.tolist() == [0, 0, 1, 1]
-    assert decoded[:2] == ["low", "low"]
-    assert decoded[2:] == ["high", "high"]
+    assert latent.shape == (2, sampler.latent_dim_)
 
 
-def test_dataframe_encoder_decoder_sample_uses_valid_bin_indexes():
-    np.random.seed(0)
-    df = make_mixed_dataframe()[["age", "score"]]
-    encoder = DataFrameEncoderDecoder(n_bins=3)
-    encoder.fit(df, df)
+def test_inverse_transform_sample_false_is_deterministic_and_valid():
+    df = make_mixed_dataframe()
+    sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=7).fit(df)
+    latent = sampler.transform(df.head(3))
 
-    sampled_bins = encoder.sample(n_samples=200)
+    first = sampler.inverse_transform(latent, sample=False)
+    second = sampler.inverse_transform(latent, sample=False)
 
-    assert sampled_bins.shape == (200, 2)
-    for col_idx, column_encoder in enumerate(encoder.column_dataframe_encoder_decoders):
-        n_bins = column_encoder.discretizer.n_bins_[0]
-        assert sampled_bins[:, col_idx].min() >= 0
-        assert sampled_bins[:, col_idx].max() < n_bins
+    pd.testing.assert_frame_equal(first, second)
+    assert set(first["band"]).issubset(set(df["band"]))
+    assert set(first["flag"]).issubset(set(df["flag"]))
 
 
-def test_dataframe_encoder_decoder_can_keep_numeric_columns_continuous():
-    df = pd.DataFrame(
-        {
-            "x": [0.0, 1.0, 2.0, 3.0],
-            "label": ["a", "a", "b", "b"],
-        }
+def test_fixed_random_state_reproducible_generation():
+    df = make_mixed_dataframe()
+    sampler1 = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=8).fit(df)
+    sampler2 = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=8).fit(df)
+
+    pd.testing.assert_frame_equal(
+        sampler1.generate(n_samples=6),
+        sampler2.generate(n_samples=6),
     )
-    vectorized = pd.DataFrame(
-        {
-            "x": [0.0, 1.0, 2.0, 3.0],
-            "label": [0.0, 0.0, 1.0, 1.0],
-        }
-    )
-    encoder = DataFrameEncoderDecoder(n_bins=2, numeric_decode_strategy="continuous")
 
-    encoder.fit(df, vectorized)
-    encoded = encoder.encode(vectorized)
-    decoded = encoder.decode(np.array([[0.25, 0], [2.75, 1]]))
 
-    assert encoded[:, 0].tolist() == [0.0, 1.0, 2.0, 3.0]
-    assert decoded["x"].tolist() == [0.25, 2.75]
-    assert set(decoded["label"]).issubset({"a", "b"})
+def test_save_and_load_round_trip(tmp_path):
+    df = make_mixed_dataframe()
+    model = tmp_path / "model.obj"
+    sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=9).fit(df)
+
+    sampler.save(model)
+    loaded = DataFrameSampler().load(model)
+    generated = loaded.generate(n_samples=4)
+
+    assert list(generated.columns) == list(df.columns)
+    assert len(generated) == 4
 
 
 def test_nearest_mutual_neighbours_are_symmetric():
@@ -194,118 +217,6 @@ def test_unknown_knn_backend_is_rejected():
         find_nearest_neighbours(np.array([[0.0], [1.0]]), backend="unknown")
 
 
-def test_optional_knn_backend_has_actionable_install_message():
-    pytest.importorskip("pynndescent")
-    neighbours = find_nearest_neighbours(
-        np.array([[0.0], [1.0], [10.0], [11.0]]),
-        n_neighbours=1,
-        backend="pynndescent",
-        backend_kwargs={"random_state": 42},
-    )
-
-    assert neighbours.shape == (4, 1)
-    assert all(row[0] != idx for idx, row in enumerate(neighbours))
-
-
-def test_concrete_dataframe_sampler_generates_requested_shape_and_columns():
-    df = make_mixed_dataframe()
-    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=1)
-
-    sampler.fit(df)
-    generated = sampler.sample(n_samples=8)
-
-    assert list(generated.columns) == list(df.columns)
-    assert len(generated) == 8
-    assert set(generated["band"]).issubset(set(df["band"]))
-
-
-def test_concrete_dataframe_sampler_transforms_rows_to_numeric_view():
-    df = make_mixed_dataframe()
-    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=1)
-
-    sampler.fit(df)
-    numeric = sampler.transform(df.head(3))
-
-    assert numeric.shape == (3, 3)
-    assert list(numeric.columns) == list(df.columns)
-    assert all(pd.api.types.is_numeric_dtype(numeric[column]) for column in numeric.columns)
-
-
-def test_concrete_dataframe_sampler_accepts_sklearn_knn_backend():
-    df = make_mixed_dataframe()
-    sampler = ConcreteDataFrameSampler(
-        n_bins=4,
-        n_neighbours=3,
-        random_state=1,
-        knn_backend="sklearn",
-    )
-
-    sampler.fit(df)
-    generated = sampler.sample(n_samples=8)
-
-    assert list(generated.columns) == list(df.columns)
-    assert len(generated) == 8
-
-
-def test_concrete_dataframe_sampler_can_generate_continuous_numeric_values():
-    df = pd.DataFrame({"x": [0.0, 1.0, 2.0, 3.0], "y": [0.0, 1.0, 0.0, 1.0]})
-    sampler = ConcreteDataFrameSampler(
-        n_bins=2,
-        n_neighbours=1,
-        random_state=4,
-        knn_backend="sklearn",
-        numeric_decode_strategy="continuous",
-    )
-
-    sampler.fit(df)
-    generated = sampler.sample(n_samples=12)
-
-    assert list(generated.columns) == ["x", "y"]
-    assert len(generated) == 12
-    assert generated["x"].dtype.kind == "f"
-    assert generated["y"].dtype.kind == "f"
-
-
-def test_dataframe_sampler_does_not_round_continuous_latent_values_before_decoding():
-    df = pd.DataFrame(
-        {
-            "x": [0.0, 1.0, 2.0],
-            "y": [0.0, 1.0, 2.0],
-        }
-    )
-    sampler = DataFrameSampler(
-        dataframe_vectorizer=DataFrameVectorizer(),
-        dataframe_encoder_decoder=DataFrameEncoderDecoder(
-            n_bins=2,
-            numeric_decode_strategy="continuous",
-        ),
-        sampler=FixedLatentSampler(),
-    )
-
-    sampler.fit(df)
-    generated = sampler.sample(n_samples=2)
-
-    assert generated["x"].tolist() == [0.25, 1.5]
-    assert generated["y"].tolist() == [0.75, 2.25]
-    assert sampler.generated_latent_data_mtx.tolist() == [[0.25, 0.75], [1.5, 2.25]]
-
-
-def test_concrete_dataframe_sampler_respects_sampled_columns():
-    df = make_mixed_dataframe()
-    sampler = ConcreteDataFrameSampler(
-        n_bins=4,
-        n_neighbours=3,
-        sampled_columns=["age", "band"],
-        random_state=2,
-    )
-
-    sampler.fit(df)
-    generated = sampler.sample(n_samples=5)
-
-    assert list(generated.columns) == ["age", "band"]
-    assert len(generated) == 5
-
-
 def test_cli_fits_and_generates_csv(tmp_path):
     input_csv = tmp_path / "input.csv"
     output_csv = tmp_path / "generated.csv"
@@ -323,8 +234,10 @@ def test_cli_fits_and_generates_csv(tmp_path):
             str(model_file),
             "-n",
             "6",
-            "--n_bins",
-            "4",
+            "--n_components",
+            "2",
+            "--n_iterations",
+            "1",
             "--n_neighbours",
             "3",
             "--random_state",
@@ -335,431 +248,26 @@ def test_cli_fits_and_generates_csv(tmp_path):
     assert result.exit_code == 0, result.output
     generated = pd.read_csv(output_csv)
     assert len(generated) == 6
-    assert list(generated.columns) == ["age", "band", "score"]
+    assert list(generated.columns) == list(make_mixed_dataframe().columns)
     assert model_file.exists()
 
 
-def test_anonymize_columns_with_openai_replaces_before_sampling_values():
-    class FakeResponse:
-        output_text = """
-        {
-          "replacements": [
-            {"original": "Alice Smith", "replacement": "Nora Vale"},
-            {"original": "Bob Jones", "replacement": "Milo Stone"},
-            {"original": "Dana Ray", "replacement": "Iris Lane"}
-          ]
-        }
-        """
+def test_cli_help_shows_new_flags_and_hides_removed_flags():
+    result = CliRunner().invoke(dataframe_sampler_main, ["--help"])
 
-    class FakeResponses:
-        def create(self, **kwargs):
-            assert kwargs["text"]["format"]["type"] == "json_schema"
-            return FakeResponse()
-
-    class FakeClient:
-        responses = FakeResponses()
-
-    df = make_sensitive_dataframe()
-    anonymized, report = anonymize_columns_with_openai(
-        df,
-        columns=["personName"],
-        client=FakeClient(),
-    )
-
-    assert report["columns"] == ["personName"]
-    assert anonymized["personName"].tolist() == ["Nora Vale", "Milo Stone", "Nora Vale", "Iris Lane"]
-    assert_no_value_overlap(df, anonymized, ["personName"])
+    assert result.exit_code == 0
+    assert "--n_components" in result.output
+    assert "--n_iterations" in result.output
+    assert "--n_bins" not in result.output
+    assert "--embedding_method" not in result.output
+    assert "--auto_config" not in result.output
 
 
-def test_assert_no_value_overlap_rejects_original_values():
-    df = make_sensitive_dataframe()
-
-    with pytest.raises(ValueError, match="overlap"):
-        assert_no_value_overlap(df, df.copy(), ["personName"])
-
-
-def test_cli_anonymizes_before_fit_and_checks_generated_output(tmp_path, monkeypatch):
-    input_csv = tmp_path / "input.csv"
-    output_csv = tmp_path / "generated.csv"
-    make_sensitive_dataframe().to_csv(input_csv, index=False)
-
-    def fake_anonymize(dataframe, source_dataframe, columns):
-        anonymized = dataframe.copy()
-        anonymized["personName"] = anonymized["personName"].map(
-            {
-                "Alice Smith": "Nora Vale",
-                "Bob Jones": "Milo Stone",
-                "Dana Ray": "Iris Lane",
-            }
-        )
-        return anonymized, {"columns": columns}
-
-    monkeypatch.setattr(cli_module, "anonymize_columns_with_openai", fake_anonymize)
-    result = CliRunner().invoke(
-        dataframe_sampler_main,
-        [
-            "-i",
-            str(input_csv),
-            "-o",
-            str(output_csv),
-            "--anonymize_columns",
-            "personName",
-            "-n",
-            "4",
-            "--n_bins",
-            "3",
-            "--n_neighbours",
-            "2",
-            "--random_state",
-            "14",
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-    generated = pd.read_csv(output_csv)
-    assert_no_value_overlap(make_sensitive_dataframe(), generated, ["personName"])
-
-
-def test_sample_to_file_uses_extension_based_csv_writer(tmp_path):
-    output_csv = tmp_path / "generated.csv"
-    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=10).fit(make_mixed_dataframe())
-
-    generated = sampler.sample_to_file(n_samples=4, filename=output_csv)
-    loaded = read_dataframe(output_csv)
-
-    assert len(generated) == 4
-    assert list(loaded.columns) == ["age", "band", "score"]
-    assert len(loaded) == 4
-
-
-def test_read_write_dataframe_rejects_unknown_extension(tmp_path):
-    path = tmp_path / "generated.json"
-
-    with pytest.raises(ValueError, match="Unsupported dataframe file extension"):
-        write_dataframe(make_mixed_dataframe(), path)
-
-    path.write_text("{}")
-    with pytest.raises(ValueError, match="Unsupported dataframe file extension"):
-        read_dataframe(path)
-
-
-def test_read_write_dataframe_supports_parquet_when_engine_is_available(tmp_path):
-    pytest.importorskip("pyarrow")
-    path = tmp_path / "data.parquet"
+def test_read_and_write_dataframe_csv(tmp_path):
+    path = tmp_path / "frame.csv"
     df = make_mixed_dataframe()
 
     write_dataframe(df, path)
     loaded = read_dataframe(path)
 
-    pd.testing.assert_frame_equal(loaded, df)
-
-
-def test_cli_accepts_parquet_input_and_output_when_engine_is_available(tmp_path):
-    pytest.importorskip("pyarrow")
-    input_parquet = tmp_path / "input.parquet"
-    output_parquet = tmp_path / "generated.parquet"
-    make_mixed_dataframe().to_parquet(input_parquet, index=False)
-
-    result = CliRunner().invoke(
-        dataframe_sampler_main,
-        [
-            "-i",
-            str(input_parquet),
-            "-o",
-            str(output_parquet),
-            "-n",
-            "5",
-            "--n_bins",
-            "4",
-            "--n_neighbours",
-            "3",
-            "--random_state",
-            "11",
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-    generated = pd.read_parquet(output_parquet)
-    assert len(generated) == 5
-
-
-def test_sampler_handles_constant_columns():
-    df = pd.DataFrame(
-        {
-            "constant": [7, 7, 7, 7],
-            "label": ["a", "a", "a", "a"],
-        }
-    )
-
-    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=2, random_state=4)
-    sampler.fit(df)
-    generated = sampler.sample(n_samples=3)
-
-    assert generated["constant"].tolist() == [7, 7, 7]
-    assert generated["label"].tolist() == ["a", "a", "a"]
-
-
-def test_sampler_handles_missing_values_in_fit_data():
-    df = pd.DataFrame(
-        {
-            "age": [20.0, np.nan, 22.0, 40.0, 41.0, np.nan],
-            "city": ["a", "a", None, "b", "b", None],
-        }
-    )
-
-    sampler = ConcreteDataFrameSampler(n_bins=3, n_neighbours=2, random_state=5)
-    sampler.fit(df)
-    generated = sampler.sample(n_samples=4)
-
-    assert list(generated.columns) == ["age", "city"]
-    assert len(generated) == 4
-
-
-def test_vectorizer_learns_category_embedding_mapping_used_on_new_data():
-    df = pd.DataFrame(
-        {
-            "name": ["ann", "bob", "cam", "dan"],
-            "age": [20, 30, 40, 50],
-            "country_id": [1, 1, 2, 2],
-        }
-    )
-
-    vectorizer = DataFrameVectorizer(random_state=6)
-    transformed = vectorizer.fit_transform(df)
-    new = vectorizer.transform(pd.DataFrame({"name": ["ann", "eve"], "age": [25, 60], "country_id": [1, 3]}))
-
-    assert set(transformed.columns) == {"name", "age", "country_id"}
-    assert transformed["name"].nunique() > 1
-    assert set(new.columns) == {"name", "age", "country_id"}
-    assert np.isfinite(new["name"]).all()
-
-
-def test_vectorizer_supports_pca_embedding_by_string():
-    df = pd.DataFrame(
-        {
-            "name": ["ann", "bob", "cam", "dan"],
-            "age": [20, 30, 40, 50],
-            "country_id": [1, 1, 2, 2],
-        }
-    )
-
-    transformed = DataFrameVectorizer(
-        embedding_method="pca",
-    ).fit_transform(df)
-
-    assert transformed["name"].nunique() == 4
-
-
-def test_vectorizer_supports_custom_transform_embedding_object():
-    class FirstColumnProjector:
-        def transform(self, X):
-            return X[:, :1]
-
-    df = pd.DataFrame(
-        {
-            "name": ["ann", "bob", "cam"],
-            "age": [20, 30, 40],
-            "country_id": [1, 2, 3],
-        }
-    )
-
-    transformed = DataFrameVectorizer(
-        embedding_method=FirstColumnProjector(),
-    ).fit_transform(df)
-
-    assert transformed["name"].tolist() == [1.0, 0.0, 0.0]
-
-
-def test_vectorizer_rejects_unknown_embedding_string():
-    df = pd.DataFrame(
-        {
-            "name": ["ann", "bob", "cam"],
-            "age": [20, 30, 40],
-        }
-    )
-
-    vectorizer = DataFrameVectorizer(embedding_method="not_real")
-
-    with pytest.raises(ValueError, match="Unknown embedding_method"):
-        vectorizer.fit_transform(df)
-
-
-def test_profile_dataframe_for_llm_describes_columns():
-    df = make_mixed_dataframe()
-
-    profile = profile_dataframe_for_llm(df)
-
-    assert profile["row_count"] == len(df)
-    assert "age" in profile["numeric_columns"]
-    assert "band" in profile["categorical_columns"]
-    assert any(column["name"] == "band" for column in profile["columns"])
-
-
-def test_suggest_sampler_config_with_openai_uses_structured_response():
-    class FakeResponse:
-        output_text = """
-        {
-          "recommendations": [
-            {
-              "column": "band",
-              "action": "keep",
-              "rationale": "Band has a compact alphabet and should be embedded.",
-              "confidence": 0.9
-            }
-          ],
-          "sampled_columns": ["age", "band", "score"],
-          "embedding_method": "pca",
-          "knn_backend": "sklearn",
-          "notes": "Use PCA for categorical one-hot embeddings."
-        }
-        """
-
-    class FakeResponses:
-        def create(self, **kwargs):
-            assert kwargs["model"] == "fake-model"
-            assert kwargs["text"]["format"]["type"] == "json_schema"
-            return FakeResponse()
-
-    class FakeClient:
-        responses = FakeResponses()
-
-    config = suggest_sampler_config_with_openai(
-        make_mixed_dataframe(),
-        model="fake-model",
-        client=FakeClient(),
-    )
-
-    assert config["sampled_columns"] == ["age", "band", "score"]
-    assert config["embedding_method"] == "pca"
-    assert config["knn_backend"] == "sklearn"
-
-
-def test_concrete_dataframe_sampler_accepts_pca_embedding_method():
-    df = make_mixed_dataframe()
-    sampler = ConcreteDataFrameSampler(
-        n_bins=4,
-        n_neighbours=3,
-        random_state=9,
-        embedding_method="pca",
-    )
-
-    sampler.fit(df)
-    generated = sampler.sample(n_samples=5)
-
-    assert list(generated.columns) == list(df.columns)
-    assert len(generated) == 5
-
-
-def test_sampler_is_reproducible_with_random_state():
-    df = make_mixed_dataframe()
-    sampler1 = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=7).fit(df)
-    sampler2 = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=7).fit(df)
-
-    pd.testing.assert_frame_equal(
-        sampler1.sample(n_samples=6),
-        sampler2.sample(n_samples=6),
-    )
-
-
-def test_save_and_load_model_round_trip(tmp_path):
-    model_file = tmp_path / "model.obj"
-    sampler = ConcreteDataFrameSampler(n_bins=4, n_neighbours=3, random_state=8).fit(make_mixed_dataframe())
-
-    loaded = sampler.save(model_file).load(model_file)
-    generated = loaded.sample(n_samples=4)
-
-    assert len(generated) == 4
-    assert list(generated.columns) == ["age", "band", "score"]
-
-
-def test_sampler_rejects_single_row_dataframes():
-    sampler = ConcreteDataFrameSampler(n_bins=2, n_neighbours=1)
-
-    with pytest.raises(ValueError, match="At least two rows"):
-        sampler.fit(pd.DataFrame({"value": [1]}))
-
-
-def test_cli_requires_input_or_model():
-    result = CliRunner().invoke(dataframe_sampler_main, ["-o", "ignored.csv"])
-
-    assert result.exit_code != 0
-    assert "Provide --input_filename" in result.output
-
-
-def test_cli_auto_config_fills_omitted_sampler_options(tmp_path, monkeypatch):
-    input_csv = tmp_path / "input.csv"
-    output_csv = tmp_path / "generated.csv"
-    make_mixed_dataframe().to_csv(input_csv, index=False)
-
-    def fake_auto_config(df):
-        assert list(df.columns) == ["age", "band", "score"]
-        return {
-            "sampled_columns": ["age", "band", "score"],
-            "embedding_method": "pca",
-            "knn_backend": "sklearn",
-            "recommendations": [],
-            "notes": "Fake auto config.",
-        }
-
-    monkeypatch.setattr(cli_module, "suggest_sampler_config_with_openai", fake_auto_config)
-    result = CliRunner().invoke(
-        dataframe_sampler_main,
-        [
-            "-A",
-            "-i",
-            str(input_csv),
-            "-o",
-            str(output_csv),
-            "-n",
-            "5",
-            "--random_state",
-            "12",
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-    assert "Fake auto config." in result.output
-    assert len(pd.read_csv(output_csv)) == 5
-
-
-def test_cli_auto_config_preserves_user_specified_options(tmp_path, monkeypatch):
-    input_csv = tmp_path / "input.csv"
-    output_csv = tmp_path / "generated.csv"
-    make_mixed_dataframe().to_csv(input_csv, index=False)
-
-    def fake_auto_config(df):
-        return {
-            "sampled_columns": ["band"],
-            "embedding_method": "pca",
-            "knn_backend": "sklearn",
-            "recommendations": [],
-            "notes": "Fake auto config.",
-        }
-
-    monkeypatch.setattr(cli_module, "suggest_sampler_config_with_openai", fake_auto_config)
-    result = CliRunner().invoke(
-        dataframe_sampler_main,
-        [
-            "-A",
-            "-i",
-            str(input_csv),
-            "-o",
-            str(output_csv),
-            "-c",
-            "age",
-            "-c",
-            "band",
-            "--embedding_method",
-            "mds",
-            "--knn_backend",
-            "exact",
-            "-n",
-            "5",
-            "--random_state",
-            "13",
-        ],
-    )
-
-    assert result.exit_code == 0, result.output
-    generated = pd.read_csv(output_csv)
-    assert list(generated.columns) == ["age", "band"]
+    assert loaded.shape == df.shape

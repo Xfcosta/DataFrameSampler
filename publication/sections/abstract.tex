@@ -1,18 +1,11 @@
-Synthetic tabular data generation is useful in business and medical workflows
-where teams need realistic examples for testing, demonstration, integration, and
-training, but cannot casually reuse source data. This paper presents
-DataFrameSampler, a lightweight Python library for generating mixed-type
-tabular samples from pandas dataframes with an emphasis on simplicity and
-human-auditable behaviour. The method maps numeric and categorical columns into
-a discretized latent bin-space, samples new latent rows by transferring
-difference vectors along local neighbour chains, and decodes latent bins back
-into column values. The difference vector can be read as a first-order local
-tangent-space approximation to the empirical manifold estimated by mutual
-nearest neighbours. Each generated example can therefore be explained in terms
-of nearby source rows, bin assignments, and a local difference operation, rather
-than as the opaque output of a large learned generator. The implementation
-supports configurable categorical vectorization, exact and approximate
-nearest-neighbour backends, CSV and Parquet data I/O, optional LLM-assisted
-configuration, and an anonymization layer that replaces selected sensitive
-values before generation. This manuscript is a work-in-progress stub and
-outlines the method, software interface, and planned empirical evaluation.
+Synthetic tabular data generation is useful when teams need realistic examples
+for software tests, demonstrations, notebooks, and exploratory modelling but
+cannot casually reuse source data. This paper presents DataFrameSampler 2.0, a
+lightweight Python library for mixed-type pandas dataframes. The method learns a
+fully numerical latent space by fitting one supervised Neighborhood Components
+Analysis block for each categorical column. Binary columns are categorical even
+when stored as numeric values. Generation applies a local mutual-neighbour
+translation in the learned latent space and decodes the result with inverse
+numeric scaling plus probabilistic random-forest categorical decoders. The
+method is simple and auditable, but heuristic: it has no global objective, no
+formal manifold-preservation guarantee, and no privacy guarantee.

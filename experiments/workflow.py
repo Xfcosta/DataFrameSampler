@@ -8,7 +8,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from dataframe_sampler import ConcreteDataFrameSampler
+from dataframe_sampler import DataFrameSampler
 
 from .compare import run_dataset_comparison
 from .datasets import DatasetExperimentConfig
@@ -96,17 +96,11 @@ def prepare_dataframe_for_experiment(
     dataframe: pd.DataFrame,
     config: DatasetExperimentConfig,
 ) -> pd.DataFrame:
-    """Apply configured direct encodings and redundant-column removal."""
+    """Apply experiment-specific redundant-column removal."""
     prepared = dataframe.copy()
     drop_columns = [column for column in config.drop_columns if column in prepared.columns]
     if drop_columns:
         prepared = prepared.drop(columns=drop_columns)
-
-    for column, mapping in (config.direct_numeric_mappings or {}).items():
-        if column not in prepared.columns:
-            continue
-        mapped = prepared[column].map(mapping)
-        prepared[column] = pd.to_numeric(mapped, errors="coerce")
     return prepared
 
 
@@ -173,12 +167,12 @@ def run_starter_sampler(
     write_outputs: bool = True,
 ) -> SamplerRun:
     output_dir = Path(results_dir) if results_dir is not None else None
-    sampler = ConcreteDataFrameSampler(
+    sampler = DataFrameSampler(
         **sampler_config_with_random_state(config.manual_sampler_config, config.random_state)
     )
 
     fit = measure_call(lambda: sampler.fit(dataframe))
-    sample = measure_call(lambda: sampler.sample(n_samples=config.n_generated))
+    sample = measure_call(lambda: sampler.generate(n_samples=config.n_generated))
     generated = sample.value
     peak_memory_mb = max(fit.peak_memory_mb, sample.peak_memory_mb)
 
@@ -243,11 +237,6 @@ def run_configured_dataset_experiment(
         dataframe_sampler_config=sampler_config_with_random_state(
             config.manual_sampler_config,
             config.random_state,
-        ),
-        llm_assisted_config=(
-            sampler_config_with_random_state(config.llm_assisted_config, config.random_state)
-            if config.llm_assisted_config is not None
-            else None
         ),
         n_samples=config.n_generated,
         random_state=config.random_state,

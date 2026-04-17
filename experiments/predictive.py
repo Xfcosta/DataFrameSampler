@@ -18,7 +18,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
-from dataframe_sampler import ConcreteDataFrameSampler
+from dataframe_sampler import DataFrameSampler
 
 from .datasets import DatasetExperimentConfig
 from .metrics import _infer_prediction_task
@@ -68,8 +68,8 @@ def predictive_performance_report(
     """Compare real-trained and synthetic-trained predictors on a real test split.
 
     The split is made on prepared real rows. The sampler is fit only on the real
-    training split, then the fitted sampler/vectorizer transforms train, test,
-    and generated synthetic rows into the same pure numeric coordinate system.
+    training split, then the fitted sampler transforms train, test, and
+    generated synthetic rows into the same latent numeric coordinate system.
     """
     if config.target_column is None or config.target_column not in dataframe.columns:
         raise ValueError("A configured target column is required for predictive evaluation.")
@@ -89,15 +89,15 @@ def predictive_performance_report(
     train = train.reset_index(drop=True)
     test = test.reset_index(drop=True)
 
-    sampler = ConcreteDataFrameSampler(
+    sampler = DataFrameSampler(
         **sampler_config_with_random_state(config.manual_sampler_config, config.random_state)
     )
     sampler.fit(train)
-    synthetic = sampler.sample(n_samples=n_synthetic or len(train)).reset_index(drop=True)
+    synthetic = sampler.generate(n_samples=n_synthetic or len(train)).reset_index(drop=True)
 
-    train_numeric = numeric_view(train, sampler)
-    test_numeric = numeric_view(test, sampler)
-    synthetic_numeric = numeric_view(synthetic, sampler)
+    train_numeric = predictive_numeric_view(train, sampler, config.target_column)
+    test_numeric = predictive_numeric_view(test, sampler, config.target_column)
+    synthetic_numeric = predictive_numeric_view(synthetic, sampler, config.target_column)
 
     rows = []
     rows.append(
@@ -127,6 +127,31 @@ def predictive_performance_report(
     report["train_rows"] = [len(train_numeric), len(synthetic_numeric)]
     report["test_rows"] = len(test_numeric)
     return report
+
+
+def predictive_numeric_view(dataframe: pd.DataFrame, sampler: DataFrameSampler, target_column: str) -> pd.DataFrame:
+    """Return latent features without the target block, plus the original target."""
+    latent = sampler.transform(dataframe)
+    columns = [f"latent_{idx}" for idx in range(latent.shape[1])]
+    view = pd.DataFrame(latent, columns=columns, index=dataframe.index)
+    drop_columns = _latent_columns_for_source_column(sampler, target_column)
+    view = view.drop(columns=drop_columns, errors="ignore")
+    view[target_column] = dataframe[target_column].to_numpy()
+    return view.reset_index(drop=True)
+
+
+def _latent_columns_for_source_column(sampler: DataFrameSampler, source_column: str) -> list[str]:
+    offset = 0
+    if source_column in sampler.numeric_columns_:
+        idx = sampler.numeric_columns_.index(source_column)
+        return [f"latent_{idx}"]
+    offset += len(sampler.numeric_columns_)
+    for column in sampler.categorical_columns_:
+        width = sampler._components_for_column(column)
+        if column == source_column:
+            return [f"latent_{idx}" for idx in range(offset, offset + width)]
+        offset += width
+    return []
 
 
 def _evaluate_numeric_predictor(

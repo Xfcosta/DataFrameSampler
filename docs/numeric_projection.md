@@ -1,39 +1,36 @@
-# Numeric Views And 2D Projection
+# Latent Numeric Views And 2D Projection
 
-DataFrameSampler can render any fitted dataframe row as the pure numeric view
-used internally before bin encoding:
+DataFrameSampler 2.0 transforms dataframe rows into the fitted NCA latent
+matrix:
 
 ```python
-from dataframe_sampler import ConcreteDataFrameSampler
+from dataframe_sampler import DataFrameSampler
 
-sampler = ConcreteDataFrameSampler(
-    n_bins=10,
+sampler = DataFrameSampler(
+    n_components=2,
+    n_iterations=2,
     n_neighbours=8,
-    embedding_method="pca",
     knn_backend="sklearn",
     random_state=42,
 )
 sampler.fit(df)
 
-numeric_df = sampler.transform(df)
-generated_df = sampler.sample(n_samples=len(df))
-generated_numeric_df = sampler.transform(generated_df)
+latent = sampler.transform(df)
+generated_df = sampler.generate(n_samples=len(df))
+generated_latent = sampler.transform(generated_df)
 ```
 
-`transform` returns the fitted numeric representation:
+`transform` returns a NumPy array, not a DataFrame. Its columns are ordered as:
 
-- numeric columns are converted to floats with median imputation for missing
-  values;
-- high-cardinality identifier-like non-numeric columns are omitted;
-- binary non-numeric columns are mapped to `0/1`;
-- compact non-numeric columns are one-hot encoded and embedded to one numeric
-  coordinate;
-- `sampled_columns`, when configured, is respected.
+- standardized non-binary numeric columns;
+- one NCA latent block per categorical column.
 
-This numeric view is useful for inspection, distance calculations, and shared
-visualization of original and generated rows.
+Binary columns are categorical even when stored as `0/1`, boolean, or another
+two-valued numeric dtype. High-cardinality categoricals are warned about but
+still used.
 
-The experiment helper `experiments.numeric_projection` builds on this interface:
+The experiment helper `experiments.numeric_projection` wraps this array in a
+temporary DataFrame for plotting:
 
 ```python
 from experiments.numeric_projection import plot_numeric_projection_triptych
@@ -50,8 +47,7 @@ fig = plot_numeric_projection_triptych(
 )
 ```
 
-The helper transforms original and generated rows together with the fitted
-sampler, imputes and standardizes the numeric values, projects them to two
-dimensions with UMAP when `umap-learn` is installed, and falls back to PCA
-otherwise. The resulting figure has three panels: original only, generated
-only, and both superimposed.
+The helper transforms original and generated rows with the fitted sampler,
+projects both latent views into a shared two-dimensional space with UMAP when
+available or PCA otherwise, and displays original-only, generated-only, and
+superimposed panels.

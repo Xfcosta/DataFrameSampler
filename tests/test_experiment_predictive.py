@@ -26,11 +26,9 @@ def make_predictive_config():
         target_column="target",
         random_state=1,
         manual_sampler_config={
-            "n_bins": 4,
             "n_neighbours": 3,
             "knn_backend": "sklearn",
-            "embedding_method": "pca",
-        },
+            },
     )
 
 
