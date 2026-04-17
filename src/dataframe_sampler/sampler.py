@@ -33,7 +33,7 @@ class NearestMutualNeighboursSampler(object):
         use_numeric_std_constraints=True,
         numeric_std_threshold=3.0,
         numeric_constraint_indices=None,
-        max_constraint_retries=3,
+        max_constraint_retries=5,
         random_state=None,
         max_attempts_factor=20,
     ):
@@ -219,7 +219,7 @@ def ConcreteNearestMutualNeighboursSampler(
     use_numeric_std_constraints=True,
     numeric_std_threshold=3.0,
     numeric_constraint_indices=None,
-    max_constraint_retries=3,
+    max_constraint_retries=5,
     random_state=None,
     knn_backend="exact",
     knn_backend_kwargs=None,
@@ -344,7 +344,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         enforce_min_max_constraints=True,
         enforce_numeric_std_constraints=True,
         numeric_std_threshold=3.0,
-        max_constraint_retries=3,
+        max_constraint_retries=5,
     ):
         if isinstance(n_components, int) and n_components < 1:
             raise ValueError("n_components must be at least 1.")

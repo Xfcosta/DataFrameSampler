@@ -1,51 +1,82 @@
 \section{Related Work}
+\label{sec:related-work}
 
-Synthetic tabular data generation spans several modelling traditions, including
-probabilistic graphical models, copulas, nearest-neighbour resampling,
-oversampling methods such as SMOTE, and deep generative models such as CTGAN
-\cite{chawla2002smote,xu2019ctgan}. Larger systems such as SDV provide
-practical interfaces over multiple model families \cite{patki2016sdv}. However,
-these approaches are usually designed for broader fidelity, augmentation, or
-release objectives, and they can therefore introduce modelling assumptions that
-are not always necessary for a small example-data workflow.
+Synthetic tabular data generation includes several distinct modelling
+traditions. Copula and probabilistic models provide relatively classical
+approaches to mixed marginal and dependence modelling, while systems such as
+the Synthetic Data Vault expose practical interfaces over multiple synthetic
+data model families \citep{patki2016sdv}. Deep generative tabular models, such
+as CTGAN, use adversarial training and conditional sampling to model more
+complex tabular distributions \citep{xu2019ctgan}. These methods are important
+reference points, but they are usually optimized for broader fidelity or
+release-oriented objectives than the low-setup, inspectable example-data
+workflow considered here.
 
-Classical oversampling gives a useful reference point because it exposes the
-geometry of a simple generative rule. SMOTE constructs minority examples along
-line segments between neighbours \cite{chawla2002smote}, so its synthetic points
-remain tied to interpolation in the observed feature space. This is efficient
-and transparent, but it can be too restrictive when the support is better
-understood as a curved or structured manifold. Manifold-aware oversampling was
-introduced to address such cases, including early manifold-based sampling and
-later manifold-conformance work
-\cite{nguyen2005manifold,bellinger2018manifold}. More recent augmentation
-methods make the local-geometry assumption explicit: FOMA samples from
-estimated first-order tangent planes, while CEMS incorporates second-order
-curvature information for regression augmentation
-\cite{kaufman2024foma,kaufman2025cems}.
+\begin{table}[t]
+\centering
+\caption{Positioning against common tabular-generation families. The entries
+are schematic rather than benchmark claims; their role is to locate the method
+by modelling objective and inspectability. Takeaway: DataFrameSampler trades a
+global generative objective for explicit local geometry and a small
+mixed-type workflow.}
+\label{tab:method-positioning}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Property & Deep tabular generator & Copula model & DataFrameSampler \\
+\midrule
+Primary objective & Likelihood or adversarial fidelity & Dependence and marginal modelling & No global objective \\
+Mixed-type handling & Learned or model-specific & Structured marginals plus dependence & Explicit type policy and decoders \\
+Local geometry & Usually implicit & Usually absent & Explicit learned latent neighbours \\
+Inspectability & Low to medium & Medium & High: blocks, chains, decoders \\
+Typical use & High-fidelity synthetic data & Statistical simulation & Low-setup example data \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
 
-DataFrameSampler can be viewed as adjacent to this local-geometry family, but
-it uses a different constructive operator. Rather than estimating tangent spaces
-or curvature, it learns a supervised latent metric with scikit-learn
-components, including Neighborhood Components Analysis and nearest-neighbour
-search \cite{pedregosa2011scikit}, and then transfers local neighbour
-displacements inside that learned space. In practice, this makes the method
-less formal than tangent-plane augmentation but easier to inspect as a sequence
-of fitted blocks, neighbour choices, and decoded categorical distributions.
-Optional ANN backends such as NN-Descent, HNSW, and Annoy can be used for
-larger datasets \cite{dong2011efficient,malkov2018hnsw,bernhardsson2015annoy}.
+Oversampling methods provide a second reference point because they make the
+geometry of synthetic example construction explicit. SMOTE generates minority
+examples by interpolation along line segments between neighbouring observations
+\citep{chawla2002smote}. This rule is efficient and inspectable, but it is
+confined to interpolation in the chosen feature space. Manifold-based
+oversampling methods address this limitation by treating the data distribution
+as supported by a lower-dimensional structure, including early manifold-based
+sampling and later manifold-conformance estimation
+\citep{nguyen2005manifold,bellinger2018manifold}.
 
-The validation protocol borrows from manifold learning because the transport
-rule is meaningful only if generated points remain compatible with the learned
-local geometry. Isomap estimates manifold geometry through a neighbourhood
-graph, graph shortest paths, and classical MDS \cite{tenenbaum2000isomap}, while
-out-of-sample extensions for Isomap and related spectral methods allow new
-points to be inserted into a fixed embedding without refitting the eigensystem
-\cite{bengio2003outofsample}. We use this idea only as an empirical diagnostic:
-generated points are tested for convex-hull extrapolation and for low insertion
-stress in a frozen Isomap geometry.
+Recent manifold augmentation methods make the local-geometry assumption more
+explicit. First-order manifold augmentation samples from estimated tangent
+planes, while curvature-enhanced sampling incorporates second-order
+information for regression augmentation
+\citep{kaufman2024foma,kaufman2025cems}. DataFrameSampler is adjacent to this
+family but uses a different constructive choice: rather than estimating a
+tangent plane or curvature tensor, it transfers observed neighbour
+displacements in a supervised latent space. The result is less formal than
+explicit differential-geometry methods, but it is easier to express as fitted
+blocks, neighbour chains, and decoder distributions.
 
-Privacy-preserving synthetic data addresses a stronger and structurally
-different problem than this package claims to solve. Formal release mechanisms
-require explicit threat models, privacy definitions, and disclosure-risk
-evaluation; therefore DataFrameSampler should not be interpreted as a privacy
-mechanism merely because it generates rows that differ from observed records.
+Metric learning supplies the other main connection. Neighborhood Components
+Analysis learns a supervised transformation that favours neighbours with the
+same label, and scikit-learn provides the implementation used here
+\citep{pedregosa2011scikit}. DataFrameSampler applies this idea columnwise:
+each categorical column defines a supervised prediction problem, and the
+resulting blocks are concatenated into a composite latent space. This differs
+from a joint metric-learning objective, because there is no single loss over
+all columns and all generated rows.
+
+The manifold validation protocol draws on Isomap and out-of-sample manifold
+extension. Isomap constructs a neighbourhood graph, computes graph shortest
+paths, and embeds the resulting geodesic distances by multidimensional scaling
+\citep{tenenbaum2000isomap}. Out-of-sample extensions allow new points to be
+inserted into a fixed spectral geometry without refitting the original model
+\citep{bengio2003outofsample}. In this paper, that machinery is used only as a
+diagnostic: generated latent points are tested for convex-hull extrapolation
+and for low insertion stress relative to held-out real points.
+
+Finally, privacy-preserving synthetic data addresses a stronger problem than
+the one considered here. Formal release mechanisms require explicit threat
+models, privacy definitions, and disclosure-risk evaluation. DataFrameSampler
+does not provide these guarantees, and row novelty under a learned decoder
+should not be interpreted as privacy protection.

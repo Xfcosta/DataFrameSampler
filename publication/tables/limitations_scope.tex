@@ -1,16 +1,16 @@
-\begin{table}
+\begin{table*}
 \caption{Limitations and allowable conclusion scope under the current evidence. Takeaway: the paper's strongest defensible conclusion is practical, inspectable example generation under explicit boundaries.}
 \label{tab:limitations-scope}
-\begin{adjustbox}{max width=\columnwidth}
+\begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{llll}
 \toprule
 Area & Known & Unknown & Allowable scope \\
 \midrule
-Similarity & Starter Adult/Titanic metrics & Multi-dataset stability & Exploratory mixed-type evidence \\
-Utility & Metric code exists & Train-synthetic/test-real results & No utility claim yet \\
-Privacy & Exact selected-value checks & Linkage risk & No formal privacy claim \\
+Similarity & Public and controlled metrics & Stability on broader task collections & Regime-specific mixed-type evidence \\
+Utility & Held-out real utility tests & General predictive advantage & Utility only where lift is observed \\
+Privacy & Nearest-neighbour and overlap diagnostics & Linkage risk under a threat model & No formal privacy claim \\
 Usability & Notebook runtime and configs & User study or setup-time distribution & Practical workflow claim only \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
-\end{table}
+\end{table*}

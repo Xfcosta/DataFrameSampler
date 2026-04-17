@@ -1,0 +1,49 @@
+\section{Failure Modes and Limitations}
+\label{sec:failure-modes}
+
+The method has several predictable failure modes, and these boundaries are part
+of the contribution. Because the sampler has no global likelihood, no joint
+constraint solver, and no privacy mechanism, its appropriate use depends on
+whether those limitations are acceptable for the workflow.
+
+\paragraph{High-cardinality categories.}
+Identifiers and near-identifiers can create large sparse one-hot blocks and
+categorical targets that are hard to decode meaningfully. The implementation
+warns on high cardinality, but it does not infer which columns are identifiers.
+Such columns should be removed, grouped, or otherwise handled by the user when
+exact source-value reuse is unacceptable.
+
+\paragraph{Rare categories.}
+Rare labels can be underrepresented by the learned decoder, especially when
+they appear too infrequently to define stable neighbourhoods or calibrated
+probabilities. Category coverage and rare-category preservation are therefore
+reported as boundary diagnostics rather than assumed from the model form.
+
+\paragraph{Cross-column constraints.}
+The categorical decoders are trained independently, conditional on the final
+latent context with the target block removed. It can therefore occur that each
+decoded column is locally plausible while the combined row violates a
+multi-column domain constraint. The fitted range and numeric standard-deviation
+checks reduce some numeric failures, but they are not a general constraint
+language.
+
+\paragraph{Decoder uncertainty.}
+Random-forest probabilities are empirical model outputs. Optional calibration
+can improve probability interpretation when enough data are available, but
+calibration itself must be measured. Poor log loss, Brier score, or expected
+calibration error should be read as a warning about sampled categorical values,
+not as a contradiction of the practical-use claim.
+
+\paragraph{Transport instability.}
+The local displacement rule assumes that the fitted latent geometry is locally
+regular. If NCA blocks are unstable, if nearest-neighbour graphs are noisy, or
+if $\lambda$ is too large for the local geometry, the transported point can
+leave the useful region of the fitted latent space. The sensitivity and
+frozen-Isomap diagnostics are included to expose this risk.
+
+\paragraph{Privacy.}
+The sampler is not differentially private, not a de-identification procedure,
+and not a disclosure-control mechanism. Nearest-neighbour and overlap tests can
+detect some obvious reuse behaviour, but they do not replace a threat model.
+
+\input{tables/limitations_scope}

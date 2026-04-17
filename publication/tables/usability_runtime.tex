@@ -1,31 +1,31 @@
 \begin{table*}
-\caption{Starter usability, runtime, and traced Python allocation measurements. Peak MB is the maximum traced allocation peak observed during fit or sample, not total process RSS. Takeaway: the method remains notebook-friendly, but the NCA and calibrated decoding steps carry real computational cost.}
+\caption{Starter usability, runtime, and traced Python allocation measurements. Peak MB is the maximum traced allocation peak observed during fit or sample, not total process RSS. Takeaway: the method remains notebook-friendly, but the NCA, decoding, and diagnostic steps carry real computational cost.}
 \label{tab:usability-runtime}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{llrrrrrll}
 \toprule
 Dataset & Method & Fit s & Sample s & Fit peak MB & Sample peak MB & Peak MB & Commands/LOC & Tuning/config \\
 \midrule
-adult & DataFrameSampler & 7.473 & 15.426 & 14.546 & 1.076 & 14.546 & Notebook cell & NCA config \\
-adult & Gaussian copula & 0.231 & 0.059 & 0.878 & 0.553 & 0.878 & Notebook cell & None \\
-adult & Independent columns & 0.001 & 0.017 & 0.291 & 0.474 & 0.474 & Notebook cell & None \\
-adult & Row bootstrap & 0.001 & 0.001 & 0.579 & 0.251 & 0.579 & Notebook cell & None \\
-adult & Stratified columns & 0.005 & 1.104 & 0.976 & 1.168 & 1.168 & Notebook cell & Target column \\
-bank\_marketing & DataFrameSampler & 17.134 & 40.088 & 21.279 & 1.129 & 21.279 & Notebook cell & NCA config \\
-bank\_marketing & Gaussian copula & 0.884 & 0.210 & 1.586 & 0.745 & 1.586 & Notebook cell & None \\
-bank\_marketing & Independent columns & 0.002 & 0.039 & 0.486 & 0.620 & 0.620 & Notebook cell & None \\
-bank\_marketing & Row bootstrap & 0.002 & 0.002 & 0.969 & 0.343 & 0.969 & Notebook cell & None \\
-bank\_marketing & Stratified columns & 0.011 & 3.092 & 1.580 & 1.511 & 1.580 & Notebook cell & Target column \\
-breast\_cancer & DataFrameSampler & 4.471 & 0.597 & 11.394 & 0.790 & 11.394 & Notebook cell & NCA config \\
-breast\_cancer & Gaussian copula & 0.400 & 0.203 & 0.624 & 0.714 & 0.714 & Notebook cell & None \\
-breast\_cancer & Independent columns & 0.002 & 0.040 & 0.142 & 0.574 & 0.574 & Notebook cell & None \\
-breast\_cancer & Row bootstrap & 0.001 & 0.002 & 0.275 & 0.288 & 0.288 & Notebook cell & None \\
-breast\_cancer & Stratified columns & 0.008 & 1.695 & 0.449 & 1.381 & 1.381 & Notebook cell & Target column \\
-heart\_disease & DataFrameSampler & 22.478 & 2.167 & 5.105 & 0.463 & 5.105 & Notebook cell & NCA config \\
-heart\_disease & Gaussian copula & 0.074 & 0.053 & 0.109 & 0.167 & 0.167 & Notebook cell & None \\
-heart\_disease & Independent columns & 0.002 & 0.030 & 0.037 & 0.148 & 0.148 & Notebook cell & None \\
+adult & DataFrameSampler & 208.741 & 5.011 & 259.052 & 5.739 & 259.052 & Notebook cell & NCA config \\
+adult & Gaussian copula & 0.266 & 0.103 & 0.763 & 0.529 & 0.763 & Notebook cell & None \\
+adult & Independent columns & 0.002 & 0.033 & 0.291 & 0.472 & 0.472 & Notebook cell & None \\
+adult & Row bootstrap & 0.002 & 0.003 & 0.578 & 0.250 & 0.578 & Notebook cell & None \\
+adult & Stratified columns & 0.011 & 2.615 & 0.974 & 1.120 & 1.120 & Notebook cell & Target column \\
+bank\_marketing & DataFrameSampler & 187.246 & 3.136 & 336.972 & 2.461 & 336.972 & Notebook cell & NCA config \\
+bank\_marketing & Gaussian copula & 0.295 & 0.071 & 1.315 & 0.757 & 1.315 & Notebook cell & None \\
+bank\_marketing & Independent columns & 0.001 & 0.020 & 0.486 & 0.632 & 0.632 & Notebook cell & None \\
+bank\_marketing & Row bootstrap & 0.001 & 0.001 & 0.968 & 0.343 & 0.968 & Notebook cell & None \\
+bank\_marketing & Stratified columns & 0.005 & 1.466 & 1.580 & 1.380 & 1.580 & Notebook cell & Target column \\
+breast\_cancer & DataFrameSampler & 1.702 & 0.496 & 10.945 & 0.911 & 10.945 & Notebook cell & NCA config \\
+breast\_cancer & Gaussian copula & 0.200 & 0.110 & 0.624 & 0.713 & 0.713 & Notebook cell & None \\
+breast\_cancer & Independent columns & 0.001 & 0.021 & 0.142 & 0.574 & 0.574 & Notebook cell & None \\
+breast\_cancer & Row bootstrap & 0.000 & 0.001 & 0.276 & 0.288 & 0.288 & Notebook cell & None \\
+breast\_cancer & Stratified columns & 0.004 & 0.843 & 0.449 & 1.381 & 1.381 & Notebook cell & Target column \\
+heart\_disease & DataFrameSampler & 24.561 & 2.708 & 4.104 & 0.528 & 4.104 & Notebook cell & NCA config \\
+heart\_disease & Gaussian copula & 0.103 & 0.237 & 0.109 & 0.168 & 0.168 & Notebook cell & None \\
+heart\_disease & Independent columns & 0.002 & 0.036 & 0.037 & 0.148 & 0.148 & Notebook cell & None \\
 heart\_disease & Row bootstrap & 0.001 & 0.002 & 0.070 & 0.077 & 0.077 & Notebook cell & None \\
-heart\_disease & Stratified columns & 0.009 & 0.471 & 0.128 & 0.361 & 0.361 & Notebook cell & Target column \\
+heart\_disease & Stratified columns & 0.012 & 0.656 & 0.128 & 0.361 & 0.361 & Notebook cell & Target column \\
 pima\_diabetes & DataFrameSampler & 11.917 & 1.625 & 19.568 & 0.563 & 19.568 & Notebook cell & NCA config \\
 pima\_diabetes & Gaussian copula & 0.283 & 0.151 & 0.267 & 0.283 & 0.283 & Notebook cell & None \\
 pima\_diabetes & Independent columns & 0.002 & 0.029 & 0.056 & 0.222 & 0.222 & Notebook cell & None \\
@@ -51,11 +51,11 @@ synthetic\_sensitive\_identifier & Gaussian copula & 0.072 & 0.047 & 0.131 & 0.1
 synthetic\_sensitive\_identifier & Independent columns & 0.001 & 0.015 & 0.035 & 0.118 & 0.118 & Notebook cell & None \\
 synthetic\_sensitive\_identifier & Row bootstrap & 0.001 & 0.002 & 0.071 & 0.068 & 0.071 & Notebook cell & None \\
 synthetic\_sensitive\_identifier & Stratified columns & 0.006 & 0.373 & 0.140 & 0.316 & 0.316 & Notebook cell & Target column \\
-titanic & DataFrameSampler & 40.992 & 5.000 & 37.481 & 1.522 & 37.481 & Notebook cell & NCA config \\
-titanic & Gaussian copula & 0.195 & 0.148 & 0.266 & 0.371 & 0.371 & Notebook cell & None \\
-titanic & Independent columns & 0.002 & 0.033 & 0.074 & 0.307 & 0.307 & Notebook cell & None \\
-titanic & Row bootstrap & 0.001 & 0.003 & 0.147 & 0.179 & 0.179 & Notebook cell & None \\
-titanic & Stratified columns & 0.015 & 2.288 & 0.267 & 0.967 & 0.967 & Notebook cell & Target column \\
+titanic & DataFrameSampler & 12.373 & 2.743 & 30.382 & 1.735 & 30.382 & Notebook cell & NCA config \\
+titanic & Gaussian copula & 0.069 & 0.043 & 0.265 & 0.371 & 0.371 & Notebook cell & None \\
+titanic & Independent columns & 0.001 & 0.013 & 0.074 & 0.307 & 0.307 & Notebook cell & None \\
+titanic & Row bootstrap & 0.001 & 0.002 & 0.147 & 0.179 & 0.179 & Notebook cell & None \\
+titanic & Stratified columns & 0.004 & 0.766 & 0.267 & 0.969 & 0.969 & Notebook cell & Target column \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}

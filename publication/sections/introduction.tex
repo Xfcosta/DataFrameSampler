@@ -1,45 +1,53 @@
 \section{Introduction}
 
-Tabular datasets remain a central representation in business analytics, health
-informatics, scientific computing, and applied machine learning, and many
-software workflows require example tables that preserve at least some schema and
-distributional properties of an existing source table. However, direct reuse of
-source records can be infeasible even when the intended use is modest, because
-governance rules, licensing constraints, privacy concerns, or operational
-separation may prevent developers from placing real rows in tests, dashboards,
-training material, or notebooks. The resulting need is therefore not identical
-to the classical problem of producing a high-fidelity or formally private
-synthetic release. It is a narrower constructive problem: given a mixed-type
-dataframe, produce example rows that are useful enough to support low-stakes
-workflows while keeping the modelling assumptions visible.
+\paragraph{WHAT.}
+This paper studies a narrow synthetic-tabular construction problem rather than
+the broader problem of releasing a high-fidelity or formally private synthetic
+dataset. The input is a mixed-type pandas dataframe with continuous columns,
+categorical columns, booleans, and binary numeric codes; the output is another
+dataframe with the same schema, intended for tests, demonstrations, notebooks,
+and exploratory modelling. More precisely, the task is to generate example rows
+that preserve enough schema, marginal structure, and local dependence structure
+to be useful in low-stakes software workflows, while keeping the modelling
+assumptions inspectable and the public interface small.
 
-DataFrameSampler targets this pragmatic setting. In principle, one could use a
-large generative model, a disclosure-control system, or a task-specific
-oversampler, but these alternatives often introduce additional dependencies,
-implicit objectives, or claims that are stronger than the use case requires. We
-therefore make a conservative design choice: the method should be small,
-inspectable, and explicit about its failure modes, even if this excludes formal
-optimality and formal privacy guarantees. In other words, the paper is not a
-claim of state-of-the-art synthetic-data fidelity; it is an argument that a
-structured and auditable heuristic can be useful when the target workflow is
-example generation rather than data release.
+\paragraph{WHY.}
+Direct reuse of source records can be infeasible even when the intended use is
+modest, because governance rules, licensing restrictions, privacy concerns, or
+operational separation may prevent developers from placing real rows in tests,
+dashboards, training material, or notebooks. In principle, a user could turn to
+a larger generative model, a disclosure-control system, or a task-specific
+oversampler, however these alternatives often introduce additional dependencies,
+implicit objectives, or claims that are stronger than the example-data workflow
+requires. The practical failure condition is therefore not simply poor benchmark
+performance; it is a mismatch between a small need, namely auditable example
+generation, and tools whose evidence or configuration surface is organized
+around stronger fidelity, augmentation, or release claims.
 
-DataFrameSampler uses a supervised latent representation throughout. Non-binary
-numeric columns are median-imputed and standardized, while every categorical
-column, including booleans and numeric two-valued columns such as $0/1$, is
-assigned its own NCA block learned from the remaining columns. Generated latent
-points are then mapped back to the original schema by inverse numeric scaling
-and probabilistic categorical classification. This construction is deliberately
-modular: the encoder defines local supervised geometry, the transport step
-constructs candidate latent rows, and the decoder expresses uncertainty over
-observed categorical labels.
+\paragraph{HOW.}
+DataFrameSampler addresses this gap by using one explicit latent construction
+throughout. Non-binary numeric columns are median-imputed and standardized,
+while every categorical column, including booleans and numeric two-valued
+columns such as $0/1$, is treated as a supervised target. For each categorical
+target the method learns a Neighborhood Components Analysis block from the
+remaining columns, composes these blocks with the numeric coordinates, generates
+candidate latent rows by local mutual-neighbour displacement, and decodes the
+result through inverse numeric scaling and random-forest categorical
+classification. In practice, this gives a small estimator whose mechanism can
+be inspected as fitted blocks, neighbour chains, rejection diagnostics, and
+per-column decoders, rather than as a single opaque generative objective.
 
-The contributions are fourfold. First, we provide a direct
-\texttt{DataFrameSampler} estimator with \texttt{fit}, \texttt{transform},
-\texttt{inverse\_transform}, and \texttt{generate}. Second, we define an
-iterative per-categorical-column NCA latent construction for mixed-type
-dataframes. Third, we use a local mutual-neighbour transport rule in the learned
-space as an inspectable generation mechanism. Fourth, we pair the method with
-claim-specific diagnostics for distributional similarity, downstream utility,
-neighbour-distance behaviour, NCA-block mechanism evidence, decoder
-calibration, and extrapolative manifold consistency.
+\paragraph{Contributions.}
+The paper makes four contributions, each tied to a bounded claim. First, we
+provide a direct \texttt{DataFrameSampler} estimator with \texttt{fit},
+\texttt{transform}, \texttt{inverse\_transform}, and \texttt{generate}. Second,
+we define an iterative per-categorical-column NCA latent construction for
+mixed-type dataframes, with binary variables treated as categorical targets
+rather than continuous coordinates. Third, we use a local mutual-neighbour
+transport rule in the learned space as an inspectable generation heuristic,
+including rejection-and-retry constraints for fitted numeric ranges and
+standardized numeric outliers. Fourth, we organize the empirical section around
+claim-specific evidence: distributional similarity, downstream utility,
+neighbour-distance behaviour, NCA-block mechanism evidence, decoder probability
+diagnostics, and extrapolative manifold consistency are interpreted only within
+the conclusion each result can support.

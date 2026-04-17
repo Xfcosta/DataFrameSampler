@@ -14,7 +14,7 @@ preparation helpers for the paper.
   redundant columns to drop, target columns, and row limits.
 - `workflow.py`: reusable notebook workflow for loading, profiling, starter
   sampling, baseline comparison, manifold validation, mechanism validation,
-  decoder calibration, and output writing.
+  decoder calibration, capped sensitivity validation, and output writing.
 - `make_tables.py`: reusable table-generation functions for publication
   artifacts.
 - `plot_results.py`: reusable figure-generation functions for publication
@@ -26,6 +26,10 @@ preparation helpers for the paper.
   diagnostics in the fitted DataFrameSampler latent space.
 - `mechanism_validation.py`: capped NCA-block ablations and random-forest
   decoder calibration diagnostics.
+- `proposed_setups.py`: the three named DataFrameSampler setups used in the
+  paper: fast, default, and accurate.
+- `sensitivity_validation.py`: a capped representative-dataset comparison of
+  the fast/default/accurate setups.
 - `predictive.py`: target-choice reporting and real-test predictive
   comparisons between models trained on real rows and models trained on
   synthetic rows generated from the real training split.
@@ -44,7 +48,10 @@ and distribution similarity through histogram overlap/divergence summaries.
 The manifold validation CSVs report pointwise held-out-real and generated
 insertion stress plus convex-hull membership in the sampler latent space. The
 mechanism and calibration CSVs report held-out categorical prediction lift for
-NCA blocks and probability-quality diagnostics for categorical decoders.
+NCA blocks and probability-quality diagnostics for categorical decoders. The
+sensitivity CSV reports the same primary measures for the three proposed
+setups on Adult Census Income only, so setup choice remains an illustrative
+speed--accuracy tradeoff rather than a full cross-dataset benchmark.
 
 ## Current Datasets
 
@@ -55,7 +62,7 @@ NCA blocks and probability-quality diagnostics for categorical decoders.
   classification dataset.
 - Bank Marketing from the UCI Machine Learning Repository.
 - Heart Disease Cleveland from the UCI Machine Learning Repository.
-- Four deterministic controlled synthetic datasets for TODO point 5.
+- Four deterministic controlled synthetic datasets for claim-boundary testing.
 
 Run:
 
@@ -82,7 +89,7 @@ column to its numeric representation, states the configured target column, calls
 `run_configured_dataset_experiment`, and displays the returned profile, starter
 sample report, numeric projection triptych, baseline comparison, manifold
 validation summary, mechanism validation summary, decoder calibration summary,
-and predictive target evaluation.
+sensitivity validation summary, and predictive target evaluation.
 To add another dataset, add a `DatasetExperimentConfig`, create a small
 notebook that changes `DATASET_NAME`, then rerun the table and figure helpers:
 

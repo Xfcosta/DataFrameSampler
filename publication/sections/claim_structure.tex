@@ -1,0 +1,45 @@
+\section{Evaluation Framework}
+\label{sec:evaluation-framework}
+
+The evaluation is organized around claims rather than around a single
+leaderboard. This choice is central to the paper because the intended
+contribution is bounded: DataFrameSampler is proposed as an inspectable
+example-data generator, not as a general synthetic-data optimum, a privacy
+mechanism, or a guaranteed manifold sampler. Consequently, each empirical
+quantity is assigned a role. Primary evidence tests the practical-use claim
+directly; supporting evidence probes the mechanism; and boundary evidence
+identifies conditions under which the claim should be weakened.
+
+\begin{table}[t]
+\centering
+\caption{Claim-specific evidence plan. Each row names the failure mode that the
+evidence is meant to prevent, the role of the evidence in the paper's argument,
+and the conclusion that remains allowable. Takeaway: the paper is structured as
+an argument for practical, inspectable example generation, not as a general
+synthetic-data optimality claim.}
+\label{tab:claim-evidence}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Claim & Evidence role & Instrument & Allowable conclusion \\
+\midrule
+Practical generation & Primary & API, CLI, runtime, simple baselines & Useful when low setup cost matters \\
+Distributional usefulness & Primary & Marginal, dependence, neighbour, discrimination tests & Dataset-specific similarity evidence \\
+Downstream usefulness & Primary & Utility lift on held-out real tasks & Utility only where lift is observed \\
+NCA mechanism & Supporting & NCA-vs-PCA and majority prediction lift & Mechanism evidence only where lift is positive \\
+Decoder probabilities & Boundary & Log loss, Brier score, calibration error & Probabilities are diagnostic unless measured \\
+Local transport & Supporting and boundary & Convex hull and frozen-Isomap stress & Manifold consistency is diagnostic \\
+Privacy and constraints & Boundary & Row-proximity and exact-overlap checks & No formal privacy or constraint claim \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+This framework also determines the allowable conclusion. If primary evidence
+is missing, the practical claim must be weakened. If supporting evidence is
+missing, the mechanism remains plausible rather than supported. If boundary
+evidence is missing, the scope of use should be narrowed. The experiments
+therefore ask whether the sampler behaves usefully under several diagnostic
+views at once, not whether one favourable metric can be selected after the
+fact.

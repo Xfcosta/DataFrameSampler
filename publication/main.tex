@@ -1,27 +1,27 @@
-\documentclass[10pt,twocolumn]{article}
+\documentclass[twoside,11pt]{article}
 
-\usepackage[a4paper,margin=0.75in]{geometry}
-\usepackage{times}
-\usepackage{microtype}
+\usepackage{jmlr2e}
 \usepackage{amsmath}
-\usepackage{amssymb}
 \usepackage{booktabs}
-\usepackage{graphicx}
 \usepackage{adjustbox}
-\usepackage{url}
-\usepackage[hidelinks]{hyperref}
+\usepackage{lastpage}
+
 \graphicspath{{../experiments/figures/}}
+
+\jmlrheading{TODO}{TODO}{1-\pageref{LastPage}}{TODO}{TODO}{TODO}{Fabrizio Costa}
+\ShortHeadings{DataFrameSampler}{Costa}
+\firstpageno{1}
+
+\begin{document}
 
 \title{DataFrameSampler: Supervised NCA Latent-Space Sampling for Mixed-Type Tabular Data}
 
-\author{
-  Fabrizio Costa\\
-  Computer Science, University of Exeter, UK
-}
+\author{\name Fabrizio Costa \email TODO@example.edu\\
+\addr Computer Science\\
+University of Exeter\\
+Exeter, UK}
 
-\date{}
-
-\begin{document}
+\editor{TODO}
 
 \maketitle
 
@@ -29,19 +29,27 @@
 \input{sections/abstract}
 \end{abstract}
 
+\begin{keywords}
+synthetic tabular data, metric learning, neighbourhood components analysis, mixed-type data, manifold diagnostics
+\end{keywords}
+
 \input{sections/introduction}
+\input{sections/problem_setting}
 \input{sections/related_work}
 \input{sections/method}
-\input{sections/implementation}
+\input{sections/interpretation}
+\input{sections/claim_structure}
 \input{sections/experiments}
-\input{sections/discussion}
-\input{sections/limitations}
+\input{sections/failure_modes}
+\input{sections/implementation}
 \input{sections/conclusion}
 
+\acks{Acknowledgments and disclosure of funding are TODO. The author declares TODO competing interests.}
+
+\clearpage
 \appendix
 \input{sections/appendix_experiments}
 
-\bibliographystyle{plain}
 \bibliography{references}
 
 \end{document}

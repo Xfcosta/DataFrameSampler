@@ -7,13 +7,15 @@ without claiming formal privacy protection or general-purpose generative
 optimality. The method constructs a fully numerical latent representation by
 fitting one supervised Neighborhood Components Analysis block for each
 categorical column, treating binary variables as categorical even when they are
-stored numerically. Generation then applies a local mutual-neighbour translation
-in the learned latent space and decodes the result with inverse numeric scaling
-and probabilistic random-forest categorical decoders. More precisely,
-DataFrameSampler is intended to make a small, inspectable construction feasible
-for low-stakes example-data workflows; therefore we evaluate it with
-claim-specific diagnostics rather than with a single aggregate benchmark. These
-diagnostics include NCA-block ablations, decoder calibration checks, and
-frozen-Isomap insertion stress, and they support only bounded empirical claims:
-the method has no global objective, no formal manifold-preservation guarantee,
-and no privacy guarantee.
+stored numerically, and always excluding the target column from the context used
+to predict it. Generation then applies a local mutual-neighbour translation in
+the learned latent space, rejects and retries numerically implausible
+candidates under fitted constraints, and decodes the result with inverse
+numeric scaling and probabilistic random-forest categorical decoders. More
+precisely, DataFrameSampler is intended to make a small, inspectable
+construction feasible for low-stakes example-data workflows; therefore we
+structure the paper as a claim-specific evidence argument rather than as a
+single aggregate benchmark. The diagnostics include NCA-block ablations,
+decoder probability checks, and frozen-Isomap insertion stress, and they support
+only bounded empirical claims: the method has no global objective, no formal
+manifold-preservation guarantee, and no privacy guarantee.

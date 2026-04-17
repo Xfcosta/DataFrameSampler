@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from experiments.mechanism_validation import summarize_decoder_calibration, summarize_mechanism_validation
+from experiments.sensitivity_validation import summarize_sensitivity_validation
 from experiments.synthetic_data import SYNTHETIC_DATASETS
 
 
@@ -104,6 +105,17 @@ def load_decoder_calibrations(results_dir: str | Path = RESULTS) -> pd.DataFrame
     ]
     if not frames:
         raise FileNotFoundError("No *_decoder_calibration.csv files found. Run the notebooks first.")
+    return pd.concat(frames, ignore_index=True)
+
+
+def load_sensitivity_validations(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    results_path = Path(results_dir)
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(results_path.glob("*_sensitivity_validation.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No *_sensitivity_validation.csv files found. Run the notebooks first.")
     return pd.concat(frames, ignore_index=True)
 
 
@@ -414,6 +426,38 @@ def plot_decoder_calibration(data: pd.DataFrame, figures_dir: str | Path = FIGUR
     return output
 
 
+def plot_sensitivity_validation(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
+    summary = summarize_sensitivity_validation(data)
+    if summary.empty:
+        raise FileNotFoundError("No sensitivity validation rows found.")
+    metrics = [
+        ("mean_distribution_similarity_score", "Distribution score"),
+        ("mean_utility_lift", "Utility lift"),
+        ("mean_discrimination_accuracy", "Discrimination accuracy"),
+    ]
+    setup_order = ["DataFrameSampler fast", "DataFrameSampler default", "DataFrameSampler accurate"]
+    summary["setup_label"] = pd.Categorical(
+        summary["setup_label"].astype(str),
+        categories=setup_order,
+        ordered=True,
+    )
+    subset = summary.sort_values("setup_label")
+    fig, axes = plt.subplots(1, len(metrics), figsize=(13, 4.6))
+    for ax, (metric, title) in zip(axes, metrics):
+        ax.bar(subset["setup_label"].astype(str), subset[metric], color="#59A14F")
+        ax.set_title(title)
+        ax.grid(axis="y", alpha=0.25)
+        ax.tick_params(axis="x", rotation=20)
+    fig.suptitle("Representative DataFrameSampler setup comparison")
+    fig.tight_layout()
+    figures_path = Path(figures_dir)
+    figures_path.mkdir(parents=True, exist_ok=True)
+    output = figures_path / "sensitivity_validation.pdf"
+    fig.savefig(output, bbox_inches="tight")
+    plt.close(fig)
+    return output
+
+
 def generate_all_figures(
     *,
     results_dir: str | Path = RESULTS,
@@ -449,6 +493,10 @@ def generate_all_figures(
         pass
     try:
         outputs.append(plot_decoder_calibration(load_decoder_calibrations(results_dir), figures_dir))
+    except FileNotFoundError:
+        pass
+    try:
+        outputs.append(plot_sensitivity_validation(load_sensitivity_validations(results_dir), figures_dir))
     except FileNotFoundError:
         pass
     return outputs

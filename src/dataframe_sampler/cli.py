@@ -103,7 +103,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option(
     "--max_constraint_retries",
     type=click.IntRange(min=0, max_open=True, clamp=True),
-    default=3,
+    default=5,
     show_default=True,
     help="Retries per generated row before accepting an out-of-range latent candidate.",
 )

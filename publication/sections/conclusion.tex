@@ -7,12 +7,12 @@ but its modelling claim is intentionally narrow: it is a simple and inspectable
 tool for example-data workflows, not a formally private or globally optimized
 synthetic-data mechanism.
 
-The mechanism and calibration diagnostics make this conclusion more precise.
+The claim-specific evidence structure makes this conclusion more precise.
 Categorical NCA blocks are supported only where they improve held-out
-categorical prediction against simple baselines, calibrated decoder
-probabilities should still be interpreted through their measured diagnostic
-quality, and manifold evidence should be read as an insertion-stress diagnostic
-rather than as a preservation guarantee. Future work should therefore focus on
-stability of the iterative latent construction, constraint-aware decoding,
-stronger high-cardinality handling, and alternatives to independent per-column
+categorical prediction against simple baselines, decoder probabilities should
+still be interpreted through their measured diagnostic quality, and manifold
+evidence should be read as an insertion-stress diagnostic rather than as a
+preservation guarantee. Future work should therefore focus on stability of the
+iterative latent construction, stronger constraint-aware decoding,
+high-cardinality preprocessing, and alternatives to independent per-column
 decoders.

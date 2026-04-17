@@ -7,6 +7,8 @@ import pandas as pd
 
 from experiments.manifold_validation import summarize_manifold_validation
 from experiments.mechanism_validation import summarize_decoder_calibration, summarize_mechanism_validation
+from experiments.proposed_setups import PROPOSED_SAMPLER_SETUPS
+from experiments.sensitivity_validation import summarize_sensitivity_validation
 from experiments.synthetic_data import SYNTHETIC_DATASETS, materialize_synthetic_datasets
 
 
@@ -26,10 +28,26 @@ class DatasetTableMetadata:
     rationale: str
 
 METHOD_METADATA = [
+    *[
+        {
+            "method": setup.label,
+            "package": "DataFrameSampler",
+            "family": (
+                f"Proposed setup: n_iter={setup.n_iterations}, "
+                f"retries={setup.max_constraint_retries}, "
+                f"calibration={'yes' if setup.calibrate_decoders else 'no'}"
+            ),
+            "mixed": "Yes",
+            "setup": "Low" if setup.key != "accurate" else "Medium",
+            "inspectability": "High",
+            "optional": "None",
+        }
+        for setup in PROPOSED_SAMPLER_SETUPS
+    ],
     {
         "method": "DataFrameSampler",
         "package": "DataFrameSampler",
-        "family": "Supervised NCA latent-space sampler",
+        "family": "Default setup used in baseline comparisons",
         "mixed": "Yes",
         "setup": "Low",
         "inspectability": "High",
@@ -208,6 +226,16 @@ def load_decoder_calibrations(results_dir: str | Path = RESULTS) -> pd.DataFrame
     return pd.concat(frames, ignore_index=True)
 
 
+def load_sensitivity_validations(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(Path(results_dir).glob("*_sensitivity_validation.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No sensitivity validation files found. Run the notebooks first.")
+    return pd.concat(frames, ignore_index=True)
+
+
 def write_dataset_table(
     *,
     processed_dir: str | Path = PROCESSED,
@@ -237,6 +265,7 @@ def write_dataset_table(
         Path(tables_dir) / "datasets.tex",
         "Datasets used in the starter experiments. Takeaway: the evidence spans mixed public benchmarks and controlled regimes, so conclusions are practical and diagnostic rather than universal.",
         "tab:datasets",
+        full_width=True,
     )
 
 
@@ -258,6 +287,7 @@ def write_method_table(*, tables_dir: str | Path = TABLES) -> Path:
         Path(tables_dir) / "methods.tex",
         "Baseline and competitor method metadata. Takeaway: the comparisons emphasize low-setup, inspectable baselines that match the paper's practical-use claim.",
         "tab:methods",
+        full_width=True,
     )
 
 
@@ -406,7 +436,7 @@ def write_runtime_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = T
     return write_latex(
         df,
         Path(tables_dir) / "usability_runtime.tex",
-        "Starter usability, runtime, and traced Python allocation measurements. Peak MB is the maximum traced allocation peak observed during fit or sample, not total process RSS. Takeaway: the method remains notebook-friendly, but the NCA and calibrated decoding steps carry real computational cost.",
+        "Starter usability, runtime, and traced Python allocation measurements. Peak MB is the maximum traced allocation peak observed during fit or sample, not total process RSS. Takeaway: the method remains notebook-friendly, but the NCA, decoding, and diagnostic steps carry real computational cost.",
         "tab:usability-runtime",
         float_format="%.3f",
         full_width=True,
@@ -647,6 +677,59 @@ def write_decoder_calibration_table(
     )
 
 
+def write_sensitivity_validation_table(
+    validations: pd.DataFrame,
+    *,
+    tables_dir: str | Path = TABLES,
+) -> Path:
+    summary = summarize_sensitivity_validation(validations)
+    df = summary[
+        [
+            "setup_label",
+            "n_iterations",
+            "max_constraint_retries",
+            "calibrate_decoders",
+            "datasets_evaluated",
+            "mean_nn_distance_ratio",
+            "mean_discrimination_accuracy",
+            "mean_utility_lift",
+            "mean_distribution_similarity_score",
+            "mean_fit_seconds",
+            "mean_sample_seconds",
+        ]
+    ].copy()
+    setup_order = {
+        "DataFrameSampler fast": 0,
+        "DataFrameSampler default": 1,
+        "DataFrameSampler accurate": 2,
+    }
+    df["_setup_order"] = df["setup_label"].map(setup_order).fillna(99)
+    df = df.sort_values(["_setup_order", "setup_label"]).drop(columns="_setup_order")
+    df = df.rename(
+        columns={
+            "setup_label": "Setup",
+            "n_iterations": "NCA iter.",
+            "max_constraint_retries": "Retries",
+            "calibrate_decoders": "Calibration",
+            "datasets_evaluated": "Datasets",
+            "mean_nn_distance_ratio": "NN ratio",
+            "mean_discrimination_accuracy": "Disc. acc.",
+            "mean_utility_lift": "Utility lift",
+            "mean_distribution_similarity_score": "Dist. score",
+            "mean_fit_seconds": "Fit s",
+            "mean_sample_seconds": "Sample s",
+        }
+    )
+    return write_latex(
+        df,
+        Path(tables_dir) / "sensitivity_validation.tex",
+        "Capped comparison of the three proposed DataFrameSampler setups on the representative Adult Census Income dataset. Fast uses no NCA iteration, no retry budget, and no calibration; default uses one NCA iteration, five retries, and no calibration; accurate uses two NCA iterations, twenty retries, and calibrated decoders. Takeaway: setup choice is presented as a practical speed--accuracy tradeoff illustration, not as a new full benchmark claim.",
+        "tab:sensitivity-validation",
+        float_format="%.3f",
+        full_width=True,
+    )
+
+
 def write_ablation_table(*, tables_dir: str | Path = TABLES) -> Path:
     rows = [
         {
@@ -692,20 +775,20 @@ def write_limitations_table(*, tables_dir: str | Path = TABLES) -> Path:
     rows = [
         {
             "Area": "Similarity",
-            "Known": "Starter Adult/Titanic metrics",
-            "Unknown": "Multi-dataset stability",
-            "Allowable scope": "Exploratory mixed-type evidence",
+            "Known": "Public and controlled metrics",
+            "Unknown": "Stability on broader task collections",
+            "Allowable scope": "Regime-specific mixed-type evidence",
         },
         {
             "Area": "Utility",
-            "Known": "Metric code exists",
-            "Unknown": "Train-synthetic/test-real results",
-            "Allowable scope": "No utility claim yet",
+            "Known": "Held-out real utility tests",
+            "Unknown": "General predictive advantage",
+            "Allowable scope": "Utility only where lift is observed",
         },
         {
             "Area": "Privacy",
-            "Known": "Exact selected-value checks",
-            "Unknown": "Linkage risk",
+            "Known": "Nearest-neighbour and overlap diagnostics",
+            "Unknown": "Linkage risk under a threat model",
             "Allowable scope": "No formal privacy claim",
         },
         {
@@ -720,6 +803,7 @@ def write_limitations_table(*, tables_dir: str | Path = TABLES) -> Path:
         Path(tables_dir) / "limitations_scope.tex",
         "Limitations and allowable conclusion scope under the current evidence. Takeaway: the paper's strongest defensible conclusion is practical, inspectable example generation under explicit boundaries.",
         "tab:limitations-scope",
+        full_width=True,
     )
 
 
@@ -808,6 +892,16 @@ def generate_all_tables(
             -2,
             write_decoder_calibration_table(
                 load_decoder_calibrations(results_dir),
+                tables_dir=tables_dir,
+            ),
+        )
+    except FileNotFoundError:
+        pass
+    try:
+        outputs.insert(
+            -2,
+            write_sensitivity_validation_table(
+                load_sensitivity_validations(results_dir),
                 tables_dir=tables_dir,
             ),
         )

@@ -1,0 +1,69 @@
+\section{Interpretation}
+\label{sec:interpretation}
+
+The method can be viewed as a composite metric-space generator. The continuous
+coordinates contribute standardized Euclidean directions, while each
+categorical coordinate contributes a supervised block whose neighbourhoods are
+optimized for predicting that categorical label from the remaining columns.
+The final distance is therefore not a universal dataframe metric. It is an
+empirical metric assembled from local prediction problems, and its validity
+must be judged through the diagnostics in Section~\ref{sec:evaluation-framework}.
+
+From a metric-learning perspective, the per-column NCA blocks are useful only
+when they improve held-out categorical prediction relative to simpler
+references. This is why the paper includes NCA-vs-PCA and majority-class
+diagnostics. If a block improves prediction, then it provides evidence that the
+supervised latent coordinates encode information relevant to that categorical
+variable. If it does not, the block remains an implementation component but no
+longer supports a mechanism claim.
+
+From a manifold-augmentation perspective, the transport operator approximates
+local tangent movement without explicitly estimating tangent planes or
+curvature. If the fitted latent space is locally linear around the sampled
+neighbour chain, then the displacement $C-B$ can be interpreted as a local
+direction that may also be plausible near $A$. This assumption is weaker and
+less formal than a tangent-space model, but it has an operational advantage:
+the sampled anchor, neighbour chain, displacement, and decoded categorical
+probabilities are all inspectable.
+
+\subsection{Relation to Local Linear Transport}
+
+The operator $T(A;B,C)=A+\lambda(C-B)$ can be read as applying a learned local
+displacement field in the fitted metric space. The pair $(B,C)$ supplies an
+observed first-order direction in one neighbourhood, and the anchor $A$ is the
+point to which that direction is transported. Under a local linearity
+assumption, nearby displacement vectors approximate directions tangent to the
+data support. DataFrameSampler does not estimate a tangent basis or curvature;
+instead it samples one observed displacement and reuses it. The resulting
+operator is therefore a structured approximation to local transport, not a
+claim that the fitted space is globally flat.
+
+This view also clarifies the role of $\lambda$. Small values keep candidates
+closer to the anchor and behave more like conservative neighbourhood
+perturbations. Larger values transfer more of the neighbour-chain displacement
+and can produce out-of-hull candidates, but also increase the chance of
+leaving the useful local region. The rejection constraints are a practical
+guardrail around this operator; they are not a projection onto the true data
+manifold.
+
+\subsection{Implicit Objective View}
+
+Although the method has no single global likelihood, adversarial loss, or
+energy function, it has a coherent proxy interpretation. The NCA blocks seek
+local label consistency for each categorical column under a supervised metric.
+The decoder then asks whether the final context still predicts the held-out
+categorical label without seeing the label's own block. The transport step
+samples displacements that preserve observed local neighbour-chain statistics
+in that same fitted metric space. In this sense, the pipeline approximates the
+preservation of local neighbourhood structure under a composite supervised
+metric. The mechanism evidence in the experiments tests each part of this
+proxy interpretation rather than treating it as an optimized objective.
+
+Two lightweight sanity expectations follow from this interpretation. First,
+when NCA improves class separation for a categorical column, the corresponding
+decoder should in many cases face a lower-ambiguity prediction problem,
+although this is an empirical expectation rather than a theorem. Second, when
+the latent space is locally regular, out-of-hull transported points should be
+insertable into a frozen manifold geometry with stress comparable to held-out
+real points. The paper tests both expectations diagnostically; it does not use
+them as guarantees.

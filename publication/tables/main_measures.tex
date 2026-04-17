@@ -6,16 +6,16 @@
 \toprule
 Dataset & Method & NN ratio & NN close rate & Disc. acc. & Disc. privacy & Utility lift & Hist. overlap & Cat. JSD \\
 \midrule
-adult & DataFrameSampler & 1.270 & 0.025 & 0.806 & 0.389 & 0.004 & 0.950 & 0.008 \\
-adult & Independent columns & 1.473 & 0.003 & 0.869 & 0.263 & -0.012 & 0.973 & 0.002 \\
-adult & Row bootstrap & 0.000 & 1.000 & 0.696 & 0.608 & 0.014 & 0.975 & 0.003 \\
-bank\_marketing & DataFrameSampler & 1.103 & 0.019 & 0.883 & 0.233 & -0.004 & 0.971 & 0.003 \\
-bank\_marketing & Independent columns & 1.828 & 0.000 & 0.986 & 0.028 & -0.024 & 0.981 & 0.001 \\
-bank\_marketing & Row bootstrap & 0.000 & 1.000 & 0.732 & 0.537 & 0.016 & 0.984 & 0.001 \\
-breast\_cancer & DataFrameSampler & 1.253 & 0.016 & 0.801 & 0.398 & 0.017 & 0.860 & 0.000 \\
+adult & DataFrameSampler & 1.766 & 0.001 & 0.863 & 0.274 & 0.000 & 0.814 & 0.035 \\
+adult & Independent columns & 1.467 & 0.003 & 0.867 & 0.267 & -0.012 & 0.969 & 0.002 \\
+adult & Row bootstrap & 0.000 & 1.000 & 0.696 & 0.608 & 0.014 & 0.974 & 0.002 \\
+bank\_marketing & DataFrameSampler & 1.731 & 0.014 & 0.892 & 0.215 & -0.003 & 0.791 & 0.012 \\
+bank\_marketing & Independent columns & 1.861 & 0.000 & 0.985 & 0.030 & -0.032 & 0.976 & 0.001 \\
+bank\_marketing & Row bootstrap & 0.000 & 1.000 & 0.731 & 0.538 & 0.021 & 0.978 & 0.001 \\
+breast\_cancer & DataFrameSampler & 1.222 & 0.007 & 0.763 & 0.474 & -0.000 & 0.883 & 0.000 \\
 breast\_cancer & Independent columns & 2.029 & 0.000 & 1.000 & 0.000 & -0.000 & 0.943 & 0.000 \\
 breast\_cancer & Row bootstrap & 0.000 & 1.000 & 0.351 & 0.702 & 0.017 & 0.946 & 0.000 \\
-heart\_disease & DataFrameSampler & 1.264 & 0.023 & 0.670 & 0.659 & -0.077 & 0.785 & 0.009 \\
+heart\_disease & DataFrameSampler & 1.284 & 0.050 & 0.670 & 0.659 & -0.066 & 0.794 & 0.008 \\
 heart\_disease & Independent columns & 1.151 & 0.007 & 0.632 & 0.736 & -0.022 & 0.934 & 0.001 \\
 heart\_disease & Row bootstrap & 0.000 & 1.000 & 0.352 & 0.703 & 0.066 & 0.937 & 0.001 \\
 pima\_diabetes & DataFrameSampler & 1.441 & 0.010 & 0.792 & 0.416 & 0.012 & 0.818 & 0.000 \\
@@ -33,7 +33,7 @@ synthetic\_rare\_categories & Row bootstrap & 0.000 & 1.000 & 0.403 & 0.806 & 0.
 synthetic\_sensitive\_identifier & DataFrameSampler & 1.043 & 0.056 & 0.555 & 0.891 & 0.013 & 0.854 & 0.093 \\
 synthetic\_sensitive\_identifier & Independent columns & 1.007 & 0.056 & 0.545 & 0.909 & 0.000 & 0.954 & 0.100 \\
 synthetic\_sensitive\_identifier & Row bootstrap & 0.000 & 1.000 & 0.545 & 0.909 & 0.153 & 0.946 & 0.100 \\
-titanic & DataFrameSampler & 1.804 & 0.000 & 0.597 & 0.806 & 0.022 & 0.946 & 0.010 \\
+titanic & DataFrameSampler & 1.291 & 0.000 & 0.549 & 0.901 & 0.027 & 0.953 & 0.001 \\
 titanic & Independent columns & 4.695 & 0.000 & 0.954 & 0.092 & 0.018 & 0.976 & 0.001 \\
 titanic & Row bootstrap & 0.000 & 0.000 & 0.438 & 0.877 & 0.072 & 0.972 & 0.001 \\
 \bottomrule

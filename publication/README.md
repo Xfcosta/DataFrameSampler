@@ -1,17 +1,16 @@
-# Publication Stub
+# Publication
 
-This folder contains a two-column LaTeX conference-style paper stub for
-DataFrameSampler.
+This folder contains the JMLR-style LaTeX manuscript for DataFrameSampler.
+The manuscript uses the vendored official `jmlr2e.sty` style file and regular
+JMLR article structure.
 
 Build with:
 
 ```bash
 cd publication
-pdflatex main
-bibtex main
-pdflatex main
-pdflatex main
+latexmk -pdf main.tex
 ```
 
-The manuscript is intentionally a stub. The experiments section contains a
-planned evaluation rather than reported benchmark results.
+The JMLR metadata in `main.tex` intentionally contains `TODO` placeholders for
+paper id, dates, editor, email, funding, and competing-interest disclosure.
+Those fields should be finalized before submission.

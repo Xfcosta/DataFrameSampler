@@ -1,0 +1,15 @@
+\begin{table*}
+\caption{Capped comparison of the three proposed DataFrameSampler setups on the representative Adult Census Income dataset. Fast uses no NCA iteration, no retry budget, and no calibration; default uses one NCA iteration, five retries, and no calibration; accurate uses two NCA iterations, twenty retries, and calibrated decoders. Takeaway: setup choice is presented as a practical speed--accuracy tradeoff illustration, not as a new full benchmark claim.}
+\label{tab:sensitivity-validation}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{lrrrrrrrrrr}
+\toprule
+Setup & NCA iter. & Retries & Calibration & Datasets & NN ratio & Disc. acc. & Utility lift & Dist. score & Fit s & Sample s \\
+\midrule
+DataFrameSampler accurate & 2 & 20 & True & 1 & 1.201 & 0.500 & 0.134 & 0.892 & 28.525 & 2.064 \\
+DataFrameSampler default & 1 & 5 & False & 1 & 1.241 & 0.604 & -0.108 & 0.865 & 13.723 & 0.983 \\
+DataFrameSampler fast & 0 & 0 & False & 1 & 0.894 & 0.417 & 0.072 & 0.898 & 13.864 & 0.860 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table*}

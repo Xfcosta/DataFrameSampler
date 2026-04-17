@@ -1,4 +1,5 @@
-\section{Implementation}
+\section{Implementation and Usage}
+\label{sec:implementation}
 
 The public library entry point is \texttt{DataFrameSampler}. The estimator
 accepts pandas dataframes in \texttt{fit} and \texttt{transform};
@@ -22,5 +23,21 @@ from the default path while preserving a single public estimator.
 The implementation therefore exposes one direct estimator and removes auxiliary
 configuration, column-selection, embedding-method-selection, and bin-encoding
 workflows. The CLI exposes only the NCA and neighbour-transport parameters,
-which is consistent with the paper's practical-use claim: low setup cost is
-favoured over a large configuration surface.
+decoder calibration as an opt-in diagnostic choice, and rejection constraints
+for generated latent candidates. This is consistent with the paper's
+practical-use claim: low setup cost is favoured over a large configuration
+surface, while the remaining parameters correspond to explicit parts of the
+method and to boundary checks that a user may need to inspect. The same fitted
+object can be used from Python notebooks, persisted with the package helpers,
+or called through the file-oriented command-line interface for CSV and Parquet
+workflows.
+
+For routine use, the paper names three operating points rather than asking
+users to treat every parameter as a tuning axis. The fast setup
+(\texttt{n\_iterations=0}, no retries, no decoder calibration) is meant for
+smoke tests and quick previews. The default setup
+(\texttt{n\_iterations=1}, five retries, no decoder calibration) is the
+standard example-data workflow. The accurate setup
+(\texttt{n\_iterations=2}, twenty retries, calibrated decoders) is slower and
+intended for diagnostic runs where probability quality and stricter candidate
+screening matter.

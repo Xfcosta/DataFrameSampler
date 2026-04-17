@@ -41,6 +41,14 @@ Z = [standardized numeric columns | categorical block 1 | ...]
 Categorical blocks are learned NCA blocks when `n_iterations > 0`, and one-hot
 blocks when `n_iterations = 0`.
 
+Recommended sampler setups:
+
+| Setup | `n_iterations` | `max_constraint_retries` | `calibrate_decoders` | Use |
+| --- | ---: | ---: | --- | --- |
+| Fast | 0 | 0 | `False` | Smoke tests, previews, and cheap notebook checks. |
+| Default | 1 | 5 | `False` | General example-data workflows. |
+| Accurate | 2 | 20 | `True` | Slower diagnostic runs where calibrated probabilities matter. |
+
 Generation uses the fitted latent matrix. For each synthetic row it picks an
 anchor row `A`, a mutual neighbor `B`, and a mutual neighbor `C` of `B`, then
 creates:
@@ -161,7 +169,7 @@ Constructor arguments:
 - `numeric_std_threshold`: maximum absolute fitted numeric-column z-score before
   retrying a generated candidate. Defaults to `3.0`.
 - `max_constraint_retries`: number of neighbour-chain retries before accepting
-  an out-of-range latent candidate as-is. Defaults to `3`.
+  an out-of-range latent candidate as-is. Defaults to `5`.
 
 High-cardinality categorical columns are not dropped automatically.
 DataFrameSampler warns and proceeds, assuming such columns have been

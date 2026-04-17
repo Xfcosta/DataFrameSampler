@@ -1,0 +1,30 @@
+\section{Problem Setting}
+\label{sec:problem-setting}
+
+Let $D$ denote a fitted dataframe with rows $x_i$ and columns partitioned into
+continuous variables $N$ and categorical variables $C$. The task considered in
+this paper is not general-purpose private data release, and it is not
+unconditional density estimation over all possible mixed-type tables. Instead,
+we consider the constructive problem of fitting an inspectable sampler to $D$
+and producing a new dataframe $\tilde D$ whose rows are useful for tests,
+demonstrations, notebooks, and exploratory analyses. The output must therefore
+remain in the original column schema, while the intermediate representation may
+be numerical.
+
+The type policy is part of the problem definition. A column is treated as
+continuous only when it has a numeric dtype and more than two distinct
+non-missing values. Boolean columns, string columns, and two-valued numeric
+columns are treated as categorical, because a stored binary code is usually a
+label rather than a continuous coordinate. This convention is conservative: it
+prevents binary labels from entering Euclidean geometry as if the difference
+between $0$ and $1$ were a calibrated numeric distance.
+
+A fitted sampler is evaluated under three constraints. First, it should avoid
+trivial row reuse or synthetic rows that are closer to training rows than real
+rows are to one another under ordinary nearest-neighbour diagnostics. Second,
+it should preserve enough marginal, dependence, and task-relevant information
+to be useful in low-stakes example-data workflows. Third, its failure modes
+should be visible through fitted components and diagnostics. These constraints
+define a practical-use target rather than a guarantee: if formal privacy,
+regulatory release, or hard domain constraints are required, they must be added
+outside the sampler.

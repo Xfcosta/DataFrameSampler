@@ -1,27 +1,38 @@
-\section{Discussion}
+\section{Synthesis Layer}
 
-DataFrameSampler trades global optimality for a modular and inspectable
-construction. Each categorical block is optimized independently, so the
-concatenated space has no joint objective that would guarantee compatibility
-across all blocks. Iterative refinement can improve the context available to
-later projections, however it can also propagate earlier approximation errors,
-and there is no monotonic criterion that certifies improvement across
-iterations.
+The strongest conclusion supported by the evidence is a practical-use claim.
+DataFrameSampler is a small, mixed-type dataframe sampler whose behaviour can
+be inspected through fitted latent blocks, neighbour chains, decoder
+probabilities, rejection counts, and ordinary dataframe outputs. The evaluation
+therefore supports the claim that the method can be useful for tests,
+demonstrations, notebooks, and exploratory workflows when low setup cost and
+auditable construction are more important than formal release guarantees.
 
-The decoder is also mismatched to the encoder in a deliberate but consequential
-way. Calibrated random forests approximate $p(C_j \mid z_j)$ independently for
-each categorical column when calibration is feasible, and calibration diagnostics
-expose the quality of those probabilities without enforcing cross-column
-consistency.
-It can therefore occur that a generated row is locally plausible in each
-categorical block but violates a structured constraint that spans several
-columns. This is not a defect relative to a formal objective, because no such
-objective is being claimed; it is a boundary of the construction.
+The mechanism claim remains narrower. Per-column NCA blocks provide mechanism
+evidence only when they improve held-out categorical prediction against
+majority and same-width PCA references, and the concatenated latent matrix has
+no joint objective that would guarantee compatibility across all blocks.
+Iterative refinement can improve the context available to later projections,
+however it can also propagate earlier approximation errors, and there is no
+monotonic criterion that certifies improvement across iterations. In other
+words, the NCA construction is a structured empirical representation, not a
+proof that the learned geometry is globally optimal.
 
-The generator is intentionally simple. A mutual-neighbour displacement is easy
-to inspect because it can be described by an anchor, a neighbour chain, and a
-latent displacement, but that same simplicity means the method is a heuristic
-rather than a formal manifold sampler. The appropriate interpretation is
-therefore conservative: DataFrameSampler is suitable for tests, demonstrations,
-notebooks, and exploratory workflows where auditable example rows are useful,
-but it is not a regulated privacy-preserving data release mechanism.
+The decoder and generator define the main boundary conditions. Random forests
+approximate $p(C_j \mid Z_{-j})$ independently for each categorical column,
+where $Z_{-j}$ denotes the final latent context with the target block removed;
+optional calibration and calibration diagnostics expose probability quality but
+do not impose cross-column consistency. It can therefore occur that a generated
+row is locally plausible for each decoder while violating a structured
+constraint that spans several columns. Likewise, a mutual-neighbour displacement
+is easy to inspect because it can be described by an anchor, a neighbour chain,
+and a latent displacement, but that same simplicity means the method remains a
+heuristic rather than a formal manifold sampler.
+
+The allowable conclusion is therefore deliberately conservative. The paper
+does not establish general superiority over synthetic-data systems, formal
+privacy protection, or guaranteed manifold preservation. It establishes a
+bounded empirical pattern: under the studied workflows and diagnostics,
+DataFrameSampler provides an inspectable example-data generator whose useful
+behaviour can be measured, whose mechanism can be partially ablated, and whose
+failure modes remain visible enough to guide cautious use.

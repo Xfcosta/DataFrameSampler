@@ -1,12 +1,15 @@
-\begin{table}
+\begin{table*}
 \caption{Baseline and competitor method metadata. Takeaway: the comparisons emphasize low-setup, inspectable baselines that match the paper's practical-use claim.}
 \label{tab:methods}
-\begin{adjustbox}{max width=\columnwidth}
+\begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lllllll}
 \toprule
 Method & Package & Family & Mixed & Setup & Inspect. & Optional deps \\
 \midrule
-DataFrameSampler & DataFrameSampler & Supervised NCA latent-space sampler & Yes & Low & High & None \\
+DataFrameSampler fast & DataFrameSampler & Proposed setup: n\_iter=0, retries=0, calibration=no & Yes & Low & High & None \\
+DataFrameSampler default & DataFrameSampler & Proposed setup: n\_iter=1, retries=5, calibration=no & Yes & Low & High & None \\
+DataFrameSampler accurate & DataFrameSampler & Proposed setup: n\_iter=2, retries=20, calibration=yes & Yes & Medium & High & None \\
+DataFrameSampler & DataFrameSampler & Alias for DataFrameSampler default & Yes & Low & High & None \\
 Row bootstrap & Experiment helper & Resampling & Yes & Low & Medium & None \\
 Independent columns & Experiment helper & Empirical marginals & Yes & Low & Medium & None \\
 Gaussian copula & Experiment helper & Copula + empirical categorical & Yes & Low & Medium & None \\
@@ -15,4 +18,4 @@ SMOTENC & imbalanced-learn & Supervised oversampling & Yes & Medium & Medium & i
 \bottomrule
 \end{tabular}
 \end{adjustbox}
-\end{table}
+\end{table*}

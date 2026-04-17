@@ -1,44 +1,40 @@
 \section{Experiments}
+\label{sec:experiments}
 
-The empirical difficulty is that DataFrameSampler makes several different
-claims, none of which is adequately tested by a single benchmark score. We
-therefore evaluate it as a practical example-data generator rather than as a
-universal synthetic-data winner. More precisely, the experiments ask whether
-1) generated rows avoid being pathologically close to real rows, 2) generated
-rows preserve useful distributional and task information, 3) the supervised NCA
-blocks provide measurable categorical structure, 4) decoder probabilities are
-well behaved enough to be interpreted diagnostically, and 5) extrapolative
-points remain compatible with a frozen manifold geometry.
+The experiments instantiate the evidence framework in
+Section~\ref{sec:evaluation-framework}. The primary comparisons ask whether
+generated rows avoid trivial reuse, preserve marginal and dependence structure,
+and provide useful augmentation for held-out real tasks. The mechanism
+diagnostics ask whether the supervised NCA blocks and decoders behave as the
+method interpretation suggests. The boundary diagnostics ask whether local
+transport and default parameter choices remain stable enough for the restricted
+practical-use claim.
 
-\begin{table*}[t]
-\centering
-\caption{Claim-specific evidence plan. Takeaway: each result is tied to a
-narrow claim, so the paper argues for practical, inspectable example generation
-rather than general synthetic-data optimality.}
-\label{tab:claim-evidence}
-\scriptsize
-\begin{tabular}{@{}p{0.14\textwidth}p{0.16\textwidth}p{0.24\textwidth}p{0.22\textwidth}p{0.16\textwidth}@{}}
-\toprule
-Claim & Type & Primary evidence & Boundary evidence & Allowable conclusion \\
-\midrule
-Simplicity & Practical-use & API, CLI, configuration count & Runtime and dependency burden & Useful when low setup cost matters \\
-Inspectability & Practical-use & Latent blocks and neighbour chains & Implausible local translations & Outputs are auditable as examples \\
-NCA blocks & Mechanism diagnostic & NCA-vs-PCA and majority prediction lift & Per-dataset failures & Mechanism evidence only where lift is observed \\
-Decoder probabilities & Boundary diagnostic & Log loss, Brier score, calibration error & One-class and high-cardinality columns & Probabilities are diagnostic, not assumed reliable \\
-Utility & Regime-specific & Utility lift on held-out real tasks & Dataset descriptors & Useful only where lift is observed \\
-Safeguard & Boundary & NN distance and discrimination & Exact-value overlap checks outside the model & No formal privacy claim \\
-Extrapolation & Mechanism diagnostic & Out-of-hull rate and insertion stress & Held-out real stress baseline & Empirical manifold-consistency evidence only \\
-\bottomrule
-\end{tabular}
-\end{table*}
+Current comparisons include DataFrameSampler plus row bootstrap, independent
+columns, Gaussian-copula empirical sampling, and target-stratified column
+sampling where a target exists. These baselines define concrete failure modes:
+row reuse, broken dependencies, and low-cost marginal sampling. They are not
+intended to exhaust the tabular-generation literature.
 
-Current comparisons include DataFrameSampler plus simple baselines: row bootstrap, independent columns, Gaussian-copula
-empirical sampling, and target-stratified column sampling where a target exists.
-These baselines are intentionally not exhaustive; instead, they define concrete
-failure modes that are relevant to the paper's restricted claims, such as direct
-row reuse, broken dependencies, or low-cost empirical marginal sampling.
+\subsection{Where the Proposed Method Is Preferred}
 
-\begin{figure*}[t]
+The intended preference regime is practical rather than universal. Compared
+with row bootstrap, the method is preferred when copying complete records is an
+unacceptable default behaviour. Compared with independent column sampling, it
+is preferred when cross-column dependence should remain visible in examples.
+Compared with heavier tabular generators, it is preferred when a user needs a
+small scikit-learn-style object whose fitted latent blocks, neighbour chains,
+decoder probabilities, runtime, and failure modes can be inspected directly.
+The experiments therefore report where these advantages appear, and they avoid
+claiming superiority on datasets or metrics where the evidence does not
+support it.
+
+The three named DataFrameSampler setups are shown on one representative
+dataset, Adult Census Income. This keeps setup choice separate from the main
+cross-dataset evidence: fast, default, and accurate are practical operating
+points, not three additional methods to rank across every benchmark.
+
+\begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{distribution_dashboard.pdf}
 \caption{Distributional dashboard for a starter experiment. The dashboard
@@ -48,9 +44,9 @@ can be inspected together rather than reduced to a single score. Takeaway: the
 method must be judged across marginal and dependence evidence, not by one
 plausibility plot.}
 \label{fig:distribution-dashboard}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{synthetic_category_stress.pdf}
 \caption{Categorical stress tests on controlled synthetic datasets. These
@@ -58,10 +54,10 @@ datasets make rare-category and high-cardinality failures observable under
 controlled conditions. Takeaway: controlled failures define where the method
 needs preprocessing or caution before categorical outputs are trusted.}
 \label{fig:synthetic-category-stress}
-\end{figure*}
+\end{figure}
 
 \IfFileExists{../experiments/figures/manifold_validation_stress.pdf}{
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{manifold_validation_stress.pdf}
 \caption{Frozen-Isomap insertion-stress distributions. Held-out real points
@@ -70,13 +66,13 @@ show the out-of-hull subset separately; the resulting comparison is diagnostic
 rather than a proof of manifold preservation. Takeaway: out-of-hull generation
 is meaningful only when its stress overlaps the held-out real baseline.}
 \label{fig:manifold-validation-stress}
-\end{figure*}
+\end{figure}
 }{}
 
 \IfFileExists{tables/manifold_validation.tex}{\input{tables/manifold_validation}}{}
 
 \IfFileExists{../experiments/figures/mechanism_validation.pdf}{
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{mechanism_validation.pdf}
 \caption{Mechanism validation for categorical NCA blocks. Positive values show
@@ -85,22 +81,39 @@ baselines, and negative values identify datasets where the supervised block
 does not improve on the simpler reference. Takeaway: NCA is mechanism evidence
 only where this lift is observed.}
 \label{fig:mechanism-validation}
-\end{figure*}
+\end{figure}
 }{}
 
 \IfFileExists{tables/mechanism_validation.tex}{\input{tables/mechanism_validation}}{}
 
 \IfFileExists{../experiments/figures/decoder_calibration.pdf}{
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{decoder_calibration.pdf}
-\caption{Decoder calibration diagnostics. Calibrated random-forest decoder probabilities
-are evaluated with expected calibration error and negative log loss; these
-measure the quality of the probabilistic inverse map but do not impose
-calibration. Takeaway: sampled categorical reconstructions should be interpreted
-through measured probability quality, not assumed calibration.}
+\caption{Decoder probability diagnostics. Random-forest decoder probabilities,
+with calibration enabled only when explicitly requested by the diagnostic
+workflow, are evaluated with expected calibration error and negative log loss.
+These measures describe the quality of the probabilistic inverse map but do not
+impose calibration on the default sampler. Takeaway: sampled categorical
+reconstructions should be interpreted through measured probability quality, not
+assumed calibration.}
 \label{fig:decoder-calibration}
-\end{figure*}
+\end{figure}
 }{}
 
 \IfFileExists{tables/decoder_calibration.tex}{\input{tables/decoder_calibration}}{}
+
+\IfFileExists{../experiments/figures/sensitivity_validation.pdf}{
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{sensitivity_validation.pdf}
+\caption{Capped comparison of the fast, default, and accurate DataFrameSampler
+setups on Adult Census Income. The panels summarize distributional score,
+utility lift, and discrimination accuracy for the three operating points.
+Takeaway: setup choice is a practical speed--accuracy tradeoff illustration,
+not an additional cross-dataset superiority claim.}
+\label{fig:sensitivity-validation}
+\end{figure}
+}{}
+
+\IfFileExists{tables/sensitivity_validation.tex}{\input{tables/sensitivity_validation}}{}

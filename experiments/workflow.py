@@ -15,6 +15,7 @@ from .datasets import DatasetExperimentConfig
 from .instrumentation import measure_call
 from .manifold_validation import run_manifold_validation_for_config
 from .mechanism_validation import run_mechanism_validation_for_config
+from .sensitivity_validation import run_sensitivity_validation_for_config
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,7 @@ class DatasetExperimentResult:
     manifold_validation: pd.DataFrame
     mechanism_validation: pd.DataFrame
     decoder_calibration: pd.DataFrame
+    sensitivity_validation: pd.DataFrame
     paths: ExperimentPaths
 
 
@@ -264,6 +266,15 @@ def run_configured_dataset_experiment(
             config.random_state,
         ),
     )
+    sensitivity_validation = run_sensitivity_validation_for_config(
+        config,
+        work,
+        results_dir=paths.results_dir,
+        sampler_config=sampler_config_with_random_state(
+            config.sampler_config,
+            config.random_state,
+        ),
+    )
     return DatasetExperimentResult(
         dataframe=dataframe,
         working_dataframe=work,
@@ -273,5 +284,6 @@ def run_configured_dataset_experiment(
         manifold_validation=manifold_validation,
         mechanism_validation=mechanism_validation,
         decoder_calibration=decoder_calibration,
+        sensitivity_validation=sensitivity_validation,
         paths=paths,
     )

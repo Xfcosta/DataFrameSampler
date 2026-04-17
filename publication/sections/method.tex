@@ -1,97 +1,159 @@
 \section{Method}
+\label{sec:method}
+
+DataFrameSampler constructs a numerical latent space from a mixed-type
+dataframe, performs local transport in that space, and decodes transported
+points back into the original schema. The construction is intentionally
+composite: each categorical column receives its own supervised block, while
+continuous columns remain standardized coordinates. This section specifies the
+latent construction, the decoder, the stochastic transport operator, and the
+computational cost of the default implementation.
 
 \subsection{Latent Construction}
 
-Let $D$ be a dataframe with $m$ rows. We first impose an explicit type policy,
-because mixed-type generation is otherwise ambiguous at the boundary between
-binary numeric variables and categorical labels. Numeric columns with more than
-two non-missing values are treated as continuous; all other columns are treated
-as categorical. Thus binary numeric, boolean, and string columns are categorical
-targets, which prevents a stored $0/1$ code from being interpreted as a
-continuous coordinate.
+Let $X^{num}$ be the median-imputed and standardized matrix of continuous
+columns. Let $C_1,\ldots,C_q$ be the categorical columns under the type policy
+in Section~\ref{sec:problem-setting}. Each categorical column is first encoded
+as a one-hot block, and the initial context is the concatenation of
+standardized continuous coordinates and all one-hot blocks.
 
-Continuous columns are median-imputed and standardized, while categorical
-columns are one-hot encoded to provide an initial context. For each categorical
-column $C_j$, DataFrameSampler removes $C_j$'s own current block from the
-context and fits
+For each categorical column $C_j$, the sampler removes $C_j$'s own current
+block from the context and fits a supervised projection
 \[
   z_j = f_j(X_{-j}) \in \mathbb{R}^{k_j}
 \]
-with scikit-learn Neighborhood Components Analysis using the labels of $C_j$ as
-the supervised target. The learned block then replaces the previous one-hot
-block, so later projections see a context that contains already-compressed
-categorical representations rather than only sparse indicators. This process is
-repeated for a configured number of iterations, yielding
+with Neighborhood Components Analysis, using the labels of $C_j$ as the target.
+The learned block replaces the previous block for $C_j$. This replacement is
+performed for all categorical columns and repeated for a configured number of
+iterations. The final latent matrix is
 \[
-  Z = [X^{num} \mid z_1 \mid \cdots \mid z_q].
+  Z = [X^{num} \mid f_1(X_{-1}) \mid \cdots \mid f_q(X_{-q})].
 \]
-In principle, the resulting matrix is not the solution to a global metric
-learning objective, because each categorical block is optimized independently.
-It is instead a recomposed empirical latent space whose usefulness must be
-checked by downstream diagnostics.
+When the iteration count is zero, the replacement step is skipped and the
+initial one-hot categorical blocks remain in the latent matrix; however, the
+target-exclusion rule still applies to decoder training and diagnostics.
+
+\subsection{Algorithms}
+
+The following pseudocode gives the fitted construction in operational form.
+It is deliberately written at the same level as the implementation, because
+reproducibility is part of the contribution.
+
+\begin{center}
+\begin{minipage}{0.92\textwidth}
+\textbf{Algorithm 1: Fitting the latent representation.}
+\begin{enumerate}
+\item Split the dataframe columns into continuous and categorical columns using
+the binary-as-categorical policy.
+\item Median-impute and standardize the continuous columns.
+\item Fill missing categorical values with a stable sentinel and one-hot encode
+each categorical column.
+\item Initialize the context as standardized continuous columns followed by all
+one-hot categorical blocks.
+\item For each iteration and each categorical column $C_j$, remove the current
+block for $C_j$, fit NCA to predict $C_j$ from the remaining context, and
+replace the block for $C_j$ with the learned block.
+\item Train one categorical decoder per $C_j$ from the final latent context
+with $C_j$'s own block removed.
+\end{enumerate}
+\end{minipage}
+\end{center}
+
+\begin{center}
+\begin{minipage}{0.92\textwidth}
+\textbf{Algorithm 2: Generating synthetic rows.}
+\begin{enumerate}
+\item Choose an anchor latent row $A$ from the fitted latent matrix.
+\item Sample a mutual neighbour $B$ of $A$, then sample a mutual neighbour $C$
+of $B$.
+\item Form the transported point
+\[
+  T(A;B,C)=A+\lambda(C-B).
+\]
+\item Reject and retry the neighbour chain if the candidate violates fitted
+latent range constraints or numeric standard-deviation checks, up to the
+configured retry budget.
+\item Decode the accepted latent point into continuous values by inverse
+scaling and categorical values by random-forest decoder probabilities.
+\end{enumerate}
+\end{minipage}
+\end{center}
+
+We use three named configurations when discussing practical setup choices. The
+\emph{fast} setup uses no NCA refinement iteration, no rejection retries, and
+uncalibrated decoders. The \emph{default} setup uses one NCA iteration, five
+rejection retries, and uncalibrated decoders. The \emph{accurate} setup uses
+two NCA iterations, twenty rejection retries, and calibrated decoders. These
+are not separate methods; they are speed--accuracy operating points of the
+same estimator.
 
 \subsection{Decoding}
 
-The inverse map is approximate rather than algebraic. Continuous columns are
-inverse-scaled, but categorical columns require a learned decoder because the
-NCA block is not an invertible encoding of the original labels. For each
-categorical column, a \texttt{RandomForestClassifier} is trained from its final
-block $z_j$ to the observed category labels. When the fitted class counts allow
-cross-validation, the forest probabilities are calibrated with scikit-learn's
-\texttt{CalibratedClassifierCV}; otherwise the uncalibrated forest is retained.
-During \texttt{inverse\_transform}, \texttt{predict\_proba} provides an empirical
-distribution over fitted categories, and the decoder either samples from that
-distribution or selects the most likely category. These probabilities are still
-model outputs, so their quality is evaluated as a boundary diagnostic rather
-than assumed.
+The inverse transformation is approximate. Continuous coordinates are mapped
+back through the fitted scaler, but categorical coordinates require a learned
+inverse map because the NCA blocks are not invertible. For each categorical
+column $C_j$, the sampler trains a \texttt{RandomForestClassifier} to predict
+the labels of $C_j$ from the final latent context with $C_j$'s own block
+removed. Thus the decoder follows the same exclusion rule as the encoder:
+the category being reconstructed is never provided as an input feature.
 
-\subsection{Generation}
+At reconstruction time, the classifier returns a probability vector over
+categories observed during fitting. The decoder can either sample from that
+distribution or select the maximum-probability category. Probability
+calibration is optional; when enabled and class counts permit it, the forest is
+wrapped with scikit-learn's \texttt{CalibratedClassifierCV}. Calibration quality
+is still measured empirically, because calibrated model probabilities are not
+equivalent to a proof of conditional distribution correctness.
 
-Generation operates only in the fitted latent matrix. For each synthetic row,
-the sampler chooses an anchor $A$, a mutual neighbour $B$, and a mutual
-neighbour $C$ of $B$. It then applies
+\subsection{Stochastic Transport}
+
+Generation is a stochastic operator over the fitted latent matrix. For an
+anchor $A$, a mutual neighbour $B$, and a mutual neighbour $C$ of $B$, the
+candidate point is
 \[
-  A' = A + \lambda(C - B).
+  T(A;B,C)=A+\lambda(C-B).
 \]
-The resulting latent point is clipped to fitted coordinate ranges and decoded
-back to a dataframe row. This operation can be interpreted as local displacement
-transfer: the vector from $B$ to $C$ is treated as a small movement that may
-also be meaningful near $A$. However, this is only a local translation
-heuristic. It assumes that the supervised latent space is locally linear enough
-for displacement transfer to remain plausible, but it does not guarantee
-manifold preservation, marginal fidelity, or constraint satisfaction.
+The vector $C-B$ is a local displacement observed near $B$ and transferred to
+the neighbourhood of $A$. This construction differs from interpolation:
+for $\lambda>0$, $T(A;B,C)$ need not lie on the segment between $A$ and a
+neighbour of $A$, and it can lie outside the convex hull of the training latent
+rows. The operator is nevertheless only a heuristic. It is meaningful when the
+learned latent space is locally regular enough for nearby displacements to be
+reused, and it can fail when this local-linearity assumption is violated.
 
-\subsection{Manifold Validation}
+\subsection{Computational Complexity}
 
-We evaluate extrapolation in the fitted latent space rather than in raw mixed
-columns, because the generator itself operates in that numerical space. For a
-training latent matrix $Z_{train}$ and generated point $\tilde z$, the
-convex-hull test asks whether $\tilde z$ can be represented as a convex
-combination of training rows. Operationally, we solve the feasibility problem
+Let $n$ be the number of fitted rows, $p$ the number of continuous columns,
+$q$ the number of categorical columns, $h$ the total one-hot width, $k_j$ the
+latent width for categorical column $j$, and $T$ the number of NCA refinement
+iterations. Median imputation, one-hot encoding, and standardization are
+linear in the number of observed dataframe entries. Exact NCA is the dominant
+default cost: for each categorical column and iteration, scikit-learn NCA
+optimizes a supervised neighbourhood objective whose distance computations are
+quadratic in $n$ and linear in the current context width. A coarse upper bound
+for the NCA phase is therefore
 \[
-  Z_{train}^{\top}\lambda=\tilde z,\qquad
-  \lambda_i \ge 0,\qquad
-  \sum_i \lambda_i = 1.
+  O\!\left(T q n^2 (p + h + \sum_j k_j)\right),
 \]
-Before solving, the training matrix is reduced to its affine rank with SVD so
-degenerate latent spaces are handled consistently.
+up to optimizer constants and effective context widths.
 
-Manifold consistency is tested with a frozen Isomap geometry
-\cite{tenenbaum2000isomap}. Isomap is fit on training latent rows only, so the
-reference geometry is not allowed to adapt to generated points. A held-out real
-or generated point is inserted by connecting it to nearest training neighbours,
-computing graph-geodesic distances to the fixed training graph, and embedding
-it with the fitted Isomap out-of-sample transform
-\cite{bengio2003outofsample}. The normalized pointwise insertion stress is
-\[
-  s(\tilde z)=
-  \sqrt{
-  \frac{\sum_i (g_i(\tilde z)-\|\tilde e-e_i\|_2)^2}
-       {\sum_i \|\tilde e-e_i\|_2^2}
-  },
-\]
-where $g_i$ is the inserted graph distance to training point $i$ and
-$\tilde e$ is the out-of-sample Isomap coordinate. In other words, the test asks
-whether a new point can be placed into the fixed manifold geometry without
-creating large distance distortions. This is an empirical criterion, not a
-guarantee.
+Decoder fitting trains one random forest per categorical column and is
+parallelized across trees by default. Exact nearest-neighbour construction in
+the final latent space is quadratic in $n$ for brute-force search, while
+optional approximate backends can reduce practical runtime at the cost of an
+additional approximation choice. Once fitted neighbours are available,
+generation is inexpensive: each sample requires a small number of neighbour
+lookups, one latent displacement, constraint checks over latent coordinates,
+and one decoder pass per categorical column. The method is therefore designed
+for small and medium notebook-scale data by default, with approximate
+neighbour search left as an optional scaling path.
+
+The main memory cost is storing the fitted context matrices and learned latent
+blocks, which is linear in $n$ times the active context width, plus the
+per-tree storage of the categorical random forests. Exact NCA also materializes
+neighbourhood computations whose practical footprint grows quickly with $n$.
+For this reason, the implementation is aimed at notebook-scale and
+medium-sized tabular workflows. Very large tables should be handled with row
+caps, representative subsampling, narrower categorical preprocessing, or
+approximate neighbour search rather than by treating the default exact path as
+a large-scale generative learner.
