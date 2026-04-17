@@ -54,7 +54,7 @@ def test_numeric_view_from_config_fits_configured_sampler():
         data_filename="toy.csv",
         target_column=None,
         random_state=1,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 3,
             "knn_backend": "sklearn",
         },

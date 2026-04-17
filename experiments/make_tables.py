@@ -27,20 +27,11 @@ class DatasetTableMetadata:
 
 METHOD_METADATA = [
     {
-        "method": "DFS default",
+        "method": "DataFrameSampler",
         "package": "DataFrameSampler",
         "family": "Supervised NCA latent-space sampler",
         "mixed": "Yes",
         "setup": "Low",
-        "inspectability": "High",
-        "optional": "None",
-    },
-    {
-        "method": "DFS manual",
-        "package": "DataFrameSampler",
-        "family": "Supervised NCA latent-space sampler",
-        "mixed": "Yes",
-        "setup": "Medium",
         "inspectability": "High",
         "optional": "None",
     },
@@ -92,8 +83,7 @@ METHOD_METADATA = [
 ]
 
 METHOD_LABELS = {
-    "dataframe_sampler_default": "DFS default",
-    "dataframe_sampler_manual": "DFS manual",
+    "dataframe_sampler": "DataFrameSampler",
     "row_bootstrap": "Row bootstrap",
     "independent_columns": "Independent columns",
     "gaussian_copula_empirical": "Gaussian copula",
@@ -163,7 +153,6 @@ def load_comparisons(results_dir: str | Path = RESULTS) -> pd.DataFrame:
     if not frames:
         raise FileNotFoundError("No baseline comparison files found. Run the notebooks first.")
     data = pd.concat(frames, ignore_index=True)
-    data = data[~data["method"].astype(str).str.contains("llm_assisted", na=False)].copy()
     data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
     for column in [
         "fit_peak_memory_mb",
@@ -246,7 +235,7 @@ def write_dataset_table(
     return write_latex(
         pd.DataFrame(rows),
         Path(tables_dir) / "datasets.tex",
-        "Datasets used in the starter experiments.",
+        "Datasets used in the starter experiments. Takeaway: the evidence spans mixed public benchmarks and controlled regimes, so conclusions are practical and diagnostic rather than universal.",
         "tab:datasets",
     )
 
@@ -264,7 +253,12 @@ def write_method_table(*, tables_dir: str | Path = TABLES) -> Path:
             "optional": "Optional deps",
         }
     )
-    return write_latex(df, Path(tables_dir) / "methods.tex", "Baseline and competitor method metadata.", "tab:methods")
+    return write_latex(
+        df,
+        Path(tables_dir) / "methods.tex",
+        "Baseline and competitor method metadata. Takeaway: the comparisons emphasize low-setup, inspectable baselines that match the paper's practical-use claim.",
+        "tab:methods",
+    )
 
 
 def write_distribution_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = TABLES) -> Path:
@@ -298,7 +292,7 @@ def write_distribution_table(comparisons: pd.DataFrame, *, tables_dir: str | Pat
     return write_latex(
         df,
         Path(tables_dir) / "distributional_similarity.tex",
-        "Starter distributional similarity results. Lower is better for KS, categorical TV, and association difference; higher is better for histogram overlap.",
+        "Starter distributional similarity results. Lower is better for KS, categorical TV, and association difference; higher is better for histogram overlap. Takeaway: marginal similarity alone is not decisive, because simple baselines can look strong while breaking dependencies or reusing rows.",
         "tab:distributional-similarity",
         float_format="%.3f",
     )
@@ -306,7 +300,7 @@ def write_distribution_table(comparisons: pd.DataFrame, *, tables_dir: str | Pat
 
 def write_main_measure_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = TABLES) -> Path:
     selected_methods = {
-        "dataframe_sampler_manual",
+        "dataframe_sampler",
         "row_bootstrap",
         "independent_columns",
     }
@@ -339,7 +333,7 @@ def write_main_measure_table(comparisons: pd.DataFrame, *, tables_dir: str | Pat
     return write_latex(
         df,
         Path(tables_dir) / "main_measures.tex",
-        "Primary experiment measures. NN ratio compares synthetic-to-real nearest-neighbour distance with natural real-to-real nearest-neighbour distance; values below one indicate closer-than-natural synthetic rows. Discrimination accuracy near 0.5 is better. Utility lift is the change from adding synthetic rows to the real training set. Histogram overlap is higher-is-better and categorical JSD is lower-is-better.",
+        "Primary experiment measures. NN ratio compares synthetic-to-real nearest-neighbour distance with natural real-to-real nearest-neighbour distance; values below one indicate closer-than-natural synthetic rows. Discrimination accuracy near 0.5 is better. Utility lift is the change from adding synthetic rows to the real training set. Histogram overlap is higher-is-better and categorical JSD is lower-is-better. Takeaway: DataFrameSampler is best read as a balanced example generator, not as a single-metric winner.",
         "tab:main-measures",
         float_format="%.3f",
         full_width=True,
@@ -370,7 +364,7 @@ def write_downstream_table(comparisons: pd.DataFrame, *, tables_dir: str | Path 
     return write_latex(
         df,
         Path(tables_dir) / "downstream_utility.tex",
-        "Utility lift test. A baseline model is trained on real training data, then compared with a model trained on real plus generated rows and evaluated on held-out real rows.",
+        "Utility lift test. A baseline model is trained on real training data, then compared with a model trained on real plus generated rows and evaluated on held-out real rows. Takeaway: utility gains are dataset-specific, so the paper supports regime-specific usefulness rather than broad predictive superiority.",
         "tab:downstream-utility",
         float_format="%.3f",
         full_width=True,
@@ -390,8 +384,7 @@ def write_runtime_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = T
         ]
     ].copy()
     setup_steps = {
-        "DFS default": "1 config",
-        "DFS manual": "NCA config",
+        "DataFrameSampler": "NCA config",
         "Row bootstrap": "None",
         "Independent columns": "None",
         "Gaussian copula": "None",
@@ -413,7 +406,7 @@ def write_runtime_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = T
     return write_latex(
         df,
         Path(tables_dir) / "usability_runtime.tex",
-        "Starter usability, runtime, and traced Python allocation measurements. Peak MB is the maximum traced allocation peak observed during fit or sample, not total process RSS.",
+        "Starter usability, runtime, and traced Python allocation measurements. Peak MB is the maximum traced allocation peak observed during fit or sample, not total process RSS. Takeaway: the method remains notebook-friendly, but the NCA and calibrated decoding steps carry real computational cost.",
         "tab:usability-runtime",
         float_format="%.3f",
         full_width=True,
@@ -438,7 +431,7 @@ def write_synthetic_dataset_table(
     return write_latex(
         pd.DataFrame(rows),
         Path(tables_dir) / "synthetic_controlled_datasets.tex",
-        "Controlled synthetic datasets used to isolate specific boundary regimes.",
+        "Controlled synthetic datasets used to isolate specific boundary regimes. Takeaway: the controlled suite makes failure modes observable instead of relying only on aggregate benchmark scores.",
         "tab:synthetic-controlled-datasets",
         full_width=True,
     )
@@ -453,7 +446,7 @@ def write_synthetic_results_table(
 ) -> Path:
     synthetic_keys = {spec.key for spec in SYNTHETIC_DATASETS}
     method_subset = {
-        "dataframe_sampler_manual",
+        "dataframe_sampler",
         "independent_columns",
         "row_bootstrap",
     }
@@ -493,7 +486,7 @@ def write_synthetic_results_table(
     return write_latex(
         df,
         Path(tables_dir) / "synthetic_controlled_results.tex",
-        "Focused results for controlled synthetic regimes. Sensitive overlap counts exact reuse of patient identifiers in the controlled identifier dataset.",
+        "Focused results for controlled synthetic regimes. Sensitive overlap counts exact reuse of patient identifiers in the controlled identifier dataset. Takeaway: controlled regimes show where the sampler preserves useful structure and where it still needs explicit safeguards.",
         "tab:synthetic-controlled-results",
         float_format="%.3f",
         full_width=True,
@@ -563,7 +556,7 @@ def write_manifold_validation_table(
     return write_latex(
         df,
         Path(tables_dir) / "manifold_validation.tex",
-        "Frozen-Isomap manifold validation in DataFrameSampler latent space. Out-hull rate is the fraction of generated points outside the training convex hull. Out-hull accept is the fraction of out-of-hull generated points with insertion stress no larger than the held-out real 95th percentile. The validation CSV records the training and evaluated-point caps used for each run.",
+        "Frozen-Isomap manifold validation in DataFrameSampler latent space. Out-hull rate is the fraction of generated points outside the training convex hull. Out-hull accept is the fraction of out-of-hull generated points with insertion stress no larger than the held-out real 95th percentile. The validation CSV records the training and evaluated-point caps used for each run. Takeaway: displacement transport can produce out-of-hull points that often remain close to the held-out manifold-stress baseline, but this is diagnostic evidence only.",
         "tab:manifold-validation",
         float_format="%.3f",
         full_width=True,
@@ -605,7 +598,7 @@ def write_mechanism_validation_table(
     return write_latex(
         df,
         Path(tables_dir) / "mechanism_validation.tex",
-        "Mechanism validation for categorical NCA blocks. Each row aggregates capped held-out categorical prediction tests over categorical columns. NCA-majority and NCA-PCA are accuracy differences against majority and same-width PCA baselines.",
+        "Mechanism validation for categorical NCA blocks. Each row aggregates capped held-out categorical prediction tests over categorical columns. NCA-majority and NCA-PCA are accuracy differences against majority and same-width PCA baselines. Takeaway: the supervised NCA blocks provide mechanism evidence where they beat majority and PCA references, and failures mark claim boundaries.",
         "tab:mechanism-validation",
         float_format="%.3f",
         full_width=True,
@@ -647,7 +640,7 @@ def write_decoder_calibration_table(
     return write_latex(
         df,
         Path(tables_dir) / "decoder_calibration.tex",
-        "Random-forest decoder calibration diagnostics by dataset and categorical-cardinality bucket. These are boundary diagnostics for probabilistic decoding rather than guarantees of calibrated sampling.",
+        "Random-forest decoder calibration diagnostics by dataset and categorical-cardinality bucket. These are boundary diagnostics for probabilistic decoding rather than guarantees of calibrated sampling. Takeaway: probabilistic decoding is usable as an empirical inverse map, but uncertainty quality varies by dataset and cardinality.",
         "tab:decoder-calibration",
         float_format="%.3f",
         full_width=True,
@@ -690,7 +683,7 @@ def write_ablation_table(*, tables_dir: str | Path = TABLES) -> Path:
     return write_latex(
         pd.DataFrame(rows),
         Path(tables_dir) / "ablations.tex",
-        "Ablation plan and current claim status.",
+        "Ablation plan and current claim status. Takeaway: each mechanism component is treated as evidence to be checked, not as an assumed source of correctness.",
         "tab:ablations",
     )
 
@@ -725,7 +718,7 @@ def write_limitations_table(*, tables_dir: str | Path = TABLES) -> Path:
     return write_latex(
         pd.DataFrame(rows),
         Path(tables_dir) / "limitations_scope.tex",
-        "Limitations and allowable conclusion scope under the current evidence.",
+        "Limitations and allowable conclusion scope under the current evidence. Takeaway: the paper's strongest defensible conclusion is practical, inspectable example generation under explicit boundaries.",
         "tab:limitations-scope",
     )
 

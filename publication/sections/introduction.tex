@@ -24,7 +24,7 @@ claim of state-of-the-art synthetic-data fidelity; it is an argument that a
 structured and auditable heuristic can be useful when the target workflow is
 example generation rather than data release.
 
-Version 2.0 uses a supervised latent representation throughout. Non-binary
+DataFrameSampler uses a supervised latent representation throughout. Non-binary
 numeric columns are median-imputed and standardized, while every categorical
 column, including booleans and numeric two-valued columns such as $0/1$, is
 assigned its own NCA block learned from the remaining columns. Generated latent

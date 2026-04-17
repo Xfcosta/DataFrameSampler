@@ -1,6 +1,6 @@
 \section{Discussion}
 
-DataFrameSampler 2.0 trades global optimality for a modular and inspectable
+DataFrameSampler trades global optimality for a modular and inspectable
 construction. Each categorical block is optimized independently, so the
 concatenated space has no joint objective that would guarantee compatibility
 across all blocks. Iterative refinement can improve the context available to
@@ -9,9 +9,10 @@ and there is no monotonic criterion that certifies improvement across
 iterations.
 
 The decoder is also mismatched to the encoder in a deliberate but consequential
-way. Random forests approximate $p(C_j \mid z_j)$ independently for each
-categorical column, and calibration diagnostics expose the quality of those
-probabilities without enforcing either calibration or cross-column consistency.
+way. Calibrated random forests approximate $p(C_j \mid z_j)$ independently for
+each categorical column when calibration is feasible, and calibration diagnostics
+expose the quality of those probabilities without enforcing cross-column
+consistency.
 It can therefore occur that a generated row is locally plausible in each
 categorical block but violates a structured constraint that spans several
 columns. This is not a defect relative to a formal objective, because no such

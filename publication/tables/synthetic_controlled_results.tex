@@ -1,21 +1,21 @@
 \begin{table*}
-\caption{Focused results for controlled synthetic regimes. Sensitive overlap counts exact reuse of patient identifiers in the controlled identifier dataset.}
+\caption{Focused results for controlled synthetic regimes. Sensitive overlap counts exact reuse of patient identifiers in the controlled identifier dataset. Takeaway: controlled regimes show where the sampler preserves useful structure and where it still needs explicit safeguards.}
 \label{tab:synthetic-controlled-results}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{llrrrrrl}
 \toprule
 Dataset & Method & KS & Cat. TV & Cat. coverage & Rare preserve & Assoc. diff. & Sensitive overlap \\
 \midrule
-synthetic\_correlated\_helpers & DFS manual & 0.041 & 0.028 & 1.000 & NaN & 0.065 & n/a \\
+synthetic\_correlated\_helpers & DataFrameSampler & 0.041 & 0.028 & 1.000 & NaN & 0.065 & n/a \\
 synthetic\_correlated\_helpers & Independent columns & 0.037 & 0.035 & 1.000 & NaN & 0.713 & n/a \\
 synthetic\_correlated\_helpers & Row bootstrap & 0.031 & 0.020 & 1.000 & NaN & 0.013 & n/a \\
-synthetic\_high\_cardinality & DFS manual & 0.080 & 0.088 & 0.961 & 0.778 & 0.143 & n/a \\
+synthetic\_high\_cardinality & DataFrameSampler & 0.080 & 0.088 & 0.961 & 0.778 & 0.143 & n/a \\
 synthetic\_high\_cardinality & Independent columns & 0.029 & 0.065 & 0.969 & 0.822 & 0.544 & n/a \\
 synthetic\_high\_cardinality & Row bootstrap & 0.024 & 0.046 & 0.980 & 0.889 & 0.017 & n/a \\
-synthetic\_rare\_categories & DFS manual & 0.122 & 0.095 & 0.917 & 0.667 & 0.094 & n/a \\
+synthetic\_rare\_categories & DataFrameSampler & 0.122 & 0.095 & 0.917 & 0.667 & 0.094 & n/a \\
 synthetic\_rare\_categories & Independent columns & 0.021 & 0.015 & 1.000 & 1.000 & 0.346 & n/a \\
 synthetic\_rare\_categories & Row bootstrap & 0.020 & 0.021 & 1.000 & 1.000 & 0.024 & n/a \\
-synthetic\_sensitive\_identifier & DFS manual & 0.086 & 0.155 & 0.859 & 0.578 & 0.105 & 500 \\
+synthetic\_sensitive\_identifier & DataFrameSampler & 0.086 & 0.155 & 0.859 & 0.578 & 0.105 & 500 \\
 synthetic\_sensitive\_identifier & Independent columns & 0.028 & 0.166 & 0.851 & 0.552 & 0.142 & 500 \\
 synthetic\_sensitive\_identifier & Row bootstrap & 0.046 & 0.166 & 0.851 & 0.552 & 0.026 & 500 \\
 \bottomrule

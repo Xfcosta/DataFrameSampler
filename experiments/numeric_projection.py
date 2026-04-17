@@ -25,7 +25,7 @@ def numeric_view(dataframe, sampler) -> pd.DataFrame:
 def numeric_view_from_config(dataframe: pd.DataFrame, config: DatasetExperimentConfig) -> pd.DataFrame:
     """Fit the configured sampler and return its numeric representation."""
     sampler = DataFrameSampler(
-        **sampler_config_with_random_state(config.manual_sampler_config, config.random_state)
+        **sampler_config_with_random_state(config.sampler_config, config.random_state)
     )
     sampler.fit(dataframe)
     return numeric_view(dataframe, sampler)

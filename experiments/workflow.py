@@ -173,7 +173,7 @@ def run_starter_sampler(
 ) -> SamplerRun:
     output_dir = Path(results_dir) if results_dir is not None else None
     sampler = DataFrameSampler(
-        **sampler_config_with_random_state(config.manual_sampler_config, config.random_state)
+        **sampler_config_with_random_state(config.sampler_config, config.random_state)
     )
 
     fit = measure_call(lambda: sampler.fit(dataframe))
@@ -240,7 +240,7 @@ def run_configured_dataset_experiment(
         target_column=config.target_column,
         results_dir=paths.results_dir,
         dataframe_sampler_config=sampler_config_with_random_state(
-            config.manual_sampler_config,
+            config.sampler_config,
             config.random_state,
         ),
         n_samples=config.n_generated,
@@ -251,7 +251,7 @@ def run_configured_dataset_experiment(
         work,
         results_dir=paths.results_dir,
         sampler_config=sampler_config_with_random_state(
-            config.manual_sampler_config,
+            config.sampler_config,
             config.random_state,
         ),
     )
@@ -260,7 +260,7 @@ def run_configured_dataset_experiment(
         work,
         results_dir=paths.results_dir,
         sampler_config=sampler_config_with_random_state(
-            config.manual_sampler_config,
+            config.sampler_config,
             config.random_state,
         ),
     )

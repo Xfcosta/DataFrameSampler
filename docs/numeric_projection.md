@@ -1,6 +1,6 @@
 # Latent Numeric Views And 2D Projection
 
-DataFrameSampler 2.0 transforms dataframe rows into the fitted NCA latent
+DataFrameSampler transforms dataframe rows into the fitted NCA latent
 matrix:
 
 ```python

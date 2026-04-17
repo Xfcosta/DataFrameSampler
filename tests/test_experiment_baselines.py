@@ -99,8 +99,7 @@ def test_run_dataset_comparison_writes_simple_baseline_summary(tmp_path):
     )
 
     assert set(summary["method"]) == {
-        "dataframe_sampler_default",
-        "dataframe_sampler_manual",
+        "dataframe_sampler",
         "row_bootstrap",
         "independent_columns",
         "gaussian_copula_empirical",
@@ -120,4 +119,3 @@ def test_run_dataset_comparison_writes_simple_baseline_summary(tmp_path):
     assert (summary["peak_memory_mb"] >= 0).all()
     for method in summary["method"]:
         assert (tmp_path / f"toy_{method}_generated.csv").exists()
-

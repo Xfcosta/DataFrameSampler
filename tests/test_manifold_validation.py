@@ -69,9 +69,9 @@ def test_manifold_validation_summary_uses_real_q95_acceptance_threshold():
                 "held_out_real",
                 "held_out_real",
                 "held_out_real",
-                "dataframe_sampler_manual",
-                "dataframe_sampler_manual",
-                "dataframe_sampler_manual",
+                "dataframe_sampler",
+                "dataframe_sampler",
+                "dataframe_sampler",
                 "latent_interpolation",
             ],
             "sample_type": ["real_test", "real_test", "real_test", "generated", "generated", "generated", "generated"],
@@ -81,7 +81,7 @@ def test_manifold_validation_summary_uses_real_q95_acceptance_threshold():
     )
 
     summary = summarize_manifold_validation(pointwise)
-    dfs = summary[summary["method"] == "dataframe_sampler_manual"].iloc[0]
+    dfs = summary[summary["method"] == "dataframe_sampler"].iloc[0]
 
     assert dfs["out_hull_rate"] == 2 / 3
     assert dfs["out_hull_acceptance_at_real_q95"] == 1.0
@@ -90,7 +90,7 @@ def test_manifold_validation_summary_uses_real_q95_acceptance_threshold():
 def test_manifold_validation_report_contains_expected_pointwise_columns():
     train = np.array([[0.0], [1.0], [2.0], [3.0], [4.0], [5.0]])
     real_test = np.array([[1.5], [3.5]])
-    generated = {"dataframe_sampler_manual": np.array([[6.0], [2.5]])}
+    generated = {"dataframe_sampler": np.array([[6.0], [2.5]])}
 
     report = manifold_validation_report(
         train_latent=train,
@@ -120,7 +120,7 @@ def test_run_manifold_validation_for_config_writes_csv(tmp_path):
         title="Toy",
         data_filename="toy.csv",
         target_column="target",
-        manual_sampler_config={"n_iterations": 1, "n_neighbours": 2, "knn_backend": "sklearn"},
+        sampler_config={"n_iterations": 1, "n_neighbours": 2, "knn_backend": "sklearn"},
         n_generated=8,
         random_state=1,
     )
@@ -135,7 +135,7 @@ def test_run_manifold_validation_for_config_writes_csv(tmp_path):
 
     assert not report.empty
     assert (tmp_path / "toy_manifold_validation.csv").exists()
-    assert {"held_out_real", "dataframe_sampler_manual", "latent_interpolation", "latent_bootstrap"}.issubset(
+    assert {"held_out_real", "dataframe_sampler", "latent_interpolation", "latent_bootstrap"}.issubset(
         set(report["method"])
     )
 
@@ -147,8 +147,8 @@ def test_manifold_table_and_figure_helpers_write_outputs(tmp_path):
             "method": [
                 "held_out_real",
                 "held_out_real",
-                "dataframe_sampler_manual",
-                "dataframe_sampler_manual",
+                "dataframe_sampler",
+                "dataframe_sampler",
                 "latent_interpolation",
                 "latent_interpolation",
             ],
@@ -176,8 +176,8 @@ def test_generate_all_tables_includes_manifold_table_when_csv_exists(tmp_path):
     pd.DataFrame(
         {
             "dataset": ["toy"],
-            "method": ["dataframe_sampler_manual"],
-            "method_label": ["DFS manual"],
+            "method": ["dataframe_sampler"],
+            "method_label": ["DataFrameSampler"],
             "n_real": [2],
             "n_synthetic": [2],
             "numeric_ks_statistic": [0.0],
@@ -208,7 +208,7 @@ def test_generate_all_tables_includes_manifold_table_when_csv_exists(tmp_path):
     pd.DataFrame(
         {
             "dataset": ["toy", "toy", "toy"],
-            "method": ["held_out_real", "dataframe_sampler_manual", "latent_interpolation"],
+            "method": ["held_out_real", "dataframe_sampler", "latent_interpolation"],
             "sample_type": ["real_test", "generated", "generated"],
             "stress": [0.1, 0.12, 0.08],
             "out_hull": [False, True, False],
@@ -243,13 +243,13 @@ def test_generate_all_figures_includes_manifold_figure_when_csv_exists(tmp_path)
         index=False,
     )
     pd.DataFrame({"x": [0.1, 1.1, 1.8], "target": [0, 1, 0], "group": ["a", "b", "a"]}).to_csv(
-        results_dir / "toy_dataframe_sampler_manual_generated.csv",
+        results_dir / "toy_dataframe_sampler_generated.csv",
         index=False,
     )
     pd.DataFrame(
         {
             "dataset": ["toy"],
-            "method": ["dataframe_sampler_manual"],
+            "method": ["dataframe_sampler"],
             "nn_distance_ratio": [1.0],
             "discrimination_accuracy": [0.5],
             "utility_lift": [0.0],
@@ -260,7 +260,7 @@ def test_generate_all_figures_includes_manifold_figure_when_csv_exists(tmp_path)
     pd.DataFrame(
         {
             "dataset": ["toy", "toy", "toy"],
-            "method": ["held_out_real", "dataframe_sampler_manual", "latent_interpolation"],
+            "method": ["held_out_real", "dataframe_sampler", "latent_interpolation"],
             "sample_type": ["real_test", "generated", "generated"],
             "stress": [0.1, 0.12, 0.08],
             "out_hull": [False, True, False],
@@ -273,7 +273,7 @@ def test_generate_all_figures_includes_manifold_figure_when_csv_exists(tmp_path)
         figures_dir=figures_dir,
         dashboard_spec=DistributionDashboardSpec(
             dataset_name="toy",
-            generated_method="dataframe_sampler_manual",
+            generated_method="dataframe_sampler",
             numeric_column="x",
             categorical_column="group",
             correlation_columns=["x", "target"],

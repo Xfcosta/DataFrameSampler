@@ -66,7 +66,7 @@ def run_manifold_validation_for_config(
         random_state=config.random_state,
     )
 
-    sampler_kwargs = dict(sampler_config or config.manual_sampler_config)
+    sampler_kwargs = dict(sampler_config or config.sampler_config)
     sampler_kwargs.setdefault("random_state", config.random_state)
     sampler = DataFrameSampler(**sampler_kwargs).fit(train)
 
@@ -97,7 +97,7 @@ def run_manifold_validation_for_config(
         train_latent=train_latent,
         real_test_latent=real_test_latent,
         generated_latents={
-            "dataframe_sampler_manual": generated_latent,
+            "dataframe_sampler": generated_latent,
             "latent_interpolation": interpolation_latent,
             "latent_bootstrap": bootstrap_latent,
         },

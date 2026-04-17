@@ -1,13 +1,12 @@
 \begin{table}
-\caption{Baseline and competitor method metadata.}
+\caption{Baseline and competitor method metadata. Takeaway: the comparisons emphasize low-setup, inspectable baselines that match the paper's practical-use claim.}
 \label{tab:methods}
 \begin{adjustbox}{max width=\columnwidth}
 \begin{tabular}{lllllll}
 \toprule
 Method & Package & Family & Mixed & Setup & Inspect. & Optional deps \\
 \midrule
-DFS default & DataFrameSampler & Supervised NCA latent-space sampler & Yes & Low & High & None \\
-DFS manual & DataFrameSampler & Supervised NCA latent-space sampler & Yes & Medium & High & None \\
+DataFrameSampler & DataFrameSampler & Supervised NCA latent-space sampler & Yes & Low & High & None \\
 Row bootstrap & Experiment helper & Resampling & Yes & Low & Medium & None \\
 Independent columns & Experiment helper & Empirical marginals & Yes & Low & Medium & None \\
 Gaussian copula & Experiment helper & Copula + empirical categorical & Yes & Low & Medium & None \\

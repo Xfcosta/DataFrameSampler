@@ -15,8 +15,7 @@ RESULTS = ROOT / "results"
 FIGURES = ROOT / "figures"
 
 METHOD_LABELS = {
-    "dataframe_sampler_default": "DFS default",
-    "dataframe_sampler_manual": "DFS manual",
+    "dataframe_sampler": "DataFrameSampler",
     "latent_interpolation": "Latent interpolation",
     "row_bootstrap": "Bootstrap",
     "independent_columns": "Independent",
@@ -26,8 +25,7 @@ METHOD_LABELS = {
 }
 
 METHOD_ORDER = [
-    "dataframe_sampler_default",
-    "dataframe_sampler_manual",
+    "dataframe_sampler",
     "row_bootstrap",
     "independent_columns",
     "gaussian_copula_empirical",
@@ -48,12 +46,12 @@ class DistributionDashboardSpec:
 
 DEFAULT_DASHBOARD = DistributionDashboardSpec(
     dataset_name="titanic",
-    generated_method="dataframe_sampler_manual",
+    generated_method="dataframe_sampler",
     numeric_column="age",
     categorical_column="sex",
     correlation_columns=["survived", "pclass", "age", "sibsp", "parch", "fare"],
     dataset_label="Titanic",
-    generated_label="manual DataFrameSampler",
+    generated_label="DataFrameSampler",
 )
 
 
@@ -65,7 +63,6 @@ def load_comparisons(results_dir: str | Path = RESULTS) -> pd.DataFrame:
     if not frames:
         raise FileNotFoundError("No *_baseline_comparison.csv files found. Run the notebooks first.")
     data = pd.concat(frames, ignore_index=True)
-    data = data[~data["method"].astype(str).str.contains("llm_assisted", na=False)].copy()
     data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
     data["method_label"] = pd.Categorical(
         data["method_label"],
@@ -132,7 +129,7 @@ def plot_baseline_similarity(data: pd.DataFrame, figures_dir: str | Path = FIGUR
             if col_idx > 0:
                 ax.set_ylabel("")
                 ax.tick_params(axis="y", labelleft=False)
-    fig.suptitle("Primary four-measure summary for DataFrameSampler configurations and simple baselines")
+    fig.suptitle("Primary four-measure summary for DataFrameSampler and simple baselines")
     fig.tight_layout()
     figures_path = Path(figures_dir)
     figures_path.mkdir(parents=True, exist_ok=True)
@@ -141,36 +138,6 @@ def plot_baseline_similarity(data: pd.DataFrame, figures_dir: str | Path = FIGUR
     plt.close(fig)
     return output
 
-
-def plot_configuration_competitors(data: pd.DataFrame, figures_dir: str | Path = FIGURES) -> Path:
-    subset = data[data["method"].str.startswith("dataframe_sampler_")].copy()
-    metrics = [
-        ("nn_distance_ratio", "NN distance ratio (higher)"),
-        ("discrimination_accuracy", "Discrimination accuracy (near 0.5)"),
-        ("utility_lift", "Utility lift (higher)"),
-        ("sample_seconds", "Sample seconds (lower)"),
-    ]
-    datasets = list(subset["dataset"].drop_duplicates())
-    fig, axes = plt.subplots(len(metrics), len(datasets), figsize=(max(10, 3.0 * len(datasets)), 8), sharex=False)
-    if len(datasets) == 1:
-        axes = axes.reshape(-1, 1)
-
-    for row_idx, (metric, title) in enumerate(metrics):
-        for col_idx, dataset in enumerate(datasets):
-            ax = axes[row_idx, col_idx]
-            ds = subset[subset["dataset"] == dataset]
-            ax.bar(ds["method_label"].astype(str), ds[metric], color="#59A14F")
-            ax.set_title(f"{dataset}: {title}")
-            ax.grid(axis="y", alpha=0.25)
-            ax.tick_params(axis="x", rotation=25)
-    fig.suptitle("DataFrameSampler configuration competitors on primary measures")
-    fig.tight_layout()
-    figures_path = Path(figures_dir)
-    figures_path.mkdir(parents=True, exist_ok=True)
-    output = figures_path / "configuration_competitors.pdf"
-    fig.savefig(output, bbox_inches="tight")
-    plt.close(fig)
-    return output
 
 def plot_distribution_dashboard(
     *,
@@ -255,7 +222,7 @@ def plot_synthetic_controlled_similarity(data: pd.DataFrame, figures_dir: str | 
     synthetic_keys = [spec.key for spec in SYNTHETIC_DATASETS]
     subset = data[
         data["dataset"].isin(synthetic_keys)
-        & data["method"].isin(["dataframe_sampler_manual", "independent_columns", "row_bootstrap"])
+        & data["method"].isin(["dataframe_sampler", "independent_columns", "row_bootstrap"])
     ].copy()
     if subset.empty:
         raise FileNotFoundError("No synthetic controlled comparison rows found. Run the synthetic notebook first.")
@@ -295,8 +262,7 @@ def plot_synthetic_category_stress(data: pd.DataFrame, figures_dir: str | Path =
         data["dataset"].isin(synthetic_keys)
         & data["method"].isin(
             [
-                "dataframe_sampler_default",
-                "dataframe_sampler_manual",
+                "dataframe_sampler",
                 "independent_columns",
             ]
         )
@@ -376,9 +342,9 @@ def plot_manifold_validation_stress(
 def _manifold_group_label(row: pd.Series) -> str:
     if row["sample_type"] == "real_test":
         return "Held-out real"
-    if row["method"] == "dataframe_sampler_manual" and bool(row.get("out_hull", False)):
+    if row["method"] == "dataframe_sampler" and bool(row.get("out_hull", False)):
         return "DFS out-hull"
-    if row["method"] == "dataframe_sampler_manual":
+    if row["method"] == "dataframe_sampler":
         return "DFS generated"
     if row["method"] == "latent_interpolation":
         return "Latent interpolation"
@@ -464,7 +430,6 @@ def generate_all_figures(
             spec=dashboard_spec,
         ),
         plot_baseline_similarity(data, figures_dir),
-        plot_configuration_competitors(data, figures_dir),
         plot_utility_cost_frontier(data, figures_dir),
     ]
     if any(data["dataset"].isin([spec.key for spec in SYNTHETIC_DATASETS])):

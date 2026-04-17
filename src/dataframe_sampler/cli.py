@@ -75,6 +75,25 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     type=click.Path(exists=True),
     help="Path to backend-specific KNN options serialized in YAML.",
 )
+@click.option(
+    "--calibrate_decoders/--no_calibrate_decoders",
+    default=True,
+    show_default=True,
+    help="Calibrate categorical decoder probabilities when feasible.",
+)
+@click.option(
+    "--enforce_min_max_constraints/--no_enforce_min_max_constraints",
+    default=True,
+    show_default=True,
+    help="Reject and retry latent candidates outside fitted columnwise min/max ranges.",
+)
+@click.option(
+    "--max_constraint_retries",
+    type=click.IntRange(min=0, max_open=True, clamp=True),
+    default=3,
+    show_default=True,
+    help="Retries per generated row before accepting an out-of-range latent candidate.",
+)
 @click.version_option("2.0.0", "--version", "-v")
 def dataframe_sampler_main(
     input_filename,
@@ -89,6 +108,9 @@ def dataframe_sampler_main(
     random_state,
     knn_backend,
     knn_backend_kwargs_filename,
+    calibrate_decoders,
+    enforce_min_max_constraints,
+    max_constraint_retries,
 ):
     """
     Generate a dataframe file similar to the input CSV or Parquet file.
@@ -110,6 +132,9 @@ def dataframe_sampler_main(
             random_state=random_state,
             knn_backend=knn_backend,
             knn_backend_kwargs=knn_backend_kwargs,
+            calibrate_decoders=calibrate_decoders,
+            enforce_min_max_constraints=enforce_min_max_constraints,
+            max_constraint_retries=max_constraint_retries,
         )
 
     if input_filename:

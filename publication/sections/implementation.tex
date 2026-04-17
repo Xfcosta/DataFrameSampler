@@ -19,7 +19,7 @@ backends; 4) \texttt{io.py} contains CSV and Parquet dataframe I/O; and
 practice, this separation keeps optional nearest-neighbour dependencies away
 from the default path while preserving a single public estimator.
 
-Version 2.0 therefore exposes one direct estimator and removes auxiliary
+The implementation therefore exposes one direct estimator and removes auxiliary
 configuration, column-selection, embedding-method-selection, and bin-encoding
 workflows. The CLI exposes only the NCA and neighbour-transport parameters,
 which is consistent with the paper's practical-use claim: low setup cost is

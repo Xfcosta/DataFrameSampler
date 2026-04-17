@@ -36,12 +36,14 @@ The inverse map is approximate rather than algebraic. Continuous columns are
 inverse-scaled, but categorical columns require a learned decoder because the
 NCA block is not an invertible encoding of the original labels. For each
 categorical column, a \texttt{RandomForestClassifier} is trained from its final
-block $z_j$ to the observed category labels. During \texttt{inverse\_transform},
-\texttt{predict\_proba} provides an empirical distribution over fitted
-categories, and the decoder either samples from that distribution or selects
-the most likely category. Note that these probabilities are model outputs, not
-calibrated likelihoods by construction; their quality is therefore evaluated as
-a boundary diagnostic.
+block $z_j$ to the observed category labels. When the fitted class counts allow
+cross-validation, the forest probabilities are calibrated with scikit-learn's
+\texttt{CalibratedClassifierCV}; otherwise the uncalibrated forest is retained.
+During \texttt{inverse\_transform}, \texttt{predict\_proba} provides an empirical
+distribution over fitted categories, and the decoder either samples from that
+distribution or selects the most likely category. These probabilities are still
+model outputs, so their quality is evaluated as a boundary diagnostic rather
+than assumed.
 
 \subsection{Generation}
 

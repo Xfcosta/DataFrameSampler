@@ -27,8 +27,8 @@ def run_dataset_comparison(
     """Run DataFrameSampler and simple baselines, then write metric summaries."""
     results_dir = Path(results_dir)
     results_dir.mkdir(parents=True, exist_ok=True)
-    method_specs = dataframe_sampler_configuration_competitors(
-        manual_config=dataframe_sampler_config,
+    method_specs = dataframe_sampler_methods(
+        sampler_config=dataframe_sampler_config,
         random_state=random_state,
     )
     method_specs.extend(simple_baselines(target_column=target_column, random_state=random_state))
@@ -65,20 +65,15 @@ def run_dataset_comparison(
     return summary_df
 
 
-def dataframe_sampler_configuration_competitors(
+def dataframe_sampler_methods(
     *,
-    manual_config: Mapping[str, Any] | None = None,
+    sampler_config: Mapping[str, Any] | None = None,
     random_state: int = 42,
 ) -> list[BaselineSpec]:
-    """Return DataFrameSampler default and manual configuration competitors."""
-    default_config = {"random_state": random_state}
-    manual = dict(manual_config or {})
-    manual.setdefault("random_state", random_state)
-    specs = [
-        BaselineSpec("dataframe_sampler_default", DataFrameSampler(**default_config)),
-        BaselineSpec("dataframe_sampler_manual", DataFrameSampler(**manual)),
-    ]
-    return specs
+    """Return the DataFrameSampler method used in comparisons."""
+    config = dict(sampler_config or {})
+    config.setdefault("random_state", random_state)
+    return [BaselineSpec("dataframe_sampler", DataFrameSampler(**config))]
 
 
 def summarize_synthetic_sample(

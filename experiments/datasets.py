@@ -12,7 +12,7 @@ class DatasetExperimentConfig:
     title: str
     data_filename: str
     target_column: str | None
-    manual_sampler_config: dict[str, Any]
+    sampler_config: dict[str, Any]
     working_sample_size: int | None = None
     n_generated: int = 1000
     random_state: int = 42
@@ -26,7 +26,7 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         data_filename="adult.csv",
         target_column="income",
         working_sample_size=2500,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 8,
             "knn_backend": "sklearn",
         },
@@ -37,7 +37,7 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         data_filename="titanic.csv",
         target_column="survived",
         drop_columns=("class", "embarked", "alive"),
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 6,
             "knn_backend": "sklearn",
         },
@@ -49,7 +49,7 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         target_column="diagnosis",
         n_generated=569,
         random_state=52,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 6,
             "knn_backend": "sklearn",
         },
@@ -61,7 +61,7 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         target_column="diabetes",
         n_generated=768,
         random_state=53,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 6,
             "knn_backend": "sklearn",
         },
@@ -74,7 +74,7 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         working_sample_size=3000,
         n_generated=1000,
         random_state=54,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 8,
             "knn_backend": "sklearn",
         },
@@ -86,7 +86,7 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         target_column="heart_disease",
         n_generated=303,
         random_state=55,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 6,
             "knn_backend": "sklearn",
         },
@@ -98,7 +98,7 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         target_column="target",
         n_generated=500,
         random_state=101,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 6,
             "knn_backend": "sklearn",
         },
@@ -110,7 +110,7 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         target_column="target",
         n_generated=500,
         random_state=102,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 6,
             "knn_backend": "sklearn",
         },
@@ -122,7 +122,7 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         target_column="target",
         n_generated=500,
         random_state=103,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 6,
             "knn_backend": "sklearn",
         },
@@ -134,7 +134,7 @@ DATASET_CONFIGS: dict[str, DatasetExperimentConfig] = {
         target_column="risk_flag",
         n_generated=500,
         random_state=104,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 6,
             "knn_backend": "sklearn",
         },

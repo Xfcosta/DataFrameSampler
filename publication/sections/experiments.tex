@@ -12,7 +12,9 @@ points remain compatible with a frozen manifold geometry.
 
 \begin{table*}[t]
 \centering
-\caption{Claim-specific evidence plan.}
+\caption{Claim-specific evidence plan. Takeaway: each result is tied to a
+narrow claim, so the paper argues for practical, inspectable example generation
+rather than general synthetic-data optimality.}
 \label{tab:claim-evidence}
 \scriptsize
 \begin{tabular}{@{}p{0.14\textwidth}p{0.16\textwidth}p{0.24\textwidth}p{0.22\textwidth}p{0.16\textwidth}@{}}
@@ -22,7 +24,7 @@ Claim & Type & Primary evidence & Boundary evidence & Allowable conclusion \\
 Simplicity & Practical-use & API, CLI, configuration count & Runtime and dependency burden & Useful when low setup cost matters \\
 Inspectability & Practical-use & Latent blocks and neighbour chains & Implausible local translations & Outputs are auditable as examples \\
 NCA blocks & Mechanism diagnostic & NCA-vs-PCA and majority prediction lift & Per-dataset failures & Mechanism evidence only where lift is observed \\
-Decoder probabilities & Boundary diagnostic & Log loss, Brier score, calibration error & One-class and high-cardinality columns & Probabilities are diagnostic, not guaranteed calibrated \\
+Decoder probabilities & Boundary diagnostic & Log loss, Brier score, calibration error & One-class and high-cardinality columns & Probabilities are diagnostic, not assumed reliable \\
 Utility & Regime-specific & Utility lift on held-out real tasks & Dataset descriptors & Useful only where lift is observed \\
 Safeguard & Boundary & NN distance and discrimination & Exact-value overlap checks outside the model & No formal privacy claim \\
 Extrapolation & Mechanism diagnostic & Out-of-hull rate and insertion stress & Held-out real stress baseline & Empirical manifold-consistency evidence only \\
@@ -30,8 +32,7 @@ Extrapolation & Mechanism diagnostic & Out-of-hull rate and insertion stress & H
 \end{tabular}
 \end{table*}
 
-Current comparisons include DataFrameSampler default and manual configurations
-plus simple baselines: row bootstrap, independent columns, Gaussian-copula
+Current comparisons include DataFrameSampler plus simple baselines: row bootstrap, independent columns, Gaussian-copula
 empirical sampling, and target-stratified column sampling where a target exists.
 These baselines are intentionally not exhaustive; instead, they define concrete
 failure modes that are relevant to the paper's restricted claims, such as direct
@@ -43,18 +44,10 @@ row reuse, broken dependencies, or low-cost empirical marginal sampling.
 \caption{Distributional dashboard for a starter experiment. The dashboard
 places numeric histogram overlap, categorical frequency comparison, and numeric
 correlation differences in the same view, so marginal and dependence failures
-can be inspected together rather than reduced to a single score.}
+can be inspected together rather than reduced to a single score. Takeaway: the
+method must be judged across marginal and dependence evidence, not by one
+plausibility plot.}
 \label{fig:distribution-dashboard}
-\end{figure*}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{configuration_competitors.pdf}
-\caption{DataFrameSampler configuration competitors on the primary experiment
-measures. The figure treats configuration choice as practical evidence: a useful
-example-data method should not require extensive tuning to produce inspectable
-rows.}
-\label{fig:configuration-competitors}
 \end{figure*}
 
 \begin{figure*}[t]
@@ -62,7 +55,8 @@ rows.}
 \includegraphics[width=\textwidth]{synthetic_category_stress.pdf}
 \caption{Categorical stress tests on controlled synthetic datasets. These
 datasets make rare-category and high-cardinality failures observable under
-controlled conditions.}
+controlled conditions. Takeaway: controlled failures define where the method
+needs preprocessing or caution before categorical outputs are trusted.}
 \label{fig:synthetic-category-stress}
 \end{figure*}
 
@@ -73,7 +67,8 @@ controlled conditions.}
 \caption{Frozen-Isomap insertion-stress distributions. Held-out real points
 define the reference stress distribution, while generated points are split to
 show the out-of-hull subset separately; the resulting comparison is diagnostic
-rather than a proof of manifold preservation.}
+rather than a proof of manifold preservation. Takeaway: out-of-hull generation
+is meaningful only when its stress overlaps the held-out real baseline.}
 \label{fig:manifold-validation-stress}
 \end{figure*}
 }{}
@@ -87,7 +82,8 @@ rather than a proof of manifold preservation.}
 \caption{Mechanism validation for categorical NCA blocks. Positive values show
 held-out categorical prediction accuracy above majority and same-width PCA
 baselines, and negative values identify datasets where the supervised block
-does not improve on the simpler reference.}
+does not improve on the simpler reference. Takeaway: NCA is mechanism evidence
+only where this lift is observed.}
 \label{fig:mechanism-validation}
 \end{figure*}
 }{}
@@ -98,10 +94,11 @@ does not improve on the simpler reference.}
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{decoder_calibration.pdf}
-\caption{Decoder calibration diagnostics. Random-forest decoder probabilities
+\caption{Decoder calibration diagnostics. Calibrated random-forest decoder probabilities
 are evaluated with expected calibration error and negative log loss; these
 measure the quality of the probabilistic inverse map but do not impose
-calibration.}
+calibration. Takeaway: sampled categorical reconstructions should be interpreted
+through measured probability quality, not assumed calibration.}
 \label{fig:decoder-calibration}
 \end{figure*}
 }{}

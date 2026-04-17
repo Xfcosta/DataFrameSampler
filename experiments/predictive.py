@@ -90,7 +90,7 @@ def predictive_performance_report(
     test = test.reset_index(drop=True)
 
     sampler = DataFrameSampler(
-        **sampler_config_with_random_state(config.manual_sampler_config, config.random_state)
+        **sampler_config_with_random_state(config.sampler_config, config.random_state)
     )
     sampler.fit(train)
     synthetic = sampler.generate(n_samples=n_synthetic or len(train)).reset_index(drop=True)

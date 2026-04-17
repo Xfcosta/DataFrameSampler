@@ -37,7 +37,7 @@ def make_workflow_config(**overrides):
         working_sample_size=3,
         n_generated=6,
         random_state=1,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 2,
             "knn_backend": "sklearn",
         },
@@ -126,7 +126,7 @@ def test_run_starter_sampler_writes_reusable_outputs(tmp_path):
 def test_vectorization_plan_reports_categorical_nca_blocks():
     df = make_workflow_dataframe()
     config = make_workflow_config(
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 2,
             "knn_backend": "sklearn",
         }
@@ -149,7 +149,7 @@ def test_vectorization_plan_marks_high_cardinality_categoricals_as_warning():
         }
     )
     config = make_workflow_config(
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 2,
             "knn_backend": "sklearn",
         }

@@ -1,6 +1,6 @@
 # DataFrameSampler
 
-DataFrameSampler 2.0 generates synthetic mixed-type tabular rows by learning a
+DataFrameSampler generates synthetic mixed-type tabular rows by learning a
 fully numerical latent representation with supervised per-column categorical
 embeddings, then applying a local mutual-neighbor displacement operator in that
 latent space.
@@ -27,7 +27,8 @@ During `fit`:
 4. The one-hot block for `C_j` is replaced by its learned latent block.
 5. The process repeats for `n_iterations`.
 6. A `RandomForestClassifier` decoder is fit for each categorical column from
-   its final latent block back to the original categories.
+   its final latent block back to the original categories, with probability
+   calibration enabled by default when the fitted class counts permit it.
 
 The final latent matrix is:
 
@@ -136,6 +137,15 @@ Constructor arguments:
   `NeighborhoodComponentsAnalysis`.
 - `decoder_kwargs`: optional keyword arguments for `RandomForestClassifier`.
   Decoders default to `n_jobs=-1` to use all available cores.
+- `calibrate_decoders`: whether to wrap categorical decoders with
+  `CalibratedClassifierCV` when feasible. Defaults to `True`.
+- `calibration_kwargs`: optional keyword arguments for
+  `CalibratedClassifierCV`.
+- `enforce_min_max_constraints`: whether generated latent candidates that fall
+  outside the fitted columnwise latent min/max range should be rejected and
+  resampled when possible. Defaults to `True`.
+- `max_constraint_retries`: number of neighbour-chain retries before accepting
+  an out-of-range latent candidate as-is. Defaults to `3`.
 
 High-cardinality categorical columns are not dropped automatically.
 DataFrameSampler warns and proceeds, assuming such columns have been
@@ -168,7 +178,15 @@ Options:
   --knn_backend_kwargs_filename PATH
                                   Path to backend-specific KNN options
                                   serialized in YAML.
-  -v, --version                   Show the version and exit.
+  --calibrate_decoders / --no_calibrate_decoders
+                                  Calibrate categorical decoder probabilities
+                                  when feasible.
+  --enforce_min_max_constraints / --no_enforce_min_max_constraints
+                                  Reject and retry latent candidates outside
+                                  fitted columnwise min/max ranges.
+  --max_constraint_retries INTEGER RANGE
+                                  Retries per generated row before accepting an
+                                  out-of-range latent candidate.
   -h, --help                      Show this message and exit.
 ```
 

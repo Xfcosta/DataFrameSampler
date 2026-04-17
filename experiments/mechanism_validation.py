@@ -93,7 +93,7 @@ def run_mechanism_validation_for_config(
             train=train,
             test=test,
             dataset_name=config.dataset_name,
-            sampler_config=sampler_config or config.manual_sampler_config,
+            sampler_config=sampler_config or config.sampler_config,
             random_state=config.random_state,
         )
 

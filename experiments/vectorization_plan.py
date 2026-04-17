@@ -15,7 +15,7 @@ DEFAULT_HIGH_CARDINALITY_UNIQUE = 50
 
 NCA_RATIONALES: dict[str, dict[str, str]] = {
     "adult": {
-        "sex": "Binary columns are categorical targets in DataFrameSampler 2.0 and receive a supervised NCA latent block.",
+        "sex": "Binary columns are categorical targets and receive a supervised NCA latent block.",
         "income": "The binary income label is treated as a categorical target and receives a supervised NCA latent block.",
     },
     "synthetic_sensitive_identifier": {
@@ -28,9 +28,9 @@ def vectorization_plan(
     dataframe: pd.DataFrame,
     config: DatasetExperimentConfig,
     *,
-    config_key: str = "manual_sampler_config",
+    config_key: str = "sampler_config",
 ) -> pd.DataFrame:
-    """Return a human-readable plan for DataFrameSampler 2.0 latent construction."""
+    """Return a human-readable plan for DataFrameSampler latent construction."""
     sampler_config = _sampler_config(config, config_key)
     n_components = sampler_config.get("n_components", 2)
     rows: list[dict[str, Any]] = []
@@ -90,14 +90,14 @@ def preprocessing_plan(config: DatasetExperimentConfig) -> pd.DataFrame:
 
 
 def columns_requiring_vectorization(dataframe: pd.DataFrame) -> list[str]:
-    """Return columns treated as categorical NCA targets by DataFrameSampler 2.0."""
+    """Return columns treated as categorical NCA targets by DataFrameSampler."""
     return [column for column in dataframe.columns if not _is_numeric_non_binary(dataframe[column])]
 
 
 def _sampler_config(config: DatasetExperimentConfig, key: str) -> Mapping[str, Any]:
-    if key != "manual_sampler_config":
-        raise ValueError("config_key must be 'manual_sampler_config'.")
-    return config.manual_sampler_config
+    if key != "sampler_config":
+        raise ValueError("config_key must be 'sampler_config'.")
+    return config.sampler_config
 
 
 def _components_for_column(n_components: Any, column: str) -> int:

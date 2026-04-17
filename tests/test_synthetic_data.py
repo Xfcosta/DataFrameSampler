@@ -21,7 +21,7 @@ def test_synthetic_dataset_configs_cover_all_controlled_regimes():
         config = DATASET_CONFIGS[spec.key]
         assert config.data_filename == f"{spec.key}.csv"
         assert config.target_column == spec.target_column
-        assert config.manual_sampler_config["knn_backend"] == "sklearn"
+        assert config.sampler_config["knn_backend"] == "sklearn"
 
 
 def test_sensitive_identifier_dataset_has_unique_source_ids(tmp_path):

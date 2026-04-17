@@ -43,7 +43,7 @@ def make_mechanism_config(**overrides):
         title="Toy",
         data_filename="toy.csv",
         target_column="binary",
-        manual_sampler_config={
+        sampler_config={
             "n_iterations": 1,
             "n_neighbours": 2,
             "knn_backend": "sklearn",
@@ -199,13 +199,13 @@ def test_generate_all_tables_and_figures_include_mechanism_outputs(tmp_path):
         index=False,
     )
     pd.DataFrame({"x": [0.1, 1.1, 1.8], "target": [0, 1, 0], "group": ["a", "b", "a"]}).to_csv(
-        results_dir / "toy_dataframe_sampler_manual_generated.csv",
+        results_dir / "toy_dataframe_sampler_generated.csv",
         index=False,
     )
     pd.DataFrame(
         {
             "dataset": ["toy"],
-            "method": ["dataframe_sampler_manual"],
+            "method": ["dataframe_sampler"],
             "n_real": [3],
             "n_synthetic": [3],
             "numeric_ks_statistic": [0.0],
@@ -272,7 +272,7 @@ def test_generate_all_tables_and_figures_include_mechanism_outputs(tmp_path):
         figures_dir=figures_dir,
         dashboard_spec=DistributionDashboardSpec(
             dataset_name="toy",
-            generated_method="dataframe_sampler_manual",
+            generated_method="dataframe_sampler",
             numeric_column="x",
             categorical_column="group",
             correlation_columns=["x", "target"],

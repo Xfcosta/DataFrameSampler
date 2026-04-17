@@ -21,11 +21,12 @@ later extension.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{baseline_similarity.pdf}
-\caption{Complete primary-measure summary for DataFrameSampler configurations
+\caption{Complete primary-measure summary for DataFrameSampler
 and simple baselines. The panels report nearest-neighbour distance ratio,
 real-versus-synthetic discrimination accuracy, utility lift, and aggregate
 distribution similarity; row bootstrap is included as a boundary reference
-because it can score well while directly reusing source rows.}
+because it can score well while directly reusing source rows. Takeaway: the
+appendix confirms why no single metric is allowed to carry the paper's claim.}
 \label{fig:appendix-baseline-similarity}
 \end{figure*}
 
@@ -35,7 +36,8 @@ because it can score well while directly reusing source rows.}
 \caption{Complete starter utility-lift versus cost frontier. Utility lift is
 measured by adding generated rows to a real training set and evaluating on
 held-out real rows, so the figure reports a practical trade-off rather than an
-unconditional performance ranking.}
+unconditional performance ranking. Takeaway: usefulness is a cost-sensitive
+workflow property, not a universal accuracy claim.}
 \label{fig:appendix-utility-cost-frontier}
 \end{figure}
 
@@ -52,11 +54,12 @@ unconditional performance ranking.}
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{synthetic_controlled_similarity.pdf}
-\caption{Controlled synthetic-regime comparisons for manual DataFrameSampler,
+\caption{Controlled synthetic-regime comparisons for DataFrameSampler,
 independent-column sampling, and row bootstrap using the primary measures. The
 figure is boundary evidence: row bootstrap can score well because it reuses
 source rows, while independent columns can preserve marginals but break known
-dependencies.}
+dependencies. Takeaway: the controlled regimes keep the global message honest by
+making easy-but-misleading baselines visible.}
 \label{fig:appendix-synthetic-controlled-similarity}
 \end{figure*}
 

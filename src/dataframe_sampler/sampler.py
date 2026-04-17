@@ -1,3 +1,4 @@
+import inspect
 import pickle
 import warnings
 
@@ -5,6 +6,7 @@ import numpy as np
 import pandas as pd
 from pandas.api.types import is_bool_dtype, is_numeric_dtype
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.neighbors import NeighborhoodComponentsAnalysis
@@ -27,17 +29,21 @@ class NearestMutualNeighboursSampler(object):
         probability_estimator=None,
         interpolation_factor=1,
         min_interpolation_factor=1,
-        use_min_max_constraints=False,
+        use_min_max_constraints=True,
+        max_constraint_retries=3,
         random_state=None,
         max_attempts_factor=20,
     ):
         if interpolation_factor < min_interpolation_factor:
             raise ValueError("interpolation_factor must be >= min_interpolation_factor.")
+        if max_constraint_retries < 0:
+            raise ValueError("max_constraint_retries must be non-negative.")
         self.nearest_mutual_neighbours_estimator = nearest_mutual_neighbours_estimator
         self.probability_estimator = probability_estimator
         self.interpolation_factor = interpolation_factor
         self.min_interpolation_factor = min_interpolation_factor
         self.use_min_max_constraints = use_min_max_constraints
+        self.max_constraint_retries = max_constraint_retries
         self.random_state = random_state
         self.rng = make_random_state(random_state)
         self.max_attempts_factor = max_attempts_factor
@@ -50,22 +56,53 @@ class NearestMutualNeighboursSampler(object):
             raise ValueError("At least two rows are required for neighbour sampling.")
 
         self.data_mtx = X.copy()
+        self.data_min_ = np.min(X, axis=0)
+        self.data_max_ = np.max(X, axis=0)
         self.targets = None if y is None else np.asarray(y).copy()
         self.sampling_probability = self.probability_estimator.fit_predict_proba(X, y)
         self.k_nearest_mutual_neighbours = self.nearest_mutual_neighbours_estimator.fit_predict(X, y)
         self.valid_anchor_indices = self._valid_anchor_indices(self.k_nearest_mutual_neighbours)
+        self.constraint_retry_count_ = 0
+        self.constraint_violation_count_ = 0
         if len(self.valid_anchor_indices) == 0:
             raise ValueError("No valid mutual-neighbour chains were found for sampling.")
         return self
 
-    def generate(self, data_mtx, k_nearest_mutual_neighbours, sampling_probability, interpolation_factor, min_interpolation_factor):
+    def _sample_anchor_index(self, sampling_probability):
         eligible_probabilities = sampling_probability[self.valid_anchor_indices].astype(float)
         if np.sum(eligible_probabilities) == 0:
             eligible_probabilities = np.ones(len(self.valid_anchor_indices)) / len(self.valid_anchor_indices)
         else:
             eligible_probabilities = eligible_probabilities / np.sum(eligible_probabilities)
+        return random_choice(self.rng, self.valid_anchor_indices, p=eligible_probabilities)
 
-        idx1 = random_choice(self.rng, self.valid_anchor_indices, p=eligible_probabilities)
+    def generate(self, data_mtx, k_nearest_mutual_neighbours, sampling_probability, interpolation_factor, min_interpolation_factor):
+        idx1 = self._sample_anchor_index(sampling_probability)
+        candidate = None
+        retries = self.max_constraint_retries if self.use_min_max_constraints else 0
+        for attempt in range(retries + 1):
+            candidate = self._generate_from_anchor(
+                idx1,
+                data_mtx,
+                k_nearest_mutual_neighbours,
+                interpolation_factor,
+                min_interpolation_factor,
+            )
+            if not self.use_min_max_constraints or self._satisfies_min_max_constraints(candidate):
+                self.constraint_retry_count_ += attempt
+                return candidate
+        self.constraint_retry_count_ += retries
+        self.constraint_violation_count_ += 1
+        return candidate
+
+    def _generate_from_anchor(
+        self,
+        idx1,
+        data_mtx,
+        k_nearest_mutual_neighbours,
+        interpolation_factor,
+        min_interpolation_factor,
+    ):
         idx2_candidates = [
             idx for idx in k_nearest_mutual_neighbours[idx1] if len(k_nearest_mutual_neighbours[idx]) > 0
         ]
@@ -75,10 +112,8 @@ class NearestMutualNeighboursSampler(object):
         alpha = random_uniform(self.rng) * (interpolation_factor - min_interpolation_factor) + min_interpolation_factor
         return data_mtx[idx1] + alpha * (data_mtx[idx3] - data_mtx[idx2])
 
-    def min_max_constraints(self, X, Xp):
-        mn = np.min(X, axis=0)
-        mx = np.max(X, axis=0)
-        return np.clip(Xp, mn, mx)
+    def _satisfies_min_max_constraints(self, candidate):
+        return bool(np.all(candidate >= self.data_min_) and np.all(candidate <= self.data_max_))
 
     def sample(self, n_samples, target=None):
         if not hasattr(self, "data_mtx"):
@@ -107,10 +142,7 @@ class NearestMutualNeighboursSampler(object):
         if len(sampled_data_mtx) != n_samples:
             raise RuntimeError("Generated %d of %d requested samples." % (len(sampled_data_mtx), n_samples))
 
-        sampled_data_mtx = np.array(sampled_data_mtx)
-        if self.use_min_max_constraints:
-            sampled_data_mtx = self.min_max_constraints(self.data_mtx, sampled_data_mtx)
-        return sampled_data_mtx
+        return np.array(sampled_data_mtx)
 
     def _target_sampling_probability(self, target):
         if target is None:
@@ -141,7 +173,8 @@ def ConcreteNearestMutualNeighboursSampler(
     interpolation_factor=1,
     min_interpolation_factor=1,
     metric="euclidean",
-    use_min_max_constraints=False,
+    use_min_max_constraints=True,
+    max_constraint_retries=3,
     random_state=None,
     knn_backend="exact",
     knn_backend_kwargs=None,
@@ -174,6 +207,7 @@ def ConcreteNearestMutualNeighboursSampler(
         interpolation_factor=interpolation_factor,
         min_interpolation_factor=min_interpolation_factor,
         use_min_max_constraints=use_min_max_constraints,
+        max_constraint_retries=max_constraint_retries,
         random_state=random_state,
     )
 
@@ -246,6 +280,10 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         random_state=None,
         nca_kwargs=None,
         decoder_kwargs=None,
+        calibrate_decoders=True,
+        calibration_kwargs=None,
+        enforce_min_max_constraints=True,
+        max_constraint_retries=3,
     ):
         if isinstance(n_components, int) and n_components < 1:
             raise ValueError("n_components must be at least 1.")
@@ -262,6 +300,10 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         self.random_state = random_state
         self.nca_kwargs = dict(nca_kwargs or {})
         self.decoder_kwargs = dict(decoder_kwargs or {})
+        self.calibrate_decoders = calibrate_decoders
+        self.calibration_kwargs = dict(calibration_kwargs or {})
+        self.enforce_min_max_constraints = enforce_min_max_constraints
+        self.max_constraint_retries = max_constraint_retries
         self.rng = make_random_state(random_state)
 
     def fit(self, X, y=None):
@@ -435,22 +477,62 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
 
     def _fit_decoders(self, dataframe):
         self.decoders_ = {}
+        self.decoder_calibration_status_ = {}
         offset = len(self.numeric_columns_)
         for column in self.categorical_columns_:
             width = self._components_for_column(column)
             block = self.latent_data_mtx_[:, offset : offset + width]
             labels = self._categorical_keys(dataframe[column]).to_numpy(dtype=str)
-            kwargs = {
-                "n_estimators": 100,
-                "min_samples_leaf": 1,
-                "random_state": self.random_state,
-                "n_jobs": -1,
-            }
-            kwargs.update(self.decoder_kwargs)
-            decoder = RandomForestClassifier(**kwargs)
-            decoder.fit(block, labels)
+            decoder = self._fit_decoder(column, block, labels)
             self.decoders_[column] = decoder
             offset += width
+
+    def _fit_decoder(self, column, block, labels):
+        kwargs = {
+            "n_estimators": 100,
+            "min_samples_leaf": 1,
+            "random_state": self.random_state,
+            "n_jobs": -1,
+        }
+        kwargs.update(self.decoder_kwargs)
+        decoder = RandomForestClassifier(**kwargs)
+        if not self.calibrate_decoders:
+            decoder.fit(block, labels)
+            self.decoder_calibration_status_[column] = "disabled"
+            return decoder
+
+        unique_labels, counts = np.unique(labels, return_counts=True)
+        if len(unique_labels) < 2:
+            decoder.fit(block, labels)
+            self.decoder_calibration_status_[column] = "skipped_one_class"
+            return decoder
+
+        calibration_kwargs = dict(self.calibration_kwargs)
+        if "cv" not in calibration_kwargs:
+            min_class_count = int(np.min(counts))
+            if min_class_count < 2:
+                decoder.fit(block, labels)
+                self.decoder_calibration_status_[column] = "skipped_insufficient_class_count"
+                return decoder
+            calibration_kwargs["cv"] = min(5, min_class_count)
+        calibration_kwargs.setdefault("method", "sigmoid")
+        calibration_kwargs.setdefault("n_jobs", kwargs.get("n_jobs", -1))
+        calibrated = _calibrated_classifier(decoder, calibration_kwargs)
+        try:
+            calibrated.fit(block, labels)
+        except Exception as exc:
+            warnings.warn(
+                "Falling back to an uncalibrated random-forest decoder for categorical column %r "
+                "because calibration failed: %s" % (column, exc),
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            decoder = RandomForestClassifier(**kwargs)
+            decoder.fit(block, labels)
+            self.decoder_calibration_status_[column] = "failed"
+            return decoder
+        self.decoder_calibration_status_[column] = "calibrated"
+        return calibrated
 
     def _fit_generator(self):
         if self.n_fit_rows_ < 2:
@@ -461,7 +543,8 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
             interpolation_factor=self.lambda_,
             min_interpolation_factor=self.lambda_,
             metric="euclidean",
-            use_min_max_constraints=True,
+            use_min_max_constraints=self.enforce_min_max_constraints,
+            max_constraint_retries=self.max_constraint_retries,
             random_state=self.random_state,
             knn_backend=self.knn_backend,
             knn_backend_kwargs=self.knn_backend_kwargs,
@@ -553,7 +636,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
             unique_count = self._categorical_keys(dataframe[column]).nunique(dropna=False)
             if unique_count > limit:
                 warnings.warn(
-                    "Categorical column %r has %d unique values. DataFrameSampler 2.0 will use it, "
+                    "Categorical column %r has %d unique values. The sampler will use it, "
                     "but high-cardinality columns should usually be preprocessed deliberately."
                     % (column, unique_count),
                     UserWarning,
@@ -620,6 +703,13 @@ def _one_hot_encoder():
         return OneHotEncoder(handle_unknown="ignore", sparse_output=False)
     except TypeError:
         return OneHotEncoder(handle_unknown="ignore", sparse=False)
+
+
+def _calibrated_classifier(estimator, kwargs):
+    parameters = inspect.signature(CalibratedClassifierCV).parameters
+    if "estimator" in parameters:
+        return CalibratedClassifierCV(estimator=estimator, **kwargs)
+    return CalibratedClassifierCV(base_estimator=estimator, **kwargs)
 
 
 def _as_float_array(values):

@@ -25,7 +25,7 @@ def make_predictive_config():
         data_filename="toy.csv",
         target_column="target",
         random_state=1,
-        manual_sampler_config={
+        sampler_config={
             "n_neighbours": 3,
             "knn_backend": "sklearn",
             },

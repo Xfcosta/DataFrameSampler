@@ -2,12 +2,15 @@ import numpy as np
 import pandas as pd
 import pytest
 from click.testing import CliRunner
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.ensemble import RandomForestClassifier
 
 from dataframe_sampler import DataFrameSampler
 from dataframe_sampler.cli import dataframe_sampler_main
 from dataframe_sampler.io import read_dataframe, write_dataframe
 from dataframe_sampler.knn import find_nearest_neighbours
 from dataframe_sampler.neighbours import NearestMutualNeighboursEstimator
+from dataframe_sampler.sampler import NearestMutualNeighboursSampler
 
 
 def make_mixed_dataframe():
@@ -161,19 +164,43 @@ def test_inverse_transform_sample_false_is_deterministic_and_valid():
     assert set(first["flag"]).issubset(set(df["flag"]))
 
 
-def test_random_forest_decoders_use_all_cores_by_default_and_allow_override():
+def test_random_forest_decoders_are_calibrated_by_default_and_use_all_cores():
     df = make_mixed_dataframe()
 
     default_sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=17).fit(df)
+    assert all(isinstance(decoder, CalibratedClassifierCV) for decoder in default_sampler.decoders_.values())
+    assert {decoder.n_jobs for decoder in default_sampler.decoders_.values()} == {-1}
+    assert set(default_sampler.decoder_calibration_status_.values()) == {"calibrated"}
+
+
+def test_random_forest_decoder_calibration_can_be_disabled_and_n_jobs_overridden():
+    df = make_mixed_dataframe()
+
     override_sampler = DataFrameSampler(
         n_iterations=1,
         n_neighbours=3,
         random_state=17,
+        calibrate_decoders=False,
         decoder_kwargs={"n_jobs": 2},
     ).fit(df)
 
-    assert {decoder.n_jobs for decoder in default_sampler.decoders_.values()} == {-1}
+    assert all(isinstance(decoder, RandomForestClassifier) for decoder in override_sampler.decoders_.values())
     assert {decoder.n_jobs for decoder in override_sampler.decoders_.values()} == {2}
+    assert set(override_sampler.decoder_calibration_status_.values()) == {"disabled"}
+
+
+def test_decoder_calibration_skips_when_class_counts_are_too_small():
+    df = pd.DataFrame(
+        {
+            "value": [1.0, 2.0, 3.0],
+            "label": ["a", "b", "b"],
+        }
+    )
+
+    sampler = DataFrameSampler(n_iterations=1, n_neighbours=2, random_state=18).fit(df)
+
+    assert isinstance(sampler.decoders_["label"], RandomForestClassifier)
+    assert sampler.decoder_calibration_status_["label"] == "skipped_insufficient_class_count"
 
 
 def test_fixed_random_state_reproducible_generation():
@@ -217,6 +244,53 @@ def test_nearest_mutual_neighbours_fall_back_to_nearest_when_empty():
     assert neighbours[2].tolist() == [1]
 
 
+class _FixedProbabilityEstimator:
+    def fit_predict_proba(self, X, y=None):
+        return np.ones(len(X), dtype=float) / len(X)
+
+
+class _FixedNeighbourEstimator:
+    def fit_predict(self, X, y=None):
+        return np.array([np.array([1]), np.array([0])], dtype=object)
+
+
+def test_neighbour_sampler_retries_out_of_range_candidates_without_clipping():
+    sampler = NearestMutualNeighboursSampler(
+        nearest_mutual_neighbours_estimator=_FixedNeighbourEstimator(),
+        probability_estimator=_FixedProbabilityEstimator(),
+        use_min_max_constraints=True,
+        max_constraint_retries=3,
+        random_state=1,
+    ).fit(np.array([[0.0], [1.0]]))
+    candidates = iter([np.array([2.0]), np.array([0.5])])
+    sampler._sample_anchor_index = lambda sampling_probability: 0
+    sampler._generate_from_anchor = lambda *args, **kwargs: next(candidates)
+
+    generated = sampler.sample(1)
+
+    assert generated.tolist() == [[0.5]]
+    assert sampler.constraint_retry_count_ == 1
+    assert sampler.constraint_violation_count_ == 0
+
+
+def test_neighbour_sampler_accepts_out_of_range_candidate_after_retry_limit():
+    sampler = NearestMutualNeighboursSampler(
+        nearest_mutual_neighbours_estimator=_FixedNeighbourEstimator(),
+        probability_estimator=_FixedProbabilityEstimator(),
+        use_min_max_constraints=True,
+        max_constraint_retries=3,
+        random_state=1,
+    ).fit(np.array([[0.0], [1.0]]))
+    sampler._sample_anchor_index = lambda sampling_probability: 0
+    sampler._generate_from_anchor = lambda *args, **kwargs: np.array([2.0])
+
+    generated = sampler.sample(1)
+
+    assert generated.tolist() == [[2.0]]
+    assert sampler.constraint_retry_count_ == 3
+    assert sampler.constraint_violation_count_ == 1
+
+
 def test_exact_and_sklearn_knn_backends_return_neighbours_without_self():
     X = np.array([[0.0], [1.0], [10.0], [11.0]])
 
@@ -257,6 +331,7 @@ def test_cli_fits_and_generates_csv(tmp_path):
             "3",
             "--random_state",
             "3",
+            "--no_calibrate_decoders",
         ],
     )
 
@@ -273,6 +348,11 @@ def test_cli_help_shows_new_flags_and_hides_removed_flags():
     assert result.exit_code == 0
     assert "--n_components" in result.output
     assert "--n_iterations" in result.output
+    assert "--calibrate_decoders" in result.output
+    assert "--no_calibrate_decoders" in result.output
+    assert "--enforce_min_max_constraints" in result.output
+    assert "--no_enforce_min_max_constraints" in result.output
+    assert "--max_constraint_retries" in result.output
     assert "--n_bins" not in result.output
     assert "--embedding_method" not in result.output
     assert "--auto_config" not in result.output

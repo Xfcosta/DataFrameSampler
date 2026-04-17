@@ -1,67 +1,57 @@
 \begin{table}
-\caption{Starter distributional similarity results. Lower is better for KS, categorical TV, and association difference; higher is better for histogram overlap.}
+\caption{Starter distributional similarity results. Lower is better for KS, categorical TV, and association difference; higher is better for histogram overlap. Takeaway: marginal similarity alone is not decisive, because simple baselines can look strong while breaking dependencies or reusing rows.}
 \label{tab:distributional-similarity}
 \begin{adjustbox}{max width=\columnwidth}
 \begin{tabular}{llrrrrl}
 \toprule
 Dataset & Method & KS & Cat. TV & Assoc. diff. & Hist. overlap & Caveat \\
 \midrule
-adult & DFS default & 0.026 & 0.053 & 0.045 & 0.941 & Generated sample \\
-adult & DFS manual & 0.031 & 0.040 & 0.050 & 0.950 & Generated sample \\
+adult & DataFrameSampler & 0.031 & 0.040 & 0.050 & 0.950 & Generated sample \\
 adult & Gaussian copula & 0.046 & 0.020 & 0.103 & 0.945 & Numeric copula only \\
 adult & Independent columns & 0.018 & 0.026 & 0.105 & 0.973 & Breaks dependencies \\
 adult & Row bootstrap & 0.018 & 0.027 & 0.030 & 0.975 & Reuses source rows \\
 adult & Stratified columns & 0.020 & 0.028 & 0.073 & 0.969 & Generated sample \\
-bank\_marketing & DFS default & 0.022 & 0.036 & 0.046 & 0.964 & Generated sample \\
-bank\_marketing & DFS manual & 0.019 & 0.024 & 0.050 & 0.971 & Generated sample \\
+bank\_marketing & DataFrameSampler & 0.019 & 0.024 & 0.050 & 0.971 & Generated sample \\
 bank\_marketing & Gaussian copula & 0.042 & 0.015 & 0.102 & 0.952 & Numeric copula only \\
 bank\_marketing & Independent columns & 0.014 & 0.020 & 0.129 & 0.981 & Breaks dependencies \\
 bank\_marketing & Row bootstrap & 0.011 & 0.022 & 0.026 & 0.984 & Reuses source rows \\
 bank\_marketing & Stratified columns & 0.015 & 0.021 & 0.116 & 0.979 & Generated sample \\
-breast\_cancer & DFS default & 0.108 & 0.009 & 0.111 & 0.862 & Generated sample \\
-breast\_cancer & DFS manual & 0.099 & 0.012 & 0.125 & 0.860 & Generated sample \\
+breast\_cancer & DataFrameSampler & 0.099 & 0.012 & 0.125 & 0.860 & Generated sample \\
 breast\_cancer & Gaussian copula & 0.032 & 0.009 & 0.084 & 0.954 & Numeric copula only \\
 breast\_cancer & Independent columns & 0.036 & 0.007 & 0.369 & 0.943 & Breaks dependencies \\
 breast\_cancer & Row bootstrap & 0.038 & 0.007 & 0.017 & 0.946 & Reuses source rows \\
 breast\_cancer & Stratified columns & 0.034 & 0.016 & 0.184 & 0.948 & Generated sample \\
-heart\_disease & DFS default & 0.116 & 0.054 & 0.099 & 0.807 & Generated sample \\
-heart\_disease & DFS manual & 0.140 & 0.068 & 0.092 & 0.785 & Generated sample \\
+heart\_disease & DataFrameSampler & 0.140 & 0.068 & 0.092 & 0.785 & Generated sample \\
 heart\_disease & Gaussian copula & 0.046 & 0.032 & 0.124 & 0.926 & Numeric copula only \\
 heart\_disease & Independent columns & 0.038 & 0.021 & 0.151 & 0.934 & Breaks dependencies \\
 heart\_disease & Row bootstrap & 0.036 & 0.022 & 0.052 & 0.937 & Reuses source rows \\
 heart\_disease & Stratified columns & 0.038 & 0.026 & 0.078 & 0.930 & Generated sample \\
-pima\_diabetes & DFS default & 0.115 & 0.007 & 0.094 & 0.827 & Generated sample \\
-pima\_diabetes & DFS manual & 0.116 & 0.004 & 0.095 & 0.818 & Generated sample \\
+pima\_diabetes & DataFrameSampler & 0.116 & 0.004 & 0.095 & 0.818 & Generated sample \\
 pima\_diabetes & Gaussian copula & 0.042 & 0.025 & 0.085 & 0.936 & Numeric copula only \\
 pima\_diabetes & Independent columns & 0.030 & 0.026 & 0.194 & 0.950 & Breaks dependencies \\
 pima\_diabetes & Row bootstrap & 0.031 & 0.022 & 0.031 & 0.948 & Reuses source rows \\
 pima\_diabetes & Stratified columns & 0.030 & 0.010 & 0.119 & 0.946 & Generated sample \\
-synthetic\_correlated\_helpers & DFS default & 0.039 & 0.029 & 0.085 & 0.924 & Generated sample \\
-synthetic\_correlated\_helpers & DFS manual & 0.041 & 0.028 & 0.065 & 0.923 & Generated sample \\
+synthetic\_correlated\_helpers & DataFrameSampler & 0.041 & 0.028 & 0.065 & 0.923 & Generated sample \\
 synthetic\_correlated\_helpers & Gaussian copula & 0.036 & 0.027 & 0.459 & 0.950 & Numeric copula only \\
 synthetic\_correlated\_helpers & Independent columns & 0.037 & 0.035 & 0.713 & 0.944 & Breaks dependencies \\
 synthetic\_correlated\_helpers & Row bootstrap & 0.031 & 0.020 & 0.013 & 0.944 & Reuses source rows \\
 synthetic\_correlated\_helpers & Stratified columns & 0.034 & 0.026 & 0.191 & 0.938 & Generated sample \\
-synthetic\_high\_cardinality & DFS default & 0.066 & 0.096 & 0.107 & 0.908 & Generated sample \\
-synthetic\_high\_cardinality & DFS manual & 0.080 & 0.088 & 0.143 & 0.902 & Generated sample \\
+synthetic\_high\_cardinality & DataFrameSampler & 0.080 & 0.088 & 0.143 & 0.902 & Generated sample \\
 synthetic\_high\_cardinality & Gaussian copula & 0.046 & 0.072 & 0.414 & 0.928 & Numeric copula only \\
 synthetic\_high\_cardinality & Independent columns & 0.029 & 0.065 & 0.544 & 0.947 & Breaks dependencies \\
 synthetic\_high\_cardinality & Row bootstrap & 0.024 & 0.046 & 0.017 & 0.960 & Reuses source rows \\
 synthetic\_high\_cardinality & Stratified columns & 0.018 & 0.065 & 0.201 & 0.966 & Generated sample \\
-synthetic\_rare\_categories & DFS default & 0.098 & 0.080 & 0.083 & 0.833 & Generated sample \\
-synthetic\_rare\_categories & DFS manual & 0.122 & 0.095 & 0.094 & 0.791 & Generated sample \\
+synthetic\_rare\_categories & DataFrameSampler & 0.122 & 0.095 & 0.094 & 0.791 & Generated sample \\
 synthetic\_rare\_categories & Gaussian copula & 0.033 & 0.023 & 0.187 & 0.949 & Numeric copula only \\
 synthetic\_rare\_categories & Independent columns & 0.021 & 0.015 & 0.346 & 0.950 & Breaks dependencies \\
 synthetic\_rare\_categories & Row bootstrap & 0.020 & 0.021 & 0.024 & 0.951 & Reuses source rows \\
 synthetic\_rare\_categories & Stratified columns & 0.027 & 0.053 & 0.166 & 0.942 & Generated sample \\
-synthetic\_sensitive\_identifier & DFS default & 0.077 & 0.156 & 0.103 & 0.863 & Generated sample \\
-synthetic\_sensitive\_identifier & DFS manual & 0.086 & 0.155 & 0.105 & 0.854 & Generated sample \\
+synthetic\_sensitive\_identifier & DataFrameSampler & 0.086 & 0.155 & 0.105 & 0.854 & Generated sample \\
 synthetic\_sensitive\_identifier & Gaussian copula & 0.043 & 0.164 & 0.088 & 0.931 & Numeric copula only \\
 synthetic\_sensitive\_identifier & Independent columns & 0.028 & 0.166 & 0.142 & 0.954 & Breaks dependencies \\
 synthetic\_sensitive\_identifier & Row bootstrap & 0.046 & 0.166 & 0.026 & 0.946 & Reuses source rows \\
 synthetic\_sensitive\_identifier & Stratified columns & 0.025 & 0.164 & 0.059 & 0.955 & Generated sample \\
-titanic & DFS default & 0.048 & 0.077 & 0.054 & 0.944 & Generated sample \\
-titanic & DFS manual & 0.037 & 0.065 & 0.057 & 0.946 & Generated sample \\
+titanic & DataFrameSampler & 0.037 & 0.065 & 0.057 & 0.946 & Generated sample \\
 titanic & Gaussian copula & 0.037 & 0.023 & 0.224 & 0.959 & Numeric copula only \\
 titanic & Independent columns & 0.019 & 0.026 & 0.244 & 0.976 & Breaks dependencies \\
 titanic & Row bootstrap & 0.025 & 0.023 & 0.025 & 0.972 & Reuses source rows \\
