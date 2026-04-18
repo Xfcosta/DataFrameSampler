@@ -1,93 +1,125 @@
 \section{Experiments}
 \label{sec:experiments}
 
-The experiments instantiate the evidence framework in
-Section~\ref{sec:evaluation-framework}. The primary comparisons ask whether
-generated rows avoid trivial reuse, preserve marginal and dependence structure,
-and provide useful augmentation for held-out real tasks. The mechanism
-diagnostics ask whether the supervised NCA blocks and decoders behave as the
-method interpretation suggests. The boundary diagnostics ask whether local
-transport and default parameter choices remain stable enough for the restricted
-practical-use claim.
+The experiments are organized as a claim-specific argument rather than as a
+leaderboard. The binding primary claim is practical: DataFrameSampler is
+intended to be preferable for low-setup, inspectable synthetic tabular example
+generation under limited tuning and moderate data sizes. The binding secondary
+claim is mechanistic: the NCA-based latent construction should improve local
+categorical consistency enough to make displacement-based generation
+meaningful. These claims determine the evidence structure.
+
+\subsection{Claims and Evaluation Structure}
+
+\paragraph{Primary claim: practical use.}
+The method is preferable for low-setup, inspectable synthetic tabular data
+generation when the workflow values a small estimator, visible mechanisms, and
+moderate runtime over fully optimized synthetic-data fidelity.
+
+\paragraph{Secondary claim: mechanism.}
+The supervised categorical latent blocks improve local categorical structure,
+which makes the local displacement operator more meaningful than applying a
+geometric rule directly to one-hot or raw mixed-type columns.
+
+\begin{table}[t]
+\centering
+\caption{Claim-to-evidence structure used in the experiments. Each block names
+the failure it is meant to prevent, the instrument used to detect that failure,
+and the strongest conclusion the block can support. Takeaway: the empirical
+section is organized by allowable conclusions rather than by post hoc metric
+selection.}
+\label{tab:experiment-claim-blocks}
+\small
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Block & Evidence role & Failure prevented & Allowable conclusion \\
+\midrule
+Practical usability & Primary & Good behaviour needs hidden tuning or cost & Preferable only under limited setup and moderate scale \\
+Data fidelity and utility & Primary & Samples are copied, separable, or useless & Dataset-specific usefulness where multiple metrics agree \\
+Mechanism validation & Supporting & Behaviour comes from unrelated components & NCA mechanism supported only where ablations show lift \\
+Boundary conditions & Boundary & Diagnostics are mistaken for guarantees & Scope is narrowed where stress, calibration, or constraints fail \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
 
 The prepared public dataset suite is designed for coverage rather than
 leaderboard breadth. Adult is the running example, Titanic is a small
 illustrative case, Bank Marketing provides a mid-sized business benchmark, the
 medical datasets exercise small clinical-style regimes, and Covertype adds a
 larger public source table with continuous terrain measurements and categorical
-terrain context. The repeated diagnostics use deterministic row caps so that
-notebook execution remains practical.
+terrain context. The controlled datasets isolate high cardinality, rare
+categories, dependency structure, and identifier-like columns. Repeated
+diagnostics use deterministic row caps so notebook execution remains practical.
+The configured DataFrameSampler runs fit NCA blocks on a deterministic 25\%
+row sample and then apply the learned projections to all rows; this is the
+starting scalability setting used for the experiments rather than a tuned
+dataset-specific choice.
 
 Current comparisons include DataFrameSampler plus row bootstrap, independent
 columns, Gaussian-copula empirical sampling, and target-stratified column
 sampling where a target exists. These baselines define concrete failure modes:
-row reuse, broken dependencies, and low-cost marginal sampling. They are not
-intended to exhaust the tabular-generation literature.
+row reuse, broken dependencies, and low-cost marginal sampling. CTGAN is
+included only as an optional Adult reference point for a high-capacity global
+generative model, not as a fully tuned competitor.
 
-\subsection{Where the Proposed Method Is Preferred}
+\subsection{Practical Usability: Primary Evidence}
+\label{sec:practical-usability}
 
-The intended preference regime is practical rather than universal. Compared
-with row bootstrap, the method is preferred when copying complete records is an
-unacceptable default behaviour. Compared with independent column sampling, it
-is preferred when cross-column dependence should remain visible in examples.
-Compared with heavier tabular generators, it is preferred when a user needs a
-small scikit-learn-style object whose fitted latent blocks, neighbour chains,
-decoder probabilities, runtime, and failure modes can be inspected directly.
-The experiments therefore report where these advantages appear, and they avoid
-claiming superiority on datasets or metrics where the evidence does not
-support it.
+This block prevents the failure in which a method appears simple in prose but
+requires extensive tuning, hidden dependencies, or impractical runtime before
+it becomes useful. The instruments are the public API, CLI, runtime table, and
+the capped Adult setup comparison. The three named DataFrameSampler setups are
+predeclared operating points: fast uses no NCA refinement, no retry budget, and
+no calibration; default uses one refinement iteration and a small retry budget;
+accurate uses two refinement iterations, a larger retry budget, and calibrated
+decoders. They are not treated as three methods to rank across every dataset.
 
-The three named DataFrameSampler setups are shown on one representative
-dataset, Adult Census Income. This keeps setup choice separate from the main
-cross-dataset evidence: fast, default, and accurate are practical operating
-points, not three additional methods to rank across every benchmark.
+\IfFileExists{../experiments/figures/sensitivity_validation.pdf}{
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{sensitivity_validation.pdf}
+\caption{Capped comparison of the fast, default, and accurate DataFrameSampler
+setups on Adult Census Income. The panels summarize distributional score,
+utility lift, and discrimination accuracy for three predeclared operating
+points. Takeaway: setup choice is a practical speed--accuracy tradeoff
+illustration, not evidence of global hyperparameter optimality.}
+\label{fig:sensitivity-validation}
+\end{figure}
+}{}
 
-\subsection{Secondary Diagnostic: Class Rebalancing}
+\IfFileExists{tables/sensitivity_validation.tex}{\input{tables/sensitivity_validation}}{}
 
-Because the transport operator is adjacent to oversampling-style local
-augmentation, we include a limited class-rebalancing diagnostic. This is a
-secondary use case, not the paper's primary claim. On selected binary target
-datasets, the protocol splits real data into train and held-out test rows,
-identifies the minority class in the training split, and adds synthetic
-minority rows until the training split reaches parity. DataFrameSampler is fit
-only on minority-class feature rows, and generated rows are then labelled as
-the minority class. The same held-out real test split is used to compare a
-classifier trained on real rows alone with classifiers trained on real plus
-DataFrameSampler-balanced rows, real plus a SMOTE-family reference when the
-optional dependency is available, and real plus stratified empirical minority
-rows. The reference uses SMOTENC when categorical features are present and
-ordinary SMOTE for numeric-only feature tables.
+\paragraph{Sensitivity to default parameters.}
+We vary $\lambda$, NCA dimension $k$, and iteration count $T$ around the default
+configuration and report the corresponding changes in distribution score,
+utility lift, and discrimination accuracy. The goal is not to optimize
+performance, but to test whether the default configuration is stable under
+small perturbations.
 
-The reported metrics are balanced accuracy, macro F1, minority recall, and
-binary PR-AUC where applicable. These quantities are minority-sensitive, but
-they do not convert the method into a general imbalance-learning optimizer.
-They test only whether traceable minority examples can be useful under one
-fixed rebalance protocol.
+The current evidence supports a limited setup claim, not a full
+hyperparameter-optimization claim. We do not report equal-budget tuning curves
+against all baselines, and therefore we do not conclude that the method is
+best under arbitrary tuning budgets. The allowable conclusion is narrower:
+under the predeclared default configuration and observed parameter sensitivity,
+the method remains usable enough for the intended notebook and example-data
+workflow.
 
-\subsection{Comparison with High-Capacity Generative Models}
+\subsection{Data Fidelity and Utility: Primary Evidence}
 
-We include CTGAN as an optional Adult-only reference model because modern deep
-tabular generators are an important design point for reviewers and users.
-This comparison is deliberately limited. CTGAN is not treated as a target to
-beat, and we do not perform broad hyperparameter optimization. Instead, it is
-used to locate DataFrameSampler relative to a model with a global adversarial
-training objective, a heavier dependency stack, and lower decomposition into
-inspectable components. The same primary metrics are reported for the
-reference run:
-distributional score, real-versus-synthetic discrimination, utility lift,
-runtime, and memory.
-
-Table~\ref{tab:deep-reference-comparison} reports the capped Adult reference
-run. CTGAN attains a distributional score close to the default
-DataFrameSampler run on the same dataset, but the discriminator separates
-CTGAN samples from real rows more easily, and the measured utility lift is
-negative in this run. This is not a general CTGAN conclusion: the model was not
-tuned, and only one representative dataset is used. The result instead
-illustrates the intended comparison role. A high-capacity model can occupy a
-nearby fidelity region while offering a different tradeoff: a global
-adversarial objective, an optional deep-learning dependency stack, and less
-component-level inspectability, rather than an explicit latent construction
-with auditable blocks and neighbour chains.
+This block prevents three common failures: generated rows may be near-copies of
+training rows, they may preserve isolated marginals while breaking dependence,
+or they may look plausible but harm held-out downstream tasks. The instruments
+are nearest-neighbour distance tests, real-versus-synthetic discrimination,
+distributional summaries, and utility lift on held-out real data. Each metric
+supports a different claim: distributional similarity supports resemblance,
+discrimination supports non-triviality of the generated distribution, and
+utility lift supports task usefulness only where the lift is observed. Formal
+definitions of the reported measures are given in
+Appendix~\ref{app:measure-definitions}. In the tables, arrows in front of
+quality-measure names indicate whether higher values, lower values, or a target
+value are preferred.
 
 \begin{figure}[t]
 \centering
@@ -100,6 +132,90 @@ method must be judged across marginal and dependence evidence, not by one
 plausibility plot.}
 \label{fig:distribution-dashboard}
 \end{figure}
+
+The full public-dataset tables in Appendix~\ref{app:experiments} give the
+numeric summaries and make negative results visible. Row bootstrap can score
+well on distributional or utility metrics while copying rows, so it is a
+boundary reference rather than a desirable generator. Independent-column
+sampling can preserve simple marginals while weakening dependence. DataFrameSampler
+is therefore preferred only where the multi-metric pattern avoids these
+degenerate alternatives. Where utility lift is weak or negative, the practical
+augmentation claim is correspondingly not supported for that dataset.
+
+\IfFileExists{tables/primary_uncertainty.tex}{\input{tables/primary_uncertainty}}{}
+
+\IfFileExists{tables/cross_dataset_aggregation.tex}{\input{tables/cross_dataset_aggregation}}{}
+
+We report variability across repeated Adult runs and a descriptive
+cross-dataset aggregation, but we do not perform formal statistical
+significance testing across datasets; therefore conclusions remain descriptive
+and dataset-specific.
+
+\subsection{Mechanism Validation: Supporting Evidence}
+
+This block prevents the failure in which useful behaviour is attributed to NCA
+or transport without controlled replacement evidence. The first mechanism
+instrument tests each categorical block directly. For every categorical column,
+the fitted NCA block is used to predict held-out labels and compared with a
+majority-class baseline, a same-width PCA projection of the same context, and a
+raw-context classifier as a high-capacity reference. These comparisons are
+capacity-aware: PCA has the same width as the NCA block, and the raw-context
+classifier defines an upper reference for information in the full context.
+
+\IfFileExists{../experiments/figures/mechanism_validation.pdf}{
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{mechanism_validation.pdf}
+\caption{Mechanism validation for categorical NCA blocks. Positive values show
+held-out categorical prediction accuracy above majority and same-width PCA
+baselines, and negative values identify datasets where the supervised block
+does not improve on the simpler reference. Takeaway: NCA is mechanism evidence
+only where this lift is observed.}
+\label{fig:mechanism-validation}
+\end{figure}
+}{}
+
+\IfFileExists{tables/mechanism_validation.tex}{\input{tables/mechanism_validation}}{}
+
+The second mechanism instrument checks the probabilistic inverse map. Because
+categorical reconstruction uses random-forest probabilities, probability
+quality must be measured rather than assumed. We therefore report negative log
+loss, Brier score, top-class confidence, accuracy, and expected calibration
+error. Calibration is supporting evidence for probabilistic reconstruction
+quality and boundary evidence for interpreting sampled outputs as calibrated
+draws.
+
+\IfFileExists{../experiments/figures/decoder_calibration.pdf}{
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{decoder_calibration.pdf}
+\caption{Decoder probability diagnostics. Random-forest decoder probabilities,
+with calibration enabled only when explicitly requested by the diagnostic
+workflow, are evaluated with expected calibration error and negative log loss.
+These measures describe the quality of the probabilistic inverse map but do not
+impose calibration on the default sampler. Takeaway: sampled categorical
+reconstructions should be interpreted through measured probability quality, not
+assumed calibration.}
+\label{fig:decoder-calibration}
+\end{figure}
+}{}
+
+\IfFileExists{tables/decoder_calibration.tex}{\input{tables/decoder_calibration}}{}
+
+The current mechanism evidence is intentionally partial. It tests NCA against
+PCA and majority references, and it tests transport indirectly through latent
+bootstrap and interpolation diagnostics. It does not yet provide a full
+matched-capacity ablation of every decoder and generator replacement. The
+allowable conclusion is therefore that the mechanism is supported where the
+reported ablations show lift, not that every component is globally necessary.
+
+\subsection{Boundary Conditions and Failure Modes}
+
+This block prevents diagnostic evidence from being read as a guarantee. The
+controlled stress tests expose rare-category and high-cardinality regimes; the
+frozen-Isomap test examines extrapolative behaviour without claiming manifold
+preservation; and the class-rebalancing diagnostic checks an oversampling-
+adjacent use case without turning the paper into an imbalance-learning study.
 
 \begin{figure}[t]
 \centering
@@ -126,52 +242,14 @@ is meaningful only when its stress overlaps the held-out real baseline.}
 
 \IfFileExists{tables/manifold_validation.tex}{\input{tables/manifold_validation}}{}
 
-\IfFileExists{../experiments/figures/mechanism_validation.pdf}{
-\begin{figure}[t]
-\centering
-\includegraphics[width=\textwidth]{mechanism_validation.pdf}
-\caption{Mechanism validation for categorical NCA blocks. Positive values show
-held-out categorical prediction accuracy above majority and same-width PCA
-baselines, and negative values identify datasets where the supervised block
-does not improve on the simpler reference. Takeaway: NCA is mechanism evidence
-only where this lift is observed.}
-\label{fig:mechanism-validation}
-\end{figure}
-}{}
-
-\IfFileExists{tables/mechanism_validation.tex}{\input{tables/mechanism_validation}}{}
-
-\IfFileExists{../experiments/figures/decoder_calibration.pdf}{
-\begin{figure}[t]
-\centering
-\includegraphics[width=\textwidth]{decoder_calibration.pdf}
-\caption{Decoder probability diagnostics. Random-forest decoder probabilities,
-with calibration enabled only when explicitly requested by the diagnostic
-workflow, are evaluated with expected calibration error and negative log loss.
-These measures describe the quality of the probabilistic inverse map but do not
-impose calibration on the default sampler. Takeaway: sampled categorical
-reconstructions should be interpreted through measured probability quality, not
-assumed calibration.}
-\label{fig:decoder-calibration}
-\end{figure}
-}{}
-
-\IfFileExists{tables/decoder_calibration.tex}{\input{tables/decoder_calibration}}{}
-
-\IfFileExists{../experiments/figures/sensitivity_validation.pdf}{
-\begin{figure}[t]
-\centering
-\includegraphics[width=\textwidth]{sensitivity_validation.pdf}
-\caption{Capped comparison of the fast, default, and accurate DataFrameSampler
-setups on Adult Census Income. The panels summarize distributional score,
-utility lift, and discrimination accuracy for the three operating points.
-Takeaway: setup choice is a practical speed--accuracy tradeoff illustration,
-not an additional cross-dataset superiority claim.}
-\label{fig:sensitivity-validation}
-\end{figure}
-}{}
-
-\IfFileExists{tables/sensitivity_validation.tex}{\input{tables/sensitivity_validation}}{}
+Because the transport operator is adjacent to oversampling-style local
+augmentation, we include a limited class-rebalancing diagnostic. This is a
+secondary use case. On selected binary target datasets, DataFrameSampler is fit
+only on minority-class feature rows, generated rows are labelled as the
+minority class, and the augmented training split is evaluated on held-out real
+rows. The comparison includes a SMOTE-family reference when the optional
+\texttt{imbalanced-learn} dependency is available and a stratified empirical
+minority reference.
 
 \IfFileExists{../experiments/figures/imbalance_validation.pdf}{
 \begin{figure}[t]
@@ -188,4 +266,45 @@ oversampling-adjacent use case, not a new central imbalance-learning claim.}
 
 \IfFileExists{tables/imbalance_validation.tex}{\input{tables/imbalance_validation}}{}
 
+\subsection{High-Capacity Reference Models}
+
+Modern deep tabular generators are a relevant reference point, but they answer
+a different design question. We include CTGAN on Adult to locate
+DataFrameSampler relative to a model with a global adversarial objective, a
+heavier dependency stack, and lower component-level inspectability. This is not
+a leaderboard comparison and it is not a tuned CTGAN study.
+
 \IfFileExists{tables/deep_reference_comparison.tex}{\input{tables/deep_reference_comparison}}{}
+
+The Adult reference run shows a nearby distributional region but a different
+tradeoff: CTGAN has a global deep objective and can improve with tuning, while
+DataFrameSampler exposes fitted blocks, analogy traces, rejection diagnostics,
+and decoder probabilities. The allowable conclusion is design-space
+positioning, not superiority over modern deep tabular models.
+
+\subsection{Synthesis: Allowable Conclusions}
+
+The supported conclusion is practical and conditional. DataFrameSampler is
+useful for small-to-medium, mixed-type example-data workflows when low setup,
+inspectable construction, and dataframe-native outputs matter. It is preferred
+over row bootstrap when complete record reuse is unacceptable, over independent
+columns when dependence must remain visible, and over heavier generators when
+component-level diagnostics are more important than a global objective.
+The practical-use conclusion holds under the observed parameter sensitivity and
+default configurations reported in Section~\ref{sec:practical-usability}.
+
+The mechanism conclusion is narrower. NCA blocks are supported only where they
+improve held-out categorical prediction over majority and same-width PCA
+references. Decoder probabilities are usable only to the extent measured by
+calibration diagnostics. Frozen-Isomap and convex-hull results are diagnostic
+evidence for extrapolative consistency, not a guarantee of manifold
+preservation. Class-rebalancing results show that traceable minority examples
+can help under a fixed protocol on some datasets, not that the method is a
+general imbalance optimizer.
+
+The paper does not support claims of formal privacy, calibrated probabilistic
+modelling by default, large-scale optimality, or guaranteed constraint
+satisfaction. It supports a bounded design-space claim: an inspectable
+analogy-based generator can occupy a useful low-setup point for mixed-type
+tabular examples, provided its diagnostics are read together and its failure
+modes remain visible.

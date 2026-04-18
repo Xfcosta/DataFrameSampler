@@ -4,7 +4,7 @@
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{lllrrr}
 \toprule
-Dataset & Method & Task & Real train score & Augmented score & Utility lift \\
+Dataset & Method & Task & $\uparrow$ Real train score & $\uparrow$ Augmented score & $\uparrow$ Utility lift \\
 \midrule
 adult & DataFrameSampler & classification & 0.825 & 0.825 & 0.000 \\
 adult & Gaussian copula & classification & 0.825 & 0.813 & -0.011 \\
@@ -51,7 +51,7 @@ synthetic\_sensitive\_identifier & Gaussian copula & classification & 0.505 & 0.
 synthetic\_sensitive\_identifier & Independent columns & classification & 0.505 & 0.505 & 0.000 \\
 synthetic\_sensitive\_identifier & Row bootstrap & classification & 0.505 & 0.658 & 0.153 \\
 synthetic\_sensitive\_identifier & Stratified columns & classification & 0.505 & 0.658 & 0.153 \\
-titanic & DataFrameSampler & classification & 0.802 & 0.834 & 0.032 \\
+titanic & DataFrameSampler & classification & 0.802 & 0.836 & 0.034 \\
 titanic & Gaussian copula & classification & 0.802 & 0.820 & 0.018 \\
 titanic & Independent columns & classification & 0.802 & 0.820 & 0.018 \\
 titanic & Row bootstrap & classification & 0.802 & 0.874 & 0.072 \\

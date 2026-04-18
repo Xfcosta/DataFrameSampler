@@ -338,6 +338,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         knn_backend_kwargs=None,
         random_state=None,
         nca_kwargs=None,
+        nca_fit_sample_size=None,
         decoder_kwargs=None,
         calibrate_decoders=False,
         calibration_kwargs=None,
@@ -352,6 +353,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
             raise ValueError("n_iterations must be non-negative.")
         if n_neighbours < 1:
             raise ValueError("n_neighbours must be at least 1.")
+        self._validate_nca_fit_sample_size(nca_fit_sample_size)
         if numeric_std_threshold <= 0:
             raise ValueError("numeric_std_threshold must be positive.")
         self.n_components = n_components
@@ -362,6 +364,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         self.knn_backend_kwargs = dict(knn_backend_kwargs or {})
         self.random_state = random_state
         self.nca_kwargs = dict(nca_kwargs or {})
+        self.nca_fit_sample_size = nca_fit_sample_size
         self.decoder_kwargs = dict(decoder_kwargs or {})
         self.calibrate_decoders = calibrate_decoders
         self.calibration_kwargs = dict(calibration_kwargs or {})
@@ -487,21 +490,25 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
 
     def _fit_iterative_projectors(self, blocks):
         self.projector_steps_ = []
+        self.nca_fit_indices_ = {}
         current_blocks = {key: value.copy() for key, value in blocks.items()}
         for iteration in range(self.n_iterations):
             for column in self.categorical_columns_:
                 input_keys = [key for key in current_blocks.keys() if key != column]
                 context = self._concat_blocks(current_blocks, input_keys, n_rows=self.n_fit_rows_)
                 labels = self.category_labels_[column]
-                projector = self._fit_projector(column, context, labels)
+                projector, fit_indices = self._fit_projector(column, context, labels)
                 projected = projector.transform(context)
                 current_blocks[column] = projected
+                step_key = (iteration, column)
+                self.nca_fit_indices_[step_key] = fit_indices
                 self.projector_steps_.append(
                     {
                         "iteration": iteration,
                         "column": column,
                         "input_keys": input_keys,
                         "projector": projector,
+                        "fit_indices": fit_indices,
                     }
                 )
         self._fit_blocks_ = current_blocks
@@ -517,8 +524,9 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
     def _fit_projector(self, column, context, labels):
         width = self._components_for_column(column)
         unique_labels = pd.unique(pd.Series(labels))
+        fit_indices = self._nca_fit_indices(labels)
         if context.shape[1] == 0 or len(unique_labels) < 2:
-            return ConstantProjector(width).fit(context, labels)
+            return ConstantProjector(width).fit(context, labels), fit_indices
         effective_width = min(width, context.shape[1])
         kwargs = dict(self.nca_kwargs)
         kwargs.setdefault("max_iter", 100)
@@ -526,7 +534,11 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
             kwargs.setdefault("random_state", self.random_state)
         estimator = NeighborhoodComponentsAnalysis(n_components=effective_width, **kwargs)
         try:
-            return PaddedProjector(estimator, width).fit(context, labels)
+            fit_context = context[fit_indices]
+            fit_labels = np.asarray(labels)[fit_indices]
+            if len(pd.unique(pd.Series(fit_labels))) < 2:
+                return ConstantProjector(width).fit(fit_context, fit_labels), fit_indices
+            return PaddedProjector(estimator, width).fit(fit_context, fit_labels), fit_indices
         except Exception as exc:
             warnings.warn(
                 "Falling back to a constant latent block for categorical column %r because NCA failed: %s"
@@ -534,7 +546,43 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
                 RuntimeWarning,
                 stacklevel=2,
             )
-            return ConstantProjector(width).fit(context, labels)
+            return ConstantProjector(width).fit(context[fit_indices], np.asarray(labels)[fit_indices]), fit_indices
+
+    def _nca_fit_indices(self, labels):
+        n_rows = len(labels)
+        sample_size = self._resolved_nca_fit_sample_size(n_rows)
+        if sample_size >= n_rows:
+            return np.arange(n_rows, dtype=int)
+        labels = np.asarray(labels)
+        return self._stratified_indices(labels, sample_size)
+
+    def _resolved_nca_fit_sample_size(self, n_rows):
+        if self.nca_fit_sample_size is None:
+            return n_rows
+        if isinstance(self.nca_fit_sample_size, float):
+            return min(n_rows, max(1, int(np.ceil(n_rows * self.nca_fit_sample_size))))
+        return min(n_rows, int(self.nca_fit_sample_size))
+
+    def _stratified_indices(self, labels, sample_size):
+        rng = make_random_state(self.random_state)
+        series = pd.Series(labels)
+        groups = [np.asarray(group.index, dtype=int) for _, group in series.groupby(series, sort=False)]
+        if len(groups) <= sample_size:
+            chosen = [random_choice(rng, group) for group in groups]
+        else:
+            group_indices = rng.choice(len(groups), size=sample_size, replace=False)
+            chosen = [random_choice(rng, groups[idx]) for idx in group_indices]
+
+        remaining = sample_size - len(chosen)
+        if remaining > 0:
+            selected = set(int(idx) for idx in chosen)
+            available = np.asarray([idx for idx in range(len(labels)) if idx not in selected], dtype=int)
+            if len(available) > 0:
+                extra = rng.choice(available, size=min(remaining, len(available)), replace=False)
+                chosen.extend(int(idx) for idx in extra)
+        chosen = np.asarray(chosen, dtype=int)
+        rng.shuffle(chosen)
+        return chosen
 
     def _fit_decoders(self, dataframe):
         self.decoders_ = {}
@@ -776,6 +824,22 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         if latent.shape[1] != self.latent_dim_:
             raise ValueError("Z must have %d columns; got %d." % (self.latent_dim_, latent.shape[1]))
         return latent
+
+    @staticmethod
+    def _validate_nca_fit_sample_size(value):
+        if value is None:
+            return
+        if isinstance(value, bool):
+            raise ValueError("nca_fit_sample_size must be None, a positive integer, or a float in (0, 1].")
+        if isinstance(value, int):
+            if value < 1:
+                raise ValueError("nca_fit_sample_size must be at least 1 when given as an integer.")
+            return
+        if isinstance(value, float):
+            if value <= 0 or value > 1:
+                raise ValueError("nca_fit_sample_size must be in (0, 1] when given as a fraction.")
+            return
+        raise TypeError("nca_fit_sample_size must be None, a positive integer, or a float in (0, 1].")
 
     @staticmethod
     def _validate_dataframe(dataframe, name="dataframe"):

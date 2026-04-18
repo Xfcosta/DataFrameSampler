@@ -23,7 +23,8 @@ During `fit`:
 3. For each categorical column `C_j`, the sampler removes that column's own
    current block from the context and fits a
    `sklearn.neighbors.NeighborhoodComponentsAnalysis` projection to predict
-   `C_j`.
+   `C_j`. For larger dataframes, this NCA fit can be estimated on a deterministic
+   row sample and then applied to all rows with `nca_fit_sample_size`.
 4. The one-hot block for `C_j` is replaced by its learned latent block.
 5. The process repeats for `n_iterations`. If `n_iterations=0`, the initial
    one-hot categorical blocks are kept as the latent categorical blocks.
@@ -160,6 +161,10 @@ Constructor arguments:
 - `random_state`: optional seed.
 - `nca_kwargs`: optional keyword arguments for
   `NeighborhoodComponentsAnalysis`.
+- `nca_fit_sample_size`: optional row cap for fitting each NCA block. An integer
+  uses at most that many rows; a float in `(0, 1]` is interpreted as a fraction
+  of fitted rows, so `0.1` means 10%. The learned NCA projections are still
+  applied to all rows.
 - `decoder_kwargs`: optional keyword arguments for `RandomForestClassifier`.
   Decoders default to `n_jobs=-1` to use all available cores.
 - `calibrate_decoders`: whether to wrap categorical decoders with
@@ -201,6 +206,9 @@ Options:
   --n_iterations INTEGER RANGE    Number of iterative categorical NCA
                                   refinement rounds. Use 0 to keep one-hot
                                   categorical blocks.
+  --nca_fit_sample_size FLOAT     Optional NCA fit row cap. Values in (0, 1]
+                                  are fractions of fitted rows; values greater
+                                  than 1 are interpreted as row counts.
   --n_neighbours INTEGER RANGE    Number of neighbours.
   --lambda FLOAT                  Latent neighbour displacement multiplier.
   --random_state INTEGER          Optional random seed for reproducible output.
@@ -237,6 +245,7 @@ dataframe-sampler \
   --n_samples 100 \
   --n_components 2 \
   --n_iterations 1 \
+  --nca_fit_sample_size 0.25 \
   --n_neighbours 5 \
   --knn_backend sklearn \
   --random_state 42

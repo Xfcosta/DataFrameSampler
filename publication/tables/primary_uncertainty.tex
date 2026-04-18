@@ -1,0 +1,17 @@
+\begin{table*}
+\caption{Repeated-seed uncertainty for the primary metrics on the Adult running-example dataset, reported as mean plus/minus standard deviation. Takeaway: variability is reported descriptively to avoid treating point estimates as statistical conclusions.}
+\label{tab:primary-uncertainty}
+\begin{adjustbox}{max width=\textwidth}
+\begin{tabular}{llrllll}
+\toprule
+Dataset & Method & Runs & $\uparrow$ Dist. score & $\rightarrow$ Disc. acc. & $\uparrow$ Utility lift & $\rightarrow$ NN ratio \\
+\midrule
+adult & DataFrameSampler & 3 & 0.851 +/- 0.007 & 0.611 +/- 0.028 & 0.012 +/- 0.152 & 1.188 +/- 0.060 \\
+adult & Gaussian copula & 3 & 0.917 +/- 0.006 & 0.472 +/- 0.056 & -0.019 +/- 0.041 & 0.999 +/- 0.015 \\
+adult & Independent columns & 3 & 0.923 +/- 0.005 & 0.463 +/- 0.042 & -0.023 +/- 0.065 & 1.088 +/- 0.013 \\
+adult & Row bootstrap & 3 & 0.919 +/- 0.012 & 0.380 +/- 0.089 & 0.074 +/- 0.135 & 0.000 +/- 0.000 \\
+adult & Stratified columns & 3 & 0.915 +/- 0.006 & 0.472 +/- 0.073 & 0.032 +/- 0.070 & 1.042 +/- 0.033 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table*}

@@ -1,14 +1,20 @@
 \begin{table*}
-\caption{Capped comparison of the three proposed DataFrameSampler setups on the representative Adult Census Income dataset. Fast uses no NCA iteration, no retry budget, and no calibration; default uses one NCA iteration, five retries, and no calibration; accurate uses two NCA iterations, twenty retries, and calibrated decoders. Takeaway: setup choice is presented as a practical speed--accuracy tradeoff illustration, not as a new full benchmark claim.}
+\caption{Capped setup and default-parameter sensitivity on the representative Adult Census Income dataset. The setup rows compare fast, default, and accurate operating points; the parameter rows perturb lambda, NCA dimension, and NCA iteration count around the default configuration. NCA sample reports the row fraction or cap used to estimate each NCA block. Takeaway: sensitivity is used to test default robustness under small perturbations, not to claim global hyperparameter optimality.}
 \label{tab:sensitivity-validation}
 \begin{adjustbox}{max width=\textwidth}
-\begin{tabular}{lrrrrrrrrrr}
+\begin{tabular}{llllrrlrrrrrrrrr}
 \toprule
-Setup & NCA iter. & Retries & Calibration & Datasets & NN ratio & Disc. acc. & Utility lift & Dist. score & Fit s & Sample s \\
+Parameter & Value & Setup & NCA dim. & NCA iter. & NCA sample & Lambda & Retries & Calibration & Datasets & $\rightarrow$ NN ratio & $\rightarrow$ Disc. acc. & $\uparrow$ Utility lift & $\uparrow$ Dist. score & $\downarrow$ Fit s & $\downarrow$ Sample s \\
 \midrule
-DataFrameSampler fast & 0 & 0 & False & 1 & 0.894 & 0.417 & 0.072 & 0.898 & 13.864 & 0.860 \\
-DataFrameSampler default & 1 & 5 & False & 1 & 1.241 & 0.604 & -0.108 & 0.865 & 13.723 & 0.983 \\
-DataFrameSampler accurate & 2 & 20 & True & 1 & 1.201 & 0.500 & 0.134 & 0.892 & 28.525 & 2.064 \\
+setup & fast & DataFrameSampler fast &  & 0 & 0.250 &  & 0 & False & 1 & 0.894 & 0.500 & 0.097 & 0.903 & 4.955 & 0.414 \\
+setup & default & DataFrameSampler default &  & 1 & 0.250 &  & 5 & False & 1 & 1.178 & 0.583 & 0.038 & 0.865 & 4.948 & 0.527 \\
+setup & accurate & DataFrameSampler accurate &  & 2 & 0.250 &  & 20 & True & 1 & 1.212 & 0.583 & -0.029 & 0.859 & 10.052 & 0.849 \\
+lambda & 0.75 & lambda=0.75 &  & 1 & 0.250 & 0.750 & 5 & False & 1 & 1.033 & 0.500 & 0.061 & 0.888 & 4.914 & 0.454 \\
+lambda & 1.25 & lambda=1.25 &  & 1 & 0.250 & 1.250 & 5 & False & 1 & 1.237 & 0.688 & -0.029 & 0.843 & 5.042 & 0.502 \\
+n\_components & 1 & n\_components=1 & 1.000 & 1 & 0.250 &  & 5 & False & 1 & 1.075 & 0.604 & 0.134 & 0.883 & 4.935 & 0.407 \\
+n\_components & 3 & n\_components=3 & 3.000 & 1 & 0.250 &  & 5 & False & 1 & 1.100 & 0.562 & 0.061 & 0.875 & 4.818 & 0.459 \\
+n\_iterations & 0 & n\_iterations=0 &  & 0 & 0.250 &  & 5 & False & 1 & 0.906 & 0.458 & 0.038 & 0.898 & 4.150 & 0.512 \\
+n\_iterations & 2 & n\_iterations=2 &  & 2 & 0.250 &  & 5 & False & 1 & 1.202 & 0.667 & 0.134 & 0.862 & 5.936 & 0.542 \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}

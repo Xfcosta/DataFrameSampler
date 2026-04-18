@@ -4,7 +4,7 @@
 \begin{adjustbox}{max width=\columnwidth}
 \begin{tabular}{llrrrrl}
 \toprule
-Dataset & Method & KS & Cat. TV & Assoc. diff. & Hist. overlap & Caveat \\
+Dataset & Method & $\downarrow$ KS & $\downarrow$ Cat. TV & $\downarrow$ Assoc. diff. & $\uparrow$ Hist. overlap & Caveat \\
 \midrule
 adult & DataFrameSampler & 0.144 & 0.139 & 0.071 & 0.814 & Generated sample \\
 adult & Gaussian copula & 0.034 & 0.027 & 0.106 & 0.953 & Numeric copula only \\
@@ -51,7 +51,7 @@ synthetic\_sensitive\_identifier & Gaussian copula & 0.043 & 0.164 & 0.088 & 0.9
 synthetic\_sensitive\_identifier & Independent columns & 0.028 & 0.166 & 0.142 & 0.954 & Breaks dependencies \\
 synthetic\_sensitive\_identifier & Row bootstrap & 0.046 & 0.166 & 0.026 & 0.946 & Reuses source rows \\
 synthetic\_sensitive\_identifier & Stratified columns & 0.025 & 0.164 & 0.059 & 0.955 & Generated sample \\
-titanic & DataFrameSampler & 0.035 & 0.036 & 0.051 & 0.955 & Generated sample \\
+titanic & DataFrameSampler & 0.028 & 0.031 & 0.052 & 0.958 & Generated sample \\
 titanic & Gaussian copula & 0.037 & 0.023 & 0.224 & 0.959 & Numeric copula only \\
 titanic & Independent columns & 0.019 & 0.026 & 0.244 & 0.976 & Breaks dependencies \\
 titanic & Row bootstrap & 0.025 & 0.023 & 0.025 & 0.972 & Reuses source rows \\

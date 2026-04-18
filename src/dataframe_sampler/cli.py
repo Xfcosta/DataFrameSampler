@@ -49,6 +49,15 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     help="Number of iterative categorical NCA refinement rounds. Use 0 to keep one-hot categorical blocks.",
 )
 @click.option(
+    "--nca_fit_sample_size",
+    type=float,
+    default=None,
+    help=(
+        "Optional NCA fit row cap. Values in (0, 1] are fractions of fitted rows; "
+        "values greater than 1 are interpreted as row counts."
+    ),
+)
+@click.option(
     "--n_neighbours",
     type=click.IntRange(min=1, max_open=True, clamp=True),
     default=5,
@@ -116,6 +125,7 @@ def dataframe_sampler_main(
     n_samples,
     n_components,
     n_iterations,
+    nca_fit_sample_size,
     n_neighbours,
     lambda_,
     random_state,
@@ -142,6 +152,7 @@ def dataframe_sampler_main(
         sampler = DataFrameSampler(
             n_components=n_components,
             n_iterations=n_iterations,
+            nca_fit_sample_size=_coerce_nca_fit_sample_size(nca_fit_sample_size),
             n_neighbours=n_neighbours,
             lambda_=lambda_,
             random_state=random_state,
@@ -170,3 +181,13 @@ def main():
         dataframe_sampler_main.main(["--help"])
     else:
         dataframe_sampler_main()
+
+
+def _coerce_nca_fit_sample_size(value):
+    if value is None:
+        return None
+    if value > 1:
+        if float(value).is_integer():
+            return int(value)
+        raise click.BadParameter("values greater than 1 must be whole-row counts.")
+    return value

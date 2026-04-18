@@ -5,10 +5,12 @@ The evaluation is organized around claims rather than around a single
 leaderboard. This choice is central to the paper because the intended
 contribution is bounded: DataFrameSampler is proposed as an inspectable
 example-data generator, not as a general synthetic-data optimum, a privacy
-mechanism, or a guaranteed manifold sampler. Consequently, each empirical
-quantity is assigned a role. Primary evidence tests the practical-use claim
-directly; supporting evidence probes the mechanism; and boundary evidence
-identifies conditions under which the claim should be weakened.
+mechanism, or a guaranteed manifold sampler. The primary claim is practical
+use: the method should be useful when low setup, inspectability, and moderate
+runtime matter. The secondary claim is mechanistic: the supervised categorical
+latent blocks should improve the local structure needed by the displacement
+operator. Consequently, each empirical quantity is assigned a role and a
+specific failure mode.
 
 \begin{table}[t]
 \centering
@@ -22,16 +24,16 @@ synthetic-data optimality claim.}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{@{}llll@{}}
 \toprule
-Claim & Evidence role & Instrument & Allowable conclusion \\
+Claim & Failure prevented & Evidence role & Instrument \\
 \midrule
-Practical generation & Primary & API, CLI, runtime, simple baselines & Useful when low setup cost matters \\
-Distributional usefulness & Primary & Marginal, dependence, neighbour, discrimination tests & Dataset-specific similarity evidence \\
-Downstream usefulness & Primary & Utility lift on held-out real tasks & Utility only where lift is observed \\
-Class rebalancing & Secondary & Fixed minority augmentation diagnostic & Boundary evidence for oversampling-adjacent use \\
-NCA mechanism & Supporting & NCA-vs-PCA and majority prediction lift & Mechanism evidence only where lift is positive \\
-Decoder probabilities & Boundary & Log loss, Brier score, calibration error & Probabilities are diagnostic unless measured \\
-Analogy transport & Supporting and boundary & Analogy traces, convex hull, frozen-Isomap stress & Construction is inspectable; manifold consistency is diagnostic \\
-Privacy and constraints & Boundary & Row-proximity and exact-overlap checks & No formal privacy or constraint claim \\
+Practical usability & Hidden tuning or hidden cost & Primary & API, CLI, runtime, setup sensitivity \\
+Data fidelity & Copying, separability, broken marginals & Primary & Neighbour, discrimination, distribution tests \\
+Downstream utility & Plausible rows that harm tasks & Primary & Utility lift on held-out real tasks \\
+NCA mechanism & Behaviour due to unrelated components & Supporting & NCA-vs-PCA, majority, raw-context checks \\
+Decoder probabilities & Unmeasured probability quality & Supporting for reconstruction; boundary for calibrated draws & Log loss, Brier, calibration error \\
+Analogy transport & Heuristic mistaken for guarantee & Boundary & Bootstrap, interpolation, hull, Isomap stress \\
+Class rebalancing & Oversampling adjacency left untested & Boundary & Fixed minority augmentation diagnostic \\
+Privacy and constraints & Diagnostics mistaken for release safety & Boundary & Row proximity, overlap, range checks \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}
@@ -43,4 +45,6 @@ missing, the mechanism remains plausible rather than supported. If boundary
 evidence is missing, the scope of use should be narrowed. The experiments
 therefore ask whether the sampler behaves usefully under several diagnostic
 views at once, not whether one favourable metric can be selected after the
-fact.
+fact. The current evidence supports limited setup and setup sensitivity, but
+not a full equal-budget hyperparameter optimization claim against all
+alternatives; that stronger claim remains outside the paper's evidence.

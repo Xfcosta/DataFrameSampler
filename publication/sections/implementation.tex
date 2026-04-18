@@ -23,8 +23,11 @@ from the default path while preserving a single public estimator.
 The implementation therefore exposes one direct estimator and removes auxiliary
 configuration, column-selection, embedding-method-selection, and bin-encoding
 workflows. The CLI exposes only the NCA and neighbour-transport parameters,
-decoder calibration as an opt-in diagnostic choice, and rejection constraints
-for generated latent candidates. This is consistent with the paper's
+decoder calibration as an opt-in diagnostic choice, rejection constraints for
+generated latent candidates, and \texttt{nca\_fit\_sample\_size} as a practical
+scaling parameter. Values in $(0,1]$ fit each NCA block on that fraction of
+rows, and integer values fit on at most that many rows, before applying the
+learned projection to the full dataframe. This is consistent with the paper's
 practical-use claim: low setup cost is favoured over a large configuration
 surface, while the remaining parameters correspond to explicit parts of the
 method and to boundary checks that a user may need to inspect. The same fitted

@@ -1,10 +1,10 @@
 \begin{table*}
-\caption{Primary experiment measures. NN ratio compares synthetic-to-real nearest-neighbour distance with natural real-to-real nearest-neighbour distance; values below one indicate closer-than-natural synthetic rows. Discrimination accuracy near 0.5 is better. Utility lift is the change from adding synthetic rows to the real training set. Histogram overlap is higher-is-better and categorical JSD is lower-is-better. Takeaway: DataFrameSampler is best read as a balanced example generator, not as a single-metric winner.}
+\caption{Primary experiment measures. Arrows mark the preferred direction for each quality measure: higher, lower, or target value. NN ratio compares synthetic-to-real nearest-neighbour distance with natural real-to-real nearest-neighbour distance; values below one indicate closer-than-natural synthetic rows. Discrimination accuracy near 0.5 is better. Utility lift is the change from adding synthetic rows to the real training set. Takeaway: DataFrameSampler is best read as a balanced example generator, not as a single-metric winner.}
 \label{tab:main-measures}
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{llrrrrrrr}
 \toprule
-Dataset & Method & NN ratio & NN close rate & Disc. acc. & Disc. privacy & Utility lift & Hist. overlap & Cat. JSD \\
+Dataset & Method & $\rightarrow$ NN ratio & $\downarrow$ NN close rate & $\rightarrow$ Disc. acc. & $\uparrow$ Disc. privacy & $\uparrow$ Utility lift & $\uparrow$ Hist. overlap & $\downarrow$ Cat. JSD \\
 \midrule
 adult & DataFrameSampler & 1.766 & 0.001 & 0.863 & 0.274 & 0.000 & 0.814 & 0.035 \\
 adult & Independent columns & 1.467 & 0.003 & 0.867 & 0.267 & -0.012 & 0.969 & 0.002 \\
@@ -33,7 +33,7 @@ synthetic\_rare\_categories & Row bootstrap & 0.000 & 1.000 & 0.403 & 0.806 & 0.
 synthetic\_sensitive\_identifier & DataFrameSampler & 1.043 & 0.056 & 0.555 & 0.891 & 0.013 & 0.854 & 0.093 \\
 synthetic\_sensitive\_identifier & Independent columns & 1.007 & 0.056 & 0.545 & 0.909 & 0.000 & 0.954 & 0.100 \\
 synthetic\_sensitive\_identifier & Row bootstrap & 0.000 & 1.000 & 0.545 & 0.909 & 0.153 & 0.946 & 0.100 \\
-titanic & DataFrameSampler & 1.210 & 0.000 & 0.548 & 0.905 & 0.032 & 0.955 & 0.001 \\
+titanic & DataFrameSampler & 1.231 & 0.000 & 0.549 & 0.901 & 0.034 & 0.958 & 0.002 \\
 titanic & Independent columns & 4.695 & 0.000 & 0.954 & 0.092 & 0.018 & 0.976 & 0.001 \\
 titanic & Row bootstrap & 0.000 & 0.000 & 0.438 & 0.877 & 0.072 & 0.972 & 0.001 \\
 \bottomrule

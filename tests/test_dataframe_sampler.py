@@ -158,6 +158,50 @@ def test_nca_decoder_context_excludes_target_block():
     assert sampler.decoders_["flag"].n_features_in_ == 2 + 2
 
 
+def test_nca_fit_sample_size_fraction_fits_projectors_on_row_fraction():
+    df = pd.DataFrame(
+        {
+            "value": np.linspace(0.0, 1.0, 30),
+            "label": ["a", "b"] * 15,
+        }
+    )
+    sampler = DataFrameSampler(
+        n_components=2,
+        n_iterations=1,
+        n_neighbours=3,
+        nca_fit_sample_size=0.1,
+        random_state=4,
+        calibrate_decoders=False,
+    ).fit(df)
+
+    assert {len(step["fit_indices"]) for step in sampler.projector_steps_} == {3}
+    assert sampler.transform(df).shape == (len(df), sampler.latent_dim_)
+
+
+def test_nca_fit_sample_size_integer_fits_projectors_on_row_cap():
+    df = make_mixed_dataframe()
+    sampler = DataFrameSampler(
+        n_components=2,
+        n_iterations=1,
+        n_neighbours=3,
+        nca_fit_sample_size=5,
+        random_state=4,
+        calibrate_decoders=False,
+    ).fit(df)
+
+    assert {len(step["fit_indices"]) for step in sampler.projector_steps_} == {5}
+    assert sampler.latent_data_mtx_.shape[0] == len(df)
+
+
+def test_nca_fit_sample_size_rejects_invalid_values():
+    with pytest.raises(ValueError, match="at least 1"):
+        DataFrameSampler(nca_fit_sample_size=0)
+    with pytest.raises(ValueError, match="in \\(0, 1\\]"):
+        DataFrameSampler(nca_fit_sample_size=1.5)
+    with pytest.raises(TypeError, match="nca_fit_sample_size"):
+        DataFrameSampler(nca_fit_sample_size="10%")
+
+
 def test_high_cardinality_categorical_warns_but_proceeds():
     df = pd.DataFrame(
         {
@@ -421,6 +465,7 @@ def test_cli_help_shows_new_flags_and_hides_removed_flags():
     assert result.exit_code == 0
     assert "--n_components" in result.output
     assert "--n_iterations" in result.output
+    assert "--nca_fit_sample_size" in result.output
     assert "--calibrate_decoders" in result.output
     assert "--no_calibrate_decoders" in result.output
     assert "--enforce_min_max_constraints" in result.output

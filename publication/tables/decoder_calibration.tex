@@ -4,7 +4,7 @@
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{llrrrrrrr}
 \toprule
-Dataset & Cardinality & Columns & Acc. & Top conf. & Conf.-acc. & NLL & Brier & ECE \\
+Dataset & Cardinality & Columns & $\uparrow$ Acc. & $\rightarrow$ Top conf. & $\downarrow$ Conf.-acc. & $\downarrow$ NLL & $\downarrow$ Brier & $\downarrow$ ECE \\
 \midrule
 adult & binary & 2 & 0.946 & 0.853 & -0.093 & 0.206 & 0.115 & 0.095 \\
 adult & low & 4 & 0.878 & 0.809 & -0.069 & 0.584 & 0.198 & 0.082 \\
@@ -26,8 +26,8 @@ synthetic\_rare\_categories & low & 2 & 0.658 & 0.797 & 0.139 & 1.435 & 0.420 & 
 synthetic\_sensitive\_identifier & binary & 1 & 0.983 & 0.979 & -0.005 & 0.223 & 0.027 & 0.009 \\
 synthetic\_sensitive\_identifier & high & 1 & 0.000 & 0.003 & 0.003 & 34.539 & 0.002 & 0.003 \\
 synthetic\_sensitive\_identifier & low & 2 & 0.378 & 0.615 & 0.238 & 3.592 & 0.820 & 0.244 \\
-titanic & binary & 4 & 0.948 & 0.942 & -0.006 & 0.201 & 0.080 & 0.038 \\
-titanic & low & 3 & 0.907 & 0.886 & -0.021 & 0.361 & 0.137 & 0.039 \\
+titanic & binary & 4 & 0.956 & 0.942 & -0.014 & 0.171 & 0.078 & 0.034 \\
+titanic & low & 3 & 0.921 & 0.907 & -0.014 & 0.250 & 0.101 & 0.043 \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}

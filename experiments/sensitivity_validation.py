@@ -23,7 +23,10 @@ SENSITIVITY_VALIDATION_COLUMNS = [
     "value",
     "setup",
     "setup_label",
+    "n_components",
     "n_iterations",
+    "nca_fit_sample_size",
+    "lambda_",
     "max_constraint_retries",
     "calibrate_decoders",
     "n_train",
@@ -55,9 +58,10 @@ def run_sensitivity_validation_for_config(
     *,
     results_dir: str | Path,
     sampler_config: Mapping[str, Any] | None = None,
-    max_train_rows: int = 800,
+    max_train_rows: int = 80,
     n_samples: int | None = None,
     setups: Iterable[ProposedSamplerSetup] = PROPOSED_SAMPLER_SETUPS,
+    include_parameter_sensitivity: bool = True,
 ) -> pd.DataFrame:
     """Run capped DataFrameSampler setup checks for the designated dataset."""
     results_path = Path(results_dir)
@@ -79,6 +83,7 @@ def run_sensitivity_validation_for_config(
             n_samples=n_samples or min(max(1, config.n_generated), len(work)),
             random_state=config.random_state,
             setups=setups,
+            include_parameter_sensitivity=include_parameter_sensitivity and len(work) >= 50,
         )
 
     if not report.empty:
@@ -95,6 +100,7 @@ def sensitivity_validation_report(
     n_samples: int = 250,
     random_state: int = 42,
     setups: Iterable[ProposedSamplerSetup] = PROPOSED_SAMPLER_SETUPS,
+    include_parameter_sensitivity: bool = False,
 ) -> pd.DataFrame:
     if dataframe.empty:
         return _empty_sensitivity_frame(dataset_name)
@@ -116,6 +122,21 @@ def sensitivity_validation_report(
                 random_state=random_state,
             )
         )
+    if include_parameter_sensitivity:
+        for parameter, value, variant_config in _default_parameter_variants(base_config):
+            rows.append(
+                _evaluate_variant_config(
+                    dataframe,
+                    dataset_name=dataset_name,
+                    target_column=target_column,
+                    parameter=parameter,
+                    value=value,
+                    setup_label=f"{parameter}={value}",
+                    sampler_config=variant_config,
+                    n_samples=n_samples,
+                    random_state=random_state,
+                )
+            )
     return pd.DataFrame(rows, columns=SENSITIVITY_VALIDATION_COLUMNS)
 
 
@@ -127,7 +148,10 @@ def summarize_sensitivity_validation(rows: pd.DataFrame) -> pd.DataFrame:
                 "value",
                 "setup_label",
                 "datasets_evaluated",
+                "n_components",
                 "n_iterations",
+                "nca_fit_sample_size",
+                "lambda_",
                 "max_constraint_retries",
                 "calibrate_decoders",
                 "mean_nn_distance_ratio",
@@ -143,6 +167,12 @@ def summarize_sensitivity_validation(rows: pd.DataFrame) -> pd.DataFrame:
         rows["setup_label"] = rows.get("value", pd.Series(dtype=object)).astype(str)
     if "n_iterations" not in rows:
         rows["n_iterations"] = pd.NA
+    if "n_components" not in rows:
+        rows["n_components"] = pd.NA
+    if "lambda_" not in rows:
+        rows["lambda_"] = pd.NA
+    if "nca_fit_sample_size" not in rows:
+        rows["nca_fit_sample_size"] = pd.NA
     if "max_constraint_retries" not in rows:
         rows["max_constraint_retries"] = pd.NA
     if "calibrate_decoders" not in rows:
@@ -152,7 +182,10 @@ def summarize_sensitivity_validation(rows: pd.DataFrame) -> pd.DataFrame:
             "parameter",
             "value",
             "setup_label",
+            "n_components",
             "n_iterations",
+            "nca_fit_sample_size",
+            "lambda_",
             "max_constraint_retries",
             "calibrate_decoders",
         ],
@@ -196,12 +229,18 @@ def _evaluate_variant(
             target_column=target_column,
             random_state=random_state,
         )
-        return _row_from_summary(
-            summary,
-            setup=setup,
-            decoder_calibration_enabled=bool(sampler_config.get("calibrate_decoders", False)),
-            reason="ok",
-        )
+        return {
+            **_row_from_summary(
+                summary,
+                parameter="setup",
+                value=setup.key,
+                setup_label=setup.label,
+                setup=setup,
+                decoder_calibration_enabled=bool(sampler_config.get("calibrate_decoders", False)),
+                reason="ok",
+            ),
+            "nca_fit_sample_size": sampler_config.get("nca_fit_sample_size", pd.NA),
+        }
     except Exception as exc:  # pragma: no cover - defensive row for long notebooks.
         return {
             "dataset": dataset_name,
@@ -209,7 +248,10 @@ def _evaluate_variant(
             "value": setup.key,
             "setup": setup.key,
             "setup_label": setup.label,
+            "n_components": sampler_config.get("n_components", pd.NA),
             "n_iterations": setup.n_iterations,
+            "nca_fit_sample_size": sampler_config.get("nca_fit_sample_size", pd.NA),
+            "lambda_": sampler_config.get("lambda_", pd.NA),
             "max_constraint_retries": setup.max_constraint_retries,
             "calibrate_decoders": setup.calibrate_decoders,
             "n_train": len(dataframe),
@@ -238,17 +280,23 @@ def _evaluate_variant(
 def _row_from_summary(
     summary: Mapping[str, Any],
     *,
+    parameter: str,
+    value: Any,
+    setup_label: str,
     setup: ProposedSamplerSetup,
     decoder_calibration_enabled: bool,
     reason: str,
 ) -> dict[str, Any]:
     return {
         "dataset": summary["dataset"],
-        "parameter": "setup",
-        "value": setup.key,
+        "parameter": parameter,
+        "value": value,
         "setup": setup.key,
-        "setup_label": setup.label,
+        "setup_label": setup_label,
+        "n_components": pd.NA,
         "n_iterations": setup.n_iterations,
+        "nca_fit_sample_size": summary.get("nca_fit_sample_size", pd.NA),
+        "lambda_": pd.NA,
         "max_constraint_retries": setup.max_constraint_retries,
         "calibrate_decoders": setup.calibrate_decoders,
         "n_train": summary["n_real"],
@@ -272,6 +320,107 @@ def _row_from_summary(
         "decoder_calibration_enabled": decoder_calibration_enabled,
         "reason": reason,
     }
+
+
+def _evaluate_variant_config(
+    dataframe: pd.DataFrame,
+    *,
+    dataset_name: str,
+    target_column: str | None,
+    parameter: str,
+    value: Any,
+    setup_label: str,
+    sampler_config: Mapping[str, Any],
+    n_samples: int,
+    random_state: int,
+) -> dict[str, Any]:
+    sampler = DataFrameSampler(**dict(sampler_config))
+    try:
+        fit = measure_call(lambda: sampler.fit(dataframe))
+        sample = measure_call(lambda: sampler.generate(n_samples=n_samples))
+        summary = summarize_synthetic_sample(
+            dataframe,
+            sample.value,
+            dataset_name=dataset_name,
+            method_name=f"sensitivity_{parameter}_{value}",
+            fit_seconds=fit.seconds,
+            sample_seconds=sample.seconds,
+            fit_peak_memory_mb=fit.peak_memory_mb,
+            sample_peak_memory_mb=sample.peak_memory_mb,
+            target_column=target_column,
+            random_state=random_state,
+        )
+        default_setup = PROPOSED_SAMPLER_SETUPS[1]
+        return {
+            **_row_from_summary(
+                summary,
+                parameter=parameter,
+                value=value,
+                setup_label=setup_label,
+                setup=default_setup,
+                decoder_calibration_enabled=bool(sampler_config.get("calibrate_decoders", False)),
+                reason="ok",
+            ),
+            "n_components": sampler_config.get("n_components", pd.NA),
+            "n_iterations": sampler_config.get("n_iterations", pd.NA),
+            "nca_fit_sample_size": sampler_config.get("nca_fit_sample_size", pd.NA),
+            "lambda_": sampler_config.get("lambda_", pd.NA),
+            "max_constraint_retries": sampler_config.get("max_constraint_retries", pd.NA),
+            "calibrate_decoders": sampler_config.get("calibrate_decoders", False),
+        }
+    except Exception as exc:  # pragma: no cover - defensive row for long notebooks.
+        return {
+            "dataset": dataset_name,
+            "parameter": parameter,
+            "value": value,
+            "setup": "default",
+            "setup_label": setup_label,
+            "n_components": sampler_config.get("n_components", pd.NA),
+            "n_iterations": sampler_config.get("n_iterations", pd.NA),
+            "nca_fit_sample_size": sampler_config.get("nca_fit_sample_size", pd.NA),
+            "lambda_": sampler_config.get("lambda_", pd.NA),
+            "max_constraint_retries": sampler_config.get("max_constraint_retries", pd.NA),
+            "calibrate_decoders": sampler_config.get("calibrate_decoders", False),
+            "n_train": len(dataframe),
+            "n_generated": n_samples,
+            "fit_seconds": pd.NA,
+            "sample_seconds": pd.NA,
+            "fit_peak_memory_mb": pd.NA,
+            "sample_peak_memory_mb": pd.NA,
+            "peak_memory_mb": pd.NA,
+            "nn_distance_ratio": pd.NA,
+            "nn_suspiciously_close_rate": pd.NA,
+            "discrimination_accuracy": pd.NA,
+            "discrimination_privacy_score": pd.NA,
+            "utility_task": pd.NA,
+            "utility_real_score": pd.NA,
+            "utility_augmented_score": pd.NA,
+            "utility_lift": pd.NA,
+            "distribution_histogram_overlap": pd.NA,
+            "distribution_categorical_jsd": pd.NA,
+            "distribution_similarity_score": pd.NA,
+            "decoder_calibration_enabled": bool(sampler_config.get("calibrate_decoders", False)),
+            "reason": f"failed:{type(exc).__name__}",
+        }
+
+
+def _default_parameter_variants(base_config: Mapping[str, Any]) -> list[tuple[str, Any, dict[str, Any]]]:
+    default = dict(base_config)
+    default.update(PROPOSED_SAMPLER_SETUPS[1].sampler_config)
+    variants = []
+    for value in [0.75, 1.25]:
+        config = dict(default)
+        config["lambda_"] = value
+        variants.append(("lambda", value, config))
+    for value in [1, 3]:
+        config = dict(default)
+        config["n_components"] = value
+        variants.append(("n_components", value, config))
+    for value in [0, 2]:
+        config = dict(default)
+        config["n_iterations"] = value
+        variants.append(("n_iterations", value, config))
+    return variants
 
 
 def _empty_sensitivity_frame(dataset_name: str) -> pd.DataFrame:

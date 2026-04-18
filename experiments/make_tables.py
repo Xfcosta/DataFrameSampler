@@ -8,6 +8,7 @@ import pandas as pd
 from experiments.manifold_validation import summarize_manifold_validation
 from experiments.mechanism_validation import summarize_decoder_calibration, summarize_mechanism_validation
 from experiments.imbalance_validation import summarize_imbalance_validation
+from experiments.primary_uncertainty import summarize_primary_uncertainty
 from experiments.proposed_setups import PROPOSED_SAMPLER_SETUPS
 from experiments.sensitivity_validation import summarize_sensitivity_validation
 from experiments.synthetic_data import SYNTHETIC_DATASETS, materialize_synthetic_datasets
@@ -18,6 +19,9 @@ EXPERIMENTS = ROOT / "experiments"
 RESULTS = EXPERIMENTS / "results"
 PROCESSED = EXPERIMENTS / "data" / "processed"
 TABLES = ROOT / "publication" / "tables"
+UP = chr(8593)
+DOWN = chr(8595)
+TARGET = chr(8594)
 
 
 @dataclass(frozen=True)
@@ -258,6 +262,18 @@ def load_sensitivity_validations(results_dir: str | Path = RESULTS) -> pd.DataFr
     return pd.concat(frames, ignore_index=True)
 
 
+def load_primary_uncertainty(results_dir: str | Path = RESULTS) -> pd.DataFrame:
+    frames = [
+        pd.read_csv(path)
+        for path in sorted(Path(results_dir).glob("*_primary_uncertainty.csv"))
+    ]
+    if not frames:
+        raise FileNotFoundError("No primary uncertainty files found. Run the Adult repeated-seed diagnostic first.")
+    data = pd.concat(frames, ignore_index=True)
+    data["method_label"] = data["method"].map(METHOD_LABELS).fillna(data["method"])
+    return data
+
+
 def load_imbalance_validations(results_dir: str | Path = RESULTS) -> pd.DataFrame:
     frames = [
         pd.read_csv(path)
@@ -375,10 +391,10 @@ def write_distribution_table(comparisons: pd.DataFrame, *, tables_dir: str | Pat
         columns={
             "dataset": "Dataset",
             "method_label": "Method",
-            "numeric_ks_statistic": "KS",
-            "categorical_total_variation": "Cat. TV",
-            "mean_abs_association_difference": "Assoc. diff.",
-            "numeric_histogram_overlap": "Hist. overlap",
+            "numeric_ks_statistic": f"{DOWN} KS",
+            "categorical_total_variation": f"{DOWN} Cat. TV",
+            "mean_abs_association_difference": f"{DOWN} Assoc. diff.",
+            "numeric_histogram_overlap": f"{UP} Hist. overlap",
         }
     )
     return write_latex(
@@ -413,25 +429,119 @@ def write_main_measure_table(comparisons: pd.DataFrame, *, tables_dir: str | Pat
         columns={
             "dataset": "Dataset",
             "method_label": "Method",
-            "nn_distance_ratio": "NN ratio",
-            "nn_suspiciously_close_rate": "NN close rate",
-            "discrimination_accuracy": "Disc. acc.",
-            "discrimination_privacy_score": "Disc. privacy",
-            "utility_lift": "Utility lift",
-            "distribution_histogram_overlap": "Hist. overlap",
-            "distribution_categorical_jsd": "Cat. JSD",
+            "nn_distance_ratio": f"{TARGET} NN ratio",
+            "nn_suspiciously_close_rate": f"{DOWN} NN close rate",
+            "discrimination_accuracy": f"{TARGET} Disc. acc.",
+            "discrimination_privacy_score": f"{UP} Disc. privacy",
+            "utility_lift": f"{UP} Utility lift",
+            "distribution_histogram_overlap": f"{UP} Hist. overlap",
+            "distribution_categorical_jsd": f"{DOWN} Cat. JSD",
         }
     )
     return write_latex(
         df,
         Path(tables_dir) / "main_measures.tex",
-        "Primary experiment measures. NN ratio compares synthetic-to-real nearest-neighbour distance with natural real-to-real nearest-neighbour distance; values below one indicate closer-than-natural synthetic rows. Discrimination accuracy near 0.5 is better. Utility lift is the change from adding synthetic rows to the real training set. Histogram overlap is higher-is-better and categorical JSD is lower-is-better. Takeaway: DataFrameSampler is best read as a balanced example generator, not as a single-metric winner.",
+        "Primary experiment measures. Arrows mark the preferred direction for each quality measure: higher, lower, or target value. NN ratio compares synthetic-to-real nearest-neighbour distance with natural real-to-real nearest-neighbour distance; values below one indicate closer-than-natural synthetic rows. Discrimination accuracy near 0.5 is better. Utility lift is the change from adding synthetic rows to the real training set. Takeaway: DataFrameSampler is best read as a balanced example generator, not as a single-metric winner.",
         "tab:main-measures",
         float_format="%.3f",
         full_width=True,
     )
 
 
+def write_primary_uncertainty_table(rows: pd.DataFrame, *, tables_dir: str | Path = TABLES) -> Path:
+    summary = summarize_primary_uncertainty(rows)
+    if summary.empty:
+        raise FileNotFoundError("No valid primary uncertainty rows found.")
+    summary["method_label"] = summary["method"].map(METHOD_LABELS).fillna(summary["method"])
+    for metric in ["distribution_similarity", "discrimination_accuracy", "utility_lift", "nn_distance_ratio"]:
+        summary[metric] = summary.apply(
+            lambda row: _mean_pm_std(row[f"{metric}_mean"], row[f"{metric}_std"]),
+            axis=1,
+        )
+    df = summary[
+        [
+            "dataset",
+            "method_label",
+            "runs",
+            "distribution_similarity",
+            "discrimination_accuracy",
+            "utility_lift",
+            "nn_distance_ratio",
+        ]
+    ].rename(
+        columns={
+            "dataset": "Dataset",
+            "method_label": "Method",
+            "runs": "Runs",
+            "distribution_similarity": f"{UP} Dist. score",
+            "discrimination_accuracy": f"{TARGET} Disc. acc.",
+            "utility_lift": f"{UP} Utility lift",
+            "nn_distance_ratio": f"{TARGET} NN ratio",
+        }
+    )
+    return write_latex(
+        df,
+        Path(tables_dir) / "primary_uncertainty.tex",
+        "Repeated-seed uncertainty for the primary metrics on the Adult running-example dataset, reported as mean plus/minus standard deviation. Takeaway: variability is reported descriptively to avoid treating point estimates as statistical conclusions.",
+        "tab:primary-uncertainty",
+        full_width=True,
+    )
+
+
+def write_cross_dataset_aggregation_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = TABLES) -> Path:
+    selected_methods = ["dataframe_sampler", "row_bootstrap", "independent_columns", "gaussian_copula_empirical", "stratified_columns"]
+    data = comparisons[comparisons["method"].isin(selected_methods)].copy()
+    if data.empty:
+        raise FileNotFoundError("No comparison rows available for aggregation.")
+    rank_specs = [
+        ("distribution_similarity_score", False),
+        ("utility_lift", False),
+        ("discrimination_gap", True),
+    ]
+    data["discrimination_gap"] = (data["discrimination_accuracy"] - 0.5).abs()
+    rank_rows = []
+    for dataset, subset in data.groupby("dataset"):
+        for metric, ascending in rank_specs:
+            metric_subset = subset[["method", "method_label", metric]].dropna()
+            if metric_subset.empty:
+                continue
+            ranks = metric_subset[metric].rank(method="min", ascending=ascending)
+            best = ranks == ranks.min()
+            worst = ranks == ranks.max()
+            for idx, row in metric_subset.iterrows():
+                rank_rows.append(
+                    {
+                        "dataset": dataset,
+                        "method": row["method"],
+                        "method_label": row["method_label"],
+                        "rank": float(ranks.loc[idx]),
+                        "win": bool(best.loc[idx]),
+                        "loss": bool(worst.loc[idx]),
+                    }
+                )
+    ranks = pd.DataFrame(rank_rows)
+    summary = (
+        ranks.groupby(["method", "method_label"], dropna=False)
+        .agg(avg_rank=("rank", "mean"), wins=("win", "sum"), losses=("loss", "sum"), comparisons=("rank", "count"))
+        .reset_index()
+        .sort_values(["avg_rank", "method_label"])
+    )
+    df = summary.rename(
+        columns={
+            "method_label": "Method",
+            "avg_rank": f"{DOWN} Avg. rank",
+            "wins": f"{UP} Wins",
+            "losses": f"{DOWN} Losses",
+            "comparisons": "Metric-datasets",
+        }
+    )[["Method", f"{DOWN} Avg. rank", f"{UP} Wins", f"{DOWN} Losses", "Metric-datasets"]]
+    return write_latex(
+        df,
+        Path(tables_dir) / "cross_dataset_aggregation.tex",
+        "Descriptive cross-dataset aggregation over distribution score, utility lift, and real-versus-synthetic discrimination gap. Lower average rank is better; wins and losses count metric-dataset best and worst cases. Takeaway: aggregation supports only weak descriptive pattern claims, not formal statistical superiority.",
+        "tab:cross-dataset-aggregation",
+        float_format="%.3f",
+    )
 def write_downstream_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = TABLES) -> Path:
     df = comparisons[
         [
@@ -448,9 +558,9 @@ def write_downstream_table(comparisons: pd.DataFrame, *, tables_dir: str | Path 
             "dataset": "Dataset",
             "method_label": "Method",
             "utility_task": "Task",
-            "utility_real_score": "Real train score",
-            "utility_augmented_score": "Augmented score",
-            "utility_lift": "Utility lift",
+            "utility_real_score": f"{UP} Real train score",
+            "utility_augmented_score": f"{UP} Augmented score",
+            "utility_lift": f"{UP} Utility lift",
         }
     )
     return write_latex(
@@ -488,11 +598,11 @@ def write_runtime_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = T
         columns={
             "dataset": "Dataset",
             "method_label": "Method",
-            "fit_seconds": "Fit s",
-            "sample_seconds": "Sample s",
-            "fit_peak_memory_mb": "Fit peak MB",
-            "sample_peak_memory_mb": "Sample peak MB",
-            "peak_memory_mb": "Peak MB",
+            "fit_seconds": f"{DOWN} Fit s",
+            "sample_seconds": f"{DOWN} Sample s",
+            "fit_peak_memory_mb": f"{DOWN} Fit peak MB",
+            "sample_peak_memory_mb": f"{DOWN} Sample peak MB",
+            "peak_memory_mb": f"{DOWN} Peak MB",
         }
     )
     return write_latex(
@@ -568,11 +678,11 @@ def write_synthetic_results_table(
         columns={
             "dataset": "Dataset",
             "method_label": "Method",
-            "numeric_ks_statistic": "KS",
-            "categorical_total_variation": "Cat. TV",
-            "categorical_coverage": "Cat. coverage",
-            "rare_category_preservation": "Rare preserve",
-            "mean_abs_association_difference": "Assoc. diff.",
+            "numeric_ks_statistic": f"{DOWN} KS",
+            "categorical_total_variation": f"{DOWN} Cat. TV",
+            "categorical_coverage": f"{UP} Cat. coverage",
+            "rare_category_preservation": f"{UP} Rare preserve",
+            "mean_abs_association_difference": f"{DOWN} Assoc. diff.",
         }
     )
     return write_latex(
@@ -637,12 +747,12 @@ def write_manifold_validation_table(
         columns={
             "dataset": "Dataset",
             "method_label": "Method",
-            "out_hull_rate": "Out-hull rate",
-            "real_stress_median": "Real stress med.",
-            "real_stress_q95": "Real stress q95",
-            "generated_stress_median": "Gen. stress med.",
-            "out_hull_stress_median": "Out-hull stress med.",
-            "out_hull_acceptance_at_real_q95": "Out-hull accept.",
+            "out_hull_rate": f"{UP} Out-hull rate",
+            "real_stress_median": f"{DOWN} Real stress med.",
+            "real_stress_q95": f"{DOWN} Real stress q95",
+            "generated_stress_median": f"{DOWN} Gen. stress med.",
+            "out_hull_stress_median": f"{DOWN} Out-hull stress med.",
+            "out_hull_acceptance_at_real_q95": f"{UP} Out-hull accept.",
         }
     )
     return write_latex(
@@ -679,12 +789,12 @@ def write_mechanism_validation_table(
             "dataset": "Dataset",
             "columns_evaluated": "Columns",
             "mean_cardinality": "Mean card.",
-            "mean_nca_accuracy": "NCA acc.",
-            "mean_majority_accuracy": "Majority acc.",
-            "mean_pca_accuracy": "PCA acc.",
-            "mean_raw_context_accuracy": "Raw ctx acc.",
-            "mean_lift_over_majority": "NCA-majority",
-            "mean_lift_over_pca": "NCA-PCA",
+            "mean_nca_accuracy": f"{UP} NCA acc.",
+            "mean_majority_accuracy": f"{UP} Majority acc.",
+            "mean_pca_accuracy": f"{UP} PCA acc.",
+            "mean_raw_context_accuracy": f"{UP} Raw ctx acc.",
+            "mean_lift_over_majority": f"{UP} NCA-majority",
+            "mean_lift_over_pca": f"{UP} NCA-PCA",
         }
     )
     return write_latex(
@@ -721,12 +831,12 @@ def write_decoder_calibration_table(
             "dataset": "Dataset",
             "cardinality_bucket": "Cardinality",
             "columns_evaluated": "Columns",
-            "mean_accuracy": "Acc.",
-            "mean_top_confidence": "Top conf.",
-            "mean_confidence_gap": "Conf.-acc.",
-            "mean_negative_log_loss": "NLL",
-            "mean_brier_score": "Brier",
-            "mean_expected_calibration_error": "ECE",
+            "mean_accuracy": f"{UP} Acc.",
+            "mean_top_confidence": f"{TARGET} Top conf.",
+            "mean_confidence_gap": f"{DOWN} Conf.-acc.",
+            "mean_negative_log_loss": f"{DOWN} NLL",
+            "mean_brier_score": f"{DOWN} Brier",
+            "mean_expected_calibration_error": f"{DOWN} ECE",
         }
     )
     return write_latex(
@@ -747,8 +857,13 @@ def write_sensitivity_validation_table(
     summary = summarize_sensitivity_validation(validations)
     df = summary[
         [
+            "parameter",
+            "value",
             "setup_label",
+            "n_components",
             "n_iterations",
+            "nca_fit_sample_size",
+            "lambda_",
             "max_constraint_retries",
             "calibrate_decoders",
             "datasets_evaluated",
@@ -765,27 +880,36 @@ def write_sensitivity_validation_table(
         "DataFrameSampler default": 1,
         "DataFrameSampler accurate": 2,
     }
+    parameter_order = {"setup": 0, "lambda": 1, "n_components": 2, "n_iterations": 3}
+    df["_parameter_order"] = df["parameter"].map(parameter_order).fillna(99)
     df["_setup_order"] = df["setup_label"].map(setup_order).fillna(99)
-    df = df.sort_values(["_setup_order", "setup_label"]).drop(columns="_setup_order")
+    df = df.sort_values(["_parameter_order", "_setup_order", "parameter", "value"]).drop(columns=["_parameter_order", "_setup_order"])
+    for column in ["n_components", "nca_fit_sample_size", "lambda_"]:
+        df[column] = df[column].where(df[column].notna(), "")
     df = df.rename(
         columns={
+            "parameter": "Parameter",
+            "value": "Value",
             "setup_label": "Setup",
+            "n_components": "NCA dim.",
             "n_iterations": "NCA iter.",
+            "nca_fit_sample_size": "NCA sample",
+            "lambda_": "Lambda",
             "max_constraint_retries": "Retries",
             "calibrate_decoders": "Calibration",
             "datasets_evaluated": "Datasets",
-            "mean_nn_distance_ratio": "NN ratio",
-            "mean_discrimination_accuracy": "Disc. acc.",
-            "mean_utility_lift": "Utility lift",
-            "mean_distribution_similarity_score": "Dist. score",
-            "mean_fit_seconds": "Fit s",
-            "mean_sample_seconds": "Sample s",
+            "mean_nn_distance_ratio": f"{TARGET} NN ratio",
+            "mean_discrimination_accuracy": f"{TARGET} Disc. acc.",
+            "mean_utility_lift": f"{UP} Utility lift",
+            "mean_distribution_similarity_score": f"{UP} Dist. score",
+            "mean_fit_seconds": f"{DOWN} Fit s",
+            "mean_sample_seconds": f"{DOWN} Sample s",
         }
     )
     return write_latex(
         df,
         Path(tables_dir) / "sensitivity_validation.tex",
-        "Capped comparison of the three proposed DataFrameSampler setups on the representative Adult Census Income dataset. Fast uses no NCA iteration, no retry budget, and no calibration; default uses one NCA iteration, five retries, and no calibration; accurate uses two NCA iterations, twenty retries, and calibrated decoders. Takeaway: setup choice is presented as a practical speed--accuracy tradeoff illustration, not as a new full benchmark claim.",
+        "Capped setup and default-parameter sensitivity on the representative Adult Census Income dataset. The setup rows compare fast, default, and accurate operating points; the parameter rows perturb lambda, NCA dimension, and NCA iteration count around the default configuration. NCA sample reports the row fraction or cap used to estimate each NCA block. Takeaway: sensitivity is used to test default robustness under small perturbations, not to claim global hyperparameter optimality.",
         "tab:sensitivity-validation",
         float_format="%.3f",
         full_width=True,
@@ -829,11 +953,11 @@ def write_imbalance_validation_table(
             "method_label": "Method",
             "minority_class": "Minority",
             "train_minority_rate": "Train min. rate",
-            "augmented_minority_rate": "Aug. min. rate",
-            "balanced_accuracy": "Bal. acc.",
-            "macro_f1": "Macro F1",
-            "minority_recall": "Min. recall",
-            "pr_auc": "PR AUC",
+            "augmented_minority_rate": f"{TARGET} Aug. min. rate",
+            "balanced_accuracy": f"{UP} Bal. acc.",
+            "macro_f1": f"{UP} Macro F1",
+            "minority_recall": f"{UP} Min. recall",
+            "pr_auc": f"{UP} PR AUC",
             "synthetic_rows": "Synth. rows",
         }
     )
@@ -868,12 +992,12 @@ def write_deep_reference_table(
         columns={
             "dataset": "Dataset",
             "method_label": "Method",
-            "distribution_similarity_score": "Dist. score",
-            "discrimination_accuracy": "Disc. acc.",
-            "utility_lift": "Utility lift",
-            "fit_seconds": "Fit s",
-            "sample_seconds": "Sample s",
-            "peak_memory_mb": "Peak MB",
+            "distribution_similarity_score": f"{UP} Dist. score",
+            "discrimination_accuracy": f"{TARGET} Disc. acc.",
+            "utility_lift": f"{UP} Utility lift",
+            "fit_seconds": f"{DOWN} Fit s",
+            "sample_seconds": f"{DOWN} Sample s",
+            "peak_memory_mb": f"{DOWN} Peak MB",
         }
     )
     return write_latex(
@@ -980,6 +1104,9 @@ def write_latex(
         label=label,
         float_format=float_format,
     )
+    latex = latex.replace(UP, r"$\uparrow$")
+    latex = latex.replace(DOWN, r"$\downarrow$")
+    latex = latex.replace(TARGET, r"$\rightarrow$")
     environment = "table*" if full_width else "table"
     width = r"\textwidth" if full_width else r"\columnwidth"
     latex = latex.replace(r"\begin{table}", rf"\begin{{{environment}}}", 1)
@@ -990,6 +1117,14 @@ def write_latex(
     dataframe.to_csv(path.with_suffix(".csv"), index=False)
     print(path)
     return path
+
+
+def _mean_pm_std(mean: float, std: float) -> str:
+    if pd.isna(mean):
+        return ""
+    if pd.isna(std):
+        return f"{mean:.3f}"
+    return f"{mean:.3f} +/- {std:.3f}"
 
 
 def generate_all_tables(
@@ -1010,6 +1145,7 @@ def generate_all_tables(
         ),
         write_method_table(tables_dir=tables_dir),
         write_main_measure_table(comparisons, tables_dir=tables_dir),
+        write_cross_dataset_aggregation_table(comparisons, tables_dir=tables_dir),
         write_distribution_table(comparisons, tables_dir=tables_dir),
         write_downstream_table(comparisons, tables_dir=tables_dir),
         write_runtime_table(comparisons, tables_dir=tables_dir),
@@ -1023,6 +1159,16 @@ def generate_all_tables(
         write_ablation_table(tables_dir=tables_dir),
         write_limitations_table(tables_dir=tables_dir),
     ]
+    try:
+        outputs.insert(
+            -2,
+            write_primary_uncertainty_table(
+                load_primary_uncertainty(results_dir),
+                tables_dir=tables_dir,
+            ),
+        )
+    except FileNotFoundError:
+        pass
     try:
         outputs.insert(
             -2,

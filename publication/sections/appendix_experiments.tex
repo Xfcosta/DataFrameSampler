@@ -57,6 +57,153 @@ cross-column structure is weakened.
 
 \input{tables/methods}
 
+\subsection{Formal Definitions of Performance Measures}
+\label{app:measure-definitions}
+
+This section defines the reported performance and diagnostic measures. Let
+$X=\{x_i\}_{i=1}^n$ denote the real dataframe rows after the metric-specific
+preprocessing step, and let $\widetilde{X}=\{\widetilde{x}_j\}_{j=1}^m$ denote
+the generated rows. When a target column is present, nearest-neighbour,
+discrimination, and utility tests remove that target from the feature matrix
+before fitting the corresponding evaluator.
+
+\paragraph{Nearest-neighbour distance ratio.}
+Let $d(\cdot,\cdot)$ be Euclidean distance after the shared preprocessing used
+by the evaluator. For each real row, define its leave-one-out nearest-neighbour
+distance
+\[
+  r_i = \min_{\ell\ne i} d(x_i,x_\ell),
+\]
+and for each generated row define its nearest real-row distance
+\[
+  \widetilde{r}_j = \min_i d(\widetilde{x}_j,x_i).
+\]
+The reported ratio is
+\[
+  \mathrm{NNRatio}
+  =
+  \frac{m^{-1}\sum_{j=1}^m \widetilde{r}_j}
+       {n^{-1}\sum_{i=1}^n r_i}.
+\]
+Values much below one indicate generated rows that are closer to the training
+set than real rows are to one another. The suspiciously-close rate is
+\[
+  m^{-1}\sum_{j=1}^m
+  \mathbf{1}\!\left[
+    \widetilde{r}_j < Q_{0.05}(\{r_i\}_{i=1}^n)
+  \right],
+\]
+where $Q_{0.05}$ is the real leave-one-out 5th percentile.
+
+\paragraph{Real-versus-synthetic discrimination.}
+The discriminator test fits a classifier to distinguish real rows from
+generated rows after the same feature preprocessing. Real rows receive label
+1 and generated rows label 0. The reported discrimination accuracy is the
+held-out accuracy of this classifier. The privacy-style discrimination score is
+a bounded descriptive transformation,
+\[
+  \mathrm{DiscScore}
+  =
+  \max\{0,\,1-2|\mathrm{Acc}-0.5|\},
+\]
+so that chance-level accuracy receives score one and perfectly separable data
+receive score zero. This is not a formal privacy measure.
+
+\paragraph{Utility lift.}
+Let $M$ be the fixed downstream predictive model used by the evaluator and let
+$S(\cdot)$ be its held-out score on real test rows. The real-only baseline
+trains $M$ on real training rows, giving score $S_{real}$. The augmented model
+trains on real training rows plus generated rows aligned to the same schema,
+giving score $S_{aug}$. Utility lift is
+\[
+  \mathrm{UtilityLift}=S_{aug}-S_{real}.
+\]
+Positive values mean that generated rows improved this particular held-out
+predictive task under the fixed evaluator; they do not imply general
+downstream usefulness.
+
+\paragraph{Distributional similarity.}
+For a numeric column, histogram overlap is computed from normalized histograms
+$p_b$ and $\widetilde{p}_b$ over common bins:
+\[
+  \mathrm{Overlap}=\sum_b \min(p_b,\widetilde{p}_b).
+\]
+For a categorical column with empirical frequency vectors $p$ and
+$\widetilde{p}$ over the union of observed categories, total variation is
+\[
+  \mathrm{TV}(p,\widetilde{p})
+  =
+  \frac{1}{2}\sum_c |p_c-\widetilde{p}_c|,
+\]
+and the Jensen--Shannon divergence is
+\[
+  \mathrm{JSD}(p,\widetilde{p})
+  =
+  \frac{1}{2}\mathrm{KL}(p\|a)
+  +
+  \frac{1}{2}\mathrm{KL}(\widetilde{p}\|a),
+  \qquad
+  a=\frac{1}{2}(p+\widetilde{p}).
+\]
+The aggregate distribution similarity score averages the available components
+$\mathrm{Overlap}$, $1-\mathrm{JSD}$, and $1-\mathrm{TV}$.
+
+\paragraph{Association difference.}
+For mixed-type dependence diagnostics, the evaluator builds an association
+matrix $A(X)$ using Pearson correlation for numeric--numeric pairs, Cramer's
+$V$ for categorical--categorical pairs, and correlation ratio for mixed
+numeric--categorical pairs. The reported mean association difference is the
+mean absolute upper-triangular difference:
+\[
+  \frac{2}{d(d-1)}
+  \sum_{1\le a<b\le d}
+  |A(X)_{ab}-A(\widetilde{X})_{ab}|.
+\]
+
+\paragraph{Decoder calibration.}
+For a categorical decoder with class-probability vector $p_i$ and true class
+$y_i$, negative log loss is
+\[
+  -\frac{1}{n}\sum_i \log p_i(y_i),
+\]
+and the multiclass Brier score is
+\[
+  \frac{1}{n}\sum_i \sum_c \left(p_i(c)-\mathbf{1}[y_i=c]\right)^2.
+\]
+Expected calibration error partitions top-class confidence values into fixed
+bins $B_b$ and reports
+\[
+  \mathrm{ECE}
+  =
+  \sum_b \frac{|B_b|}{n}
+  \left|
+    \mathrm{acc}(B_b)-\mathrm{conf}(B_b)
+  \right|.
+\]
+These quantities diagnose the probabilistic inverse map; they do not establish
+that generated categories are calibrated draws from the true data-generating
+distribution.
+
+\paragraph{Frozen-Isomap insertion stress.}
+For a generated or held-out point $x$, let $g_i(x)$ be its graph-geodesic
+distance to training row $x_i$ after attaching $x$ to the frozen Isomap
+neighbourhood graph, and let $e_i(z)$ be its Euclidean distance to the embedded
+training point after out-of-sample Isomap transformation. The normalized
+pointwise insertion stress is
+\[
+  s(x)
+  =
+  \sqrt{
+  \frac{\sum_i (g_i(x)-e_i(z))^2}
+       {\sum_i e_i(z)^2}
+  }.
+\]
+Convex-hull membership is tested in the sampler latent space by checking
+whether $x$ can be represented as a convex combination of training latent rows.
+The out-of-hull acceptance rate counts the fraction of out-of-hull generated
+points whose insertion stress is no larger than the held-out real 95th
+percentile.
+
 \subsection{Primary Four-Measure Summary}
 
 Table~\ref{tab:main-measures} reports the compact version of the main

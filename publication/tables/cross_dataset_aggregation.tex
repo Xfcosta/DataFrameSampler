@@ -1,0 +1,17 @@
+\begin{table}
+\caption{Descriptive cross-dataset aggregation over distribution score, utility lift, and real-versus-synthetic discrimination gap. Lower average rank is better; wins and losses count metric-dataset best and worst cases. Takeaway: aggregation supports only weak descriptive pattern claims, not formal statistical superiority.}
+\label{tab:cross-dataset-aggregation}
+\begin{adjustbox}{max width=\columnwidth}
+\begin{tabular}{lrrrr}
+\toprule
+Method & $\downarrow$ Avg. rank & $\uparrow$ Wins & $\downarrow$ Losses & Metric-datasets \\
+\midrule
+Row bootstrap & 1.433 & 21 & 0 & 30 \\
+Stratified columns & 2.467 & 6 & 2 & 30 \\
+Independent columns & 3.433 & 2 & 11 & 30 \\
+Gaussian copula & 3.567 & 4 & 8 & 30 \\
+DataFrameSampler & 3.733 & 1 & 12 & 30 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}

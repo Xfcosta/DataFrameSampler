@@ -36,6 +36,11 @@ iterations. The final latent matrix is
 When the iteration count is zero, the replacement step is skipped and the
 initial one-hot categorical blocks remain in the latent matrix; however, the
 target-exclusion rule still applies to decoder training and diagnostics.
+For larger datasets, the NCA fit can be estimated on a deterministic row
+subsample and then applied to all rows. In the implementation this is controlled
+by \texttt{nca\_fit\_sample\_size}: an integer gives a row cap, while a value in
+$(0,1]$ gives a fraction of the fitted rows. The paper experiments use a
+fraction of $0.25$ as the initial practical setting.
 
 \subsection{Algorithms}
 
@@ -47,7 +52,7 @@ reproducibility is part of the contribution.
 \caption{Fit the supervised composite latent representation.}
 \label{alg:fit-latent}
 \begin{algorithmic}[1]
-\Require Mixed-type dataframe $X$, iteration count $T$, block widths $\{k_j\}_{j=1}^q$
+\Require Mixed-type dataframe $X$, iteration count $T$, block widths $\{k_j\}_{j=1}^q$, optional NCA fit sample size $s$
 \Ensure Fitted latent matrix $Z$, categorical decoders $\{g_j\}_{j=1}^q$
 \State Split columns into continuous columns and categorical columns using the binary-as-categorical policy.
 \State Median-impute and standardize continuous columns to obtain $X^{num}$.
@@ -56,7 +61,8 @@ reproducibility is part of the contribution.
 \For{$t = 1,\ldots,T$}
   \For{categorical column $C_j$}
     \State Remove $C_j$'s current block from $H$ to form $H_{-j}$.
-    \State Fit NCA projection $f_j:H_{-j}\rightarrow\mathbb{R}^{k_j}$ using labels $C_j$.
+    \State Select deterministic stratified row subset $I_j$ using $s$, if provided.
+    \State Fit NCA projection $f_j:H_{-j}\rightarrow\mathbb{R}^{k_j}$ using labels $C_j$ on rows $I_j$.
     \State Replace $C_j$'s current block in $H$ with $f_j(H_{-j})$.
   \EndFor
 \EndFor
@@ -149,19 +155,23 @@ candidate, and the decoder probabilities used for categorical reconstruction.
 
 \subsection{Computational Complexity}
 
-Let $n$ be the number of fitted rows, $p$ the number of continuous columns,
+Let $n$ be the number of fitted rows, $s$ the number of rows used to fit each
+NCA block after optional subsampling, $p$ the number of continuous columns,
 $q$ the number of categorical columns, $h$ the total one-hot width, $k_j$ the
 latent width for categorical column $j$, and $T$ the number of NCA refinement
 iterations. Median imputation, one-hot encoding, and standardization are
 linear in the number of observed dataframe entries. Exact NCA is the dominant
 default cost: for each categorical column and iteration, scikit-learn NCA
 optimizes a supervised neighbourhood objective whose distance computations are
-quadratic in $n$ and linear in the current context width. A coarse upper bound
+quadratic in $s$ and linear in the current context width. A coarse upper bound
 for the NCA phase is therefore
 \[
-  O\!\left(T q n^2 (p + h + \sum_j k_j)\right),
+  O\!\left(T q s^2 (p + h + \sum_j k_j)\right),
 \]
-up to optimizer constants and effective context widths.
+up to optimizer constants and effective context widths. With no NCA subsampling,
+$s=n$; with a fractional setting such as \texttt{nca\_fit\_sample\_size=0.25},
+$s\approx 0.25n$, while the learned projection is still evaluated on all $n$
+rows.
 
 Decoder fitting trains one random forest per categorical column and is
 parallelized across trees by default. Exact nearest-neighbour construction in

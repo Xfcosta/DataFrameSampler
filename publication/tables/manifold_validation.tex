@@ -4,7 +4,7 @@
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{llrrrrrr}
 \toprule
-Dataset & Method & Out-hull rate & Real stress med. & Real stress q95 & Gen. stress med. & Out-hull stress med. & Out-hull accept. \\
+Dataset & Method & $\uparrow$ Out-hull rate & $\downarrow$ Real stress med. & $\downarrow$ Real stress q95 & $\downarrow$ Gen. stress med. & $\downarrow$ Out-hull stress med. & $\uparrow$ Out-hull accept. \\
 \midrule
 adult & DataFrameSampler & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 \\
 adult & Latent bootstrap & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 & 1.000 \\
@@ -33,9 +33,9 @@ synthetic\_rare\_categories & Latent interpolation & 0.000 & 0.018 & 0.032 & 0.0
 synthetic\_sensitive\_identifier & DataFrameSampler & 0.590 & 0.015 & 0.024 & 0.016 & 0.015 & 0.932 \\
 synthetic\_sensitive\_identifier & Latent bootstrap & 0.000 & 0.015 & 0.024 & 0.015 & NaN & NaN \\
 synthetic\_sensitive\_identifier & Latent interpolation & 0.000 & 0.015 & 0.024 & 0.015 & NaN & NaN \\
-titanic & DataFrameSampler & 0.548 & 0.023 & 0.036 & 0.022 & 0.024 & 0.898 \\
-titanic & Latent bootstrap & 0.000 & 0.023 & 0.036 & 0.022 & NaN & NaN \\
-titanic & Latent interpolation & 0.004 & 0.023 & 0.036 & 0.023 & 0.026 & 1.000 \\
+titanic & DataFrameSampler & 0.456 & 0.101 & 0.192 & 0.119 & 0.095 & 0.965 \\
+titanic & Latent bootstrap & 0.000 & 0.101 & 0.192 & 0.118 & NaN & NaN \\
+titanic & Latent interpolation & 0.000 & 0.101 & 0.192 & 0.111 & NaN & NaN \\
 \bottomrule
 \end{tabular}
 \end{adjustbox}

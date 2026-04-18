@@ -448,25 +448,35 @@ def plot_sensitivity_validation(data: pd.DataFrame, figures_dir: str | Path = FI
     summary = summarize_sensitivity_validation(data)
     if summary.empty:
         raise FileNotFoundError("No sensitivity validation rows found.")
+    summary = summary[summary["parameter"].isin(["setup", "lambda", "n_components", "n_iterations"])].copy()
+    summary["label"] = summary.apply(
+        lambda row: str(row["setup_label"])
+        if row["parameter"] == "setup"
+        else f"{row['parameter']}={row['value']}",
+        axis=1,
+    )
+    parameter_order = {"setup": 0, "lambda": 1, "n_components": 2, "n_iterations": 3}
+    setup_order = {
+        "DataFrameSampler fast": 0,
+        "DataFrameSampler default": 1,
+        "DataFrameSampler accurate": 2,
+    }
+    summary["_parameter_order"] = summary["parameter"].map(parameter_order).fillna(99)
+    summary["_setup_order"] = summary["setup_label"].map(setup_order).fillna(99)
+    subset = summary.sort_values(["_parameter_order", "_setup_order", "value"]).reset_index(drop=True)
     metrics = [
         ("mean_distribution_similarity_score", "Distribution score"),
         ("mean_utility_lift", "Utility lift"),
         ("mean_discrimination_accuracy", "Discrimination accuracy"),
     ]
-    setup_order = ["DataFrameSampler fast", "DataFrameSampler default", "DataFrameSampler accurate"]
-    summary["setup_label"] = pd.Categorical(
-        summary["setup_label"].astype(str),
-        categories=setup_order,
-        ordered=True,
-    )
-    subset = summary.sort_values("setup_label")
-    fig, axes = plt.subplots(1, len(metrics), figsize=(13, 4.6))
+    fig, axes = plt.subplots(1, len(metrics), figsize=(14, max(4.8, 0.35 * len(subset))))
     for ax, (metric, title) in zip(axes, metrics):
-        ax.bar(subset["setup_label"].astype(str), subset[metric], color="#59A14F")
+        ax.barh(subset["label"].astype(str), subset[metric], color="#59A14F")
         ax.set_title(title)
-        ax.grid(axis="y", alpha=0.25)
-        ax.tick_params(axis="x", rotation=20)
-    fig.suptitle("Representative DataFrameSampler setup comparison")
+        ax.grid(axis="x", alpha=0.25)
+        if ax is not axes[0]:
+            ax.tick_params(axis="y", labelleft=False)
+    fig.suptitle("Representative DataFrameSampler setup and default-parameter sensitivity")
     fig.tight_layout()
     figures_path = Path(figures_dir)
     figures_path.mkdir(parents=True, exist_ok=True)
