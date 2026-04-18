@@ -23,9 +23,9 @@ reported as boundary diagnostics rather than assumed from the model form.
 The categorical decoders are trained independently, conditional on the final
 latent context with the target block removed. It can therefore occur that each
 decoded column is locally plausible while the combined row violates a
-multi-column domain constraint. The fitted range and numeric standard-deviation
-checks reduce some numeric failures, but they are not a general constraint
-language.
+multi-column domain constraint. The fitted numeric quantile guard rejects some
+implausible numeric candidates and retries from a fresh anchor, but it is not a
+general constraint language.
 
 \paragraph{Decoder uncertainty.}
 Random-forest probabilities are empirical model outputs. Optional calibration

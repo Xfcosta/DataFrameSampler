@@ -350,11 +350,11 @@ class _FixedNeighbourEstimator:
         return np.array([np.array([1]), np.array([0])], dtype=object)
 
 
-def test_neighbour_sampler_retries_out_of_range_candidates_without_clipping():
+def test_neighbour_sampler_retries_quantile_guard_violations_without_clipping():
     sampler = NearestMutualNeighboursSampler(
         nearest_mutual_neighbours_estimator=_FixedNeighbourEstimator(),
         probability_estimator=_FixedProbabilityEstimator(),
-        use_min_max_constraints=True,
+        quantile_guard=0.0,
         max_constraint_retries=3,
         random_state=1,
     ).fit(np.array([[0.0], [1.0]]))
@@ -369,11 +369,11 @@ def test_neighbour_sampler_retries_out_of_range_candidates_without_clipping():
     assert sampler.constraint_violation_count_ == 0
 
 
-def test_neighbour_sampler_accepts_out_of_range_candidate_after_retry_limit():
+def test_neighbour_sampler_accepts_quantile_guard_violation_after_retry_limit():
     sampler = NearestMutualNeighboursSampler(
         nearest_mutual_neighbours_estimator=_FixedNeighbourEstimator(),
         probability_estimator=_FixedProbabilityEstimator(),
-        use_min_max_constraints=True,
+        quantile_guard=0.0,
         max_constraint_retries=3,
         random_state=1,
     ).fit(np.array([[0.0], [1.0]]))
@@ -387,26 +387,49 @@ def test_neighbour_sampler_accepts_out_of_range_candidate_after_retry_limit():
     assert sampler.constraint_violation_count_ == 1
 
 
-def test_neighbour_sampler_retries_numeric_zscore_outliers():
+def test_neighbour_sampler_quantile_guard_uses_fitted_inner_quantiles():
     sampler = NearestMutualNeighboursSampler(
         nearest_mutual_neighbours_estimator=_FixedNeighbourEstimator(),
         probability_estimator=_FixedProbabilityEstimator(),
-        use_min_max_constraints=False,
-        use_numeric_std_constraints=True,
-        numeric_std_threshold=1.0,
-        numeric_constraint_indices=[0],
+        quantile_guard=0.25,
+        quantile_constraint_indices=[0],
         max_constraint_retries=3,
         random_state=1,
-    ).fit(np.array([[0.0], [1.0]]))
-    candidates = iter([np.array([1.2]), np.array([0.75])])
+    ).fit(np.array([[0.0], [1.0], [2.0], [3.0]]))
+    candidates = iter([np.array([0.5]), np.array([1.0])])
     sampler._sample_anchor_index = lambda sampling_probability: 0
     sampler._generate_from_anchor = lambda *args, **kwargs: next(candidates)
 
     generated = sampler.sample(1)
 
-    assert generated.tolist() == [[0.75]]
+    assert generated.tolist() == [[1.0]]
     assert sampler.constraint_retry_count_ == 1
     assert sampler.constraint_violation_count_ == 0
+
+
+def test_neighbour_sampler_retries_with_fresh_anchor():
+    sampler = NearestMutualNeighboursSampler(
+        nearest_mutual_neighbours_estimator=_FixedNeighbourEstimator(),
+        probability_estimator=_FixedProbabilityEstimator(),
+        quantile_guard=0.0,
+        max_constraint_retries=2,
+        random_state=1,
+    ).fit(np.array([[0.0], [1.0]]))
+    anchors = iter([0, 1])
+    seen_anchors = []
+    candidates = iter([np.array([2.0]), np.array([0.5])])
+    sampler._sample_anchor_index = lambda sampling_probability: next(anchors)
+
+    def generate_from_anchor(anchor, *args, **kwargs):
+        seen_anchors.append(anchor)
+        return next(candidates)
+
+    sampler._generate_from_anchor = generate_from_anchor
+
+    generated = sampler.sample(1)
+
+    assert generated.tolist() == [[0.5]]
+    assert seen_anchors == [0, 1]
 
 
 def test_exact_and_sklearn_knn_backends_return_neighbours_without_self():
@@ -475,12 +498,11 @@ def test_cli_help_shows_new_flags_and_hides_removed_flags():
     assert "--nca_fit_sample_size" in result.output
     assert "--calibrate_decoders" in result.output
     assert "--no_calibrate_decoders" in result.output
-    assert "--enforce_min_max_constraints" in result.output
-    assert "--no_enforce_min_max_constraints" in result.output
-    assert "--enforce_numeric_std_constraints" in result.output
-    assert "--no_enforce_numeric_std_constraints" in result.output
-    assert "--numeric_std_threshold" in result.output
+    assert "--quantile_guard" in result.output
     assert "--max_constraint_retries" in result.output
+    assert "--enforce_min_max_constraints" not in result.output
+    assert "--enforce_numeric_std_constraints" not in result.output
+    assert "--numeric_std_threshold" not in result.output
     assert "[default: sklearn]" in result.output
     assert "--n_bins" not in result.output
     assert "--embedding_method" not in result.output

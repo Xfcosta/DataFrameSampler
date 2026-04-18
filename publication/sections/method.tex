@@ -82,12 +82,12 @@ reproducibility is part of the contribution.
 \Require Fitted latent matrix $Z$, decoders $\{g_j\}_{j=1}^q$, sample count $m$, scale $\lambda$, retry budget $R$
 \Ensure Synthetic dataframe $\widetilde{X}$
 \For{$i = 1,\ldots,m$}
-  \State Sample anchor row $A$ from $Z$.
   \For{$r = 0,\ldots,R$}
+    \State Sample anchor row $A$ from $Z$.
     \State Sample a mutual neighbour $B$ of $A$.
     \State Sample a mutual neighbour $C$ of $B$.
     \State Form candidate $A' \gets A + \lambda(C-B)$.
-    \If{$A'$ satisfies fitted latent range and numeric z-score constraints}
+    \If{$A'$ satisfies the fitted numeric quantile guard}
       \State \textbf{break}
     \EndIf
   \EndFor
@@ -100,7 +100,8 @@ reproducibility is part of the contribution.
 
 We use three named configurations when discussing practical setup choices. All
 three share the empirical settings $k=1$,
-\texttt{nca\_fit\_sample\_size}$=0.5$, and $\lambda=0.25$. The \emph{fast}
+\texttt{nca\_fit\_sample\_size}$=0.5$, $\lambda=0.25$, and a 0.1 numeric
+quantile guard. The \emph{fast}
 setup uses no NCA refinement iteration, no rejection retries, and uncalibrated
 decoders. The \emph{default} setup also uses no NCA refinement iteration, but
 adds five rejection retries. The \emph{accurate} setup uses two NCA iterations,

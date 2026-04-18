@@ -55,6 +55,168 @@ cross-column structure is weakened.
 
 \input{tables/datasets}
 
+\subsection{Baseline Method Definitions}
+\label{app:baseline-definitions}
+
+This section gives the operational definition of each comparison method. The
+baselines have different evidence roles. Some are primary low-setup references
+used in the main comparison tables; some are secondary references used only for
+class rebalancing or manifold diagnostics; and CTGAN is a high-capacity
+reference included to locate the method in the broader design space. None of
+these baselines is used to claim state-of-the-art performance.
+
+\paragraph{Row bootstrap.}
+Let the fitted dataframe be
+$X=\{x_1,\ldots,x_n\}$, where each $x_i$ is a complete mixed-type row. The row
+bootstrap samples indexes
+\[
+  I_1,\ldots,I_m \overset{\mathrm{iid}}{\sim}
+  \mathrm{Uniform}\{1,\ldots,n\}
+\]
+and returns $\widetilde{x}_j=x_{I_j}$. This baseline exactly preserves valid
+observed row combinations because every generated row is a source row. It can
+therefore achieve strong marginal and dependence scores, and can even help
+some downstream utility tests by duplicating useful training cases. Its
+failure mode is also direct: it performs complete record reuse. The row
+bootstrap is consequently a boundary reference, not a deployable synthetic
+data method in settings where source-row reuse is unacceptable.
+
+\paragraph{Independent columns.}
+For column $r$, let
+$X_{\cdot r}=\{x_{1r},\ldots,x_{nr}\}$ denote the empirical values observed in
+that column. The independent-column sampler draws
+\[
+  \widetilde{x}_{jr}
+  =
+  x_{I_{jr},r},
+  \qquad
+  I_{jr}\overset{\mathrm{iid}}{\sim}\mathrm{Uniform}\{1,\ldots,n\},
+\]
+independently for every generated row $j$ and every column $r$. This preserves
+each univariate empirical marginal up to sampling noise, including the support
+of categorical variables, but destroys most cross-column dependence because the
+index used for one column is independent of the index used for another column.
+It is included to expose a common false positive: a generator can look good in
+one-column histograms while producing implausible joint combinations.
+
+\paragraph{Gaussian copula with empirical categorical sampling.}
+The Gaussian-copula baseline separates numeric and non-numeric columns. For a
+numeric column $r$, non-missing values are converted to rank probabilities
+\[
+  u_{ir}=\frac{\mathrm{rank}(x_{ir})-1/2}{n_r},
+\]
+where $n_r$ is the number of non-missing values in that column. The values
+$u_{ir}$ are mapped to normal scores
+$z_{ir}=\Phi^{-1}(u_{ir})$, and a multivariate Gaussian
+$\mathcal{N}(\widehat{\mu},\widehat{\Sigma})$ is fit to the resulting numeric
+score matrix, with a small diagonal regularisation term added to the covariance
+matrix. To sample, the baseline draws
+$\widetilde{z}\sim\mathcal{N}(\widehat{\mu},\widehat{\Sigma})$, maps each
+coordinate back to a rank probability $\Phi(\widetilde{z}_r)$, and then uses
+the empirical numeric quantile function to obtain $\widetilde{x}_r$.
+Column-specific numeric missingness is reintroduced using the observed missing
+rate. Non-numeric columns are sampled empirically from their observed values.
+This baseline provides a low-setup structured reference for numeric dependence,
+but it does not model categorical--categorical or categorical--numeric
+dependence beyond empirical marginal sampling.
+
+\paragraph{Target-stratified empirical columns.}
+When a target column $Y$ exists, the stratified empirical sampler first draws a
+target value
+\[
+  \widetilde{Y}_j \sim \widehat{p}(Y),
+\]
+where $\widehat{p}(Y)$ is the empirical target distribution. Conditional on the
+sampled target level $y$, every other column is sampled independently from the
+rows with $Y=y$:
+\[
+  \widetilde{x}_{jr}
+  \sim
+  \widehat{p}(X_r \mid Y=y),
+  \qquad r\ne Y.
+\]
+Thus the baseline preserves target-conditional one-column distributions, but
+does not preserve the joint distribution among non-target columns within each
+stratum. It is used to test whether target-aware marginal sampling is enough
+for the downstream and distributional measures, and to separate target
+conditioning from the local-geometry claim made by DataFrameSampler.
+
+\paragraph{SMOTE and SMOTENC class-rebalancing references.}
+The imbalance diagnostic uses SMOTE-style baselines only for the secondary
+class-rebalancing experiment. For numeric feature vectors, SMOTE samples a
+minority-class anchor $x_i$, a minority-class neighbour $x_\ell$, and a random
+weight $u\sim\mathrm{Uniform}(0,1)$, then generates
+\[
+  \widetilde{x}=x_i + u(x_\ell-x_i).
+\]
+For mixed-type data, SMOTENC applies the same interpolation idea to continuous
+features while treating selected categorical features through its categorical
+feature handling. In our workflow, categorical features are encoded with stable
+integer codes before applying SMOTENC and decoded afterwards. Missing numeric
+values are median-filled for the oversampling step. This comparison is not a
+general oversampling benchmark; it is included because DataFrameSampler's
+local-transport operator is adjacent to interpolation-based minority
+augmentation, and the paper needs a supervised imbalance reference for that
+secondary use case.
+
+\paragraph{Latent interpolation.}
+The manifold diagnostic includes an interpolation reference directly in the
+fitted DataFrameSampler latent space. Given training latent rows
+$Z=\{z_i\}_{i=1}^n$, the baseline samples an anchor $z_i$, chooses one of its
+nearest neighbours $z_\ell$, draws $u\sim\mathrm{Uniform}(0,1)$, and returns
+\[
+  \widetilde{z}=z_i+u(z_\ell-z_i).
+\]
+This produces points on line segments between fitted latent rows. Its role is
+to represent the interpolation-like alternative to displacement transfer. It
+is expected to remain inside, or close to, familiar regions of the fitted
+latent support more often than the DataFrameSampler transport operator
+$A+\lambda(C-B)$.
+
+\paragraph{Latent bootstrap.}
+The latent bootstrap samples fitted latent rows with replacement:
+\[
+  \widetilde{z}_j=z_{I_j},
+  \qquad
+  I_j\overset{\mathrm{iid}}{\sim}\mathrm{Uniform}\{1,\ldots,n\}.
+\]
+It is used only in the frozen-Isomap manifold diagnostic. Because it reuses
+training latent rows exactly, it provides a lower-bound style reference for
+insertion stress and out-of-hull behaviour. It is not a generator for new
+examples; it exposes what the diagnostic looks like when no latent novelty is
+introduced.
+
+\paragraph{CTGAN reference.}
+The CTGAN row is produced through SDV's single-table
+\texttt{CTGANSynthesizer}. Metadata are detected from the fitted dataframe,
+the synthesizer is fit on the Adult working table, and samples are drawn with
+SDV's \texttt{sample(num\_rows=...)} interface. CTGAN is a conditional
+generative adversarial model for tabular data. At training time, the dataframe
+is transformed into a numerical representation suitable for neural networks:
+continuous variables are normalised through fitted continuous transforms, while
+categorical variables are represented through discrete encodings. A generator
+network maps random noise, together with a sampled conditioning vector, to a
+synthetic transformed row. A discriminator network receives real and generated
+transformed rows and is trained to distinguish them. The two networks are then
+trained adversarially: the discriminator improves its real-versus-generated
+classification, while the generator improves its ability to produce rows that
+the discriminator cannot separate from real rows.
+
+The conditioning mechanism is important for mixed-type tables. Rather than
+sampling all categories only according to their raw frequency, CTGAN selects a
+discrete column and category as a condition during training and generation.
+This conditional sampling scheme is designed to help the generator learn rare
+or imbalanced categorical levels. After generation, SDV applies the inverse
+metadata transformations to return a dataframe in the original schema. In the
+reference run used here, SDV is configured with a capped number of epochs,
+fitted min--max enforcement, fitted rounding enforcement, no GPU acceleration,
+and no additional hyperparameter search. CTGAN therefore represents a
+high-capacity global objective with a learned neural representation, whereas
+DataFrameSampler represents an explicit composite latent space with traceable
+neighbour-displacement construction. The CTGAN result is useful for
+positioning these design choices, but it is not a tuned leaderboard competitor
+and does not define the paper's primary practical-use claim.
+
 \input{tables/methods}
 
 \subsection{Formal Definitions of Performance Measures}

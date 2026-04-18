@@ -61,6 +61,7 @@ def test_sensitivity_validation_reports_proposed_setup_rows():
     assert set(report["n_components"]) == {1}
     assert set(report["nca_fit_sample_size"]) == {0.5}
     assert set(report["lambda_"]) == {0.25}
+    assert set(report["quantile_guard"]) == {0.1}
     assert set(report["max_constraint_retries"]) == {0, 5, 20}
     assert {"nn_distance_ratio", "discrimination_accuracy", "utility_lift", "reason"}.issubset(report.columns)
     assert (report["reason"] == "ok").all()
@@ -78,6 +79,7 @@ def test_sensitivity_summary_aggregates_by_parameter_and_value():
             "n_components": [1, 1],
             "nca_fit_sample_size": [0.5, 0.5],
             "lambda_": [0.25, 0.25],
+            "quantile_guard": [0.1, 0.1],
             "max_constraint_retries": [5, 5],
             "calibrate_decoders": [False, False],
             "nn_distance_ratio": [1.0, 1.4],
@@ -125,6 +127,7 @@ def test_sensitivity_table_and_figure_helpers_write_outputs(tmp_path):
             "n_components": [1, 1, 1],
             "nca_fit_sample_size": [0.5, 0.5, 0.5],
             "lambda_": [0.25, 0.25, 0.25],
+            "quantile_guard": [0.1, 0.1, 0.1],
             "max_constraint_retries": [0, 5, 20],
             "calibrate_decoders": [False, False, True],
             "nn_distance_ratio": [1.0, 1.1, 1.2],
@@ -204,6 +207,7 @@ def test_generate_all_tables_and_figures_include_sensitivity_outputs(tmp_path):
             "value": ["default"],
             "setup_label": ["DataFrameSampler default"],
             "n_iterations": [1],
+            "quantile_guard": [0.1],
             "max_constraint_retries": [5],
             "calibrate_decoders": [False],
             "nn_distance_ratio": [1.0],

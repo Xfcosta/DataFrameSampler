@@ -25,7 +25,10 @@ configuration, column-selection, embedding-method-selection, and bin-encoding
 workflows. The CLI exposes only the NCA and neighbour-transport parameters,
 decoder calibration as an opt-in diagnostic choice, rejection constraints for
 generated latent candidates, and \texttt{nca\_fit\_sample\_size} as a practical
-scaling parameter. Values in $(0,1]$ fit each NCA block on that fraction of
+scaling parameter. Candidate rejection is controlled by a single
+\texttt{quantile\_guard}: with value 0.1, generated numeric latent coordinates
+must lie within the fitted 10th--90th percentile interval unless the retry
+budget is exhausted. Values in $(0,1]$ fit each NCA block on that fraction of
 rows, and integer values fit on at most that many rows, before applying the
 learned projection to the full dataframe. This is consistent with the paper's
 practical-use claim: low setup cost is favoured over a large configuration
@@ -38,7 +41,8 @@ workflows.
 For routine use, the paper names three operating points rather than asking
 users to treat every parameter as a tuning axis. All three use the empirical
 settings \texttt{n\_components=1},
-\texttt{nca\_fit\_sample\_size=0.5}, and \texttt{lambda\_=0.25}. The fast
+\texttt{nca\_fit\_sample\_size=0.5}, \texttt{lambda\_=0.25}, and
+\texttt{quantile\_guard=0.1}. The fast
 setup (\texttt{n\_iterations=0}, no retries, no decoder calibration) is meant
 for smoke tests and quick previews. The default setup
 (\texttt{n\_iterations=0}, five retries, no decoder calibration) is the

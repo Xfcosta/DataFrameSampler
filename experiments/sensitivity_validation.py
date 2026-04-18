@@ -27,6 +27,7 @@ SENSITIVITY_VALIDATION_COLUMNS = [
     "n_iterations",
     "nca_fit_sample_size",
     "lambda_",
+    "quantile_guard",
     "max_constraint_retries",
     "calibrate_decoders",
     "n_train",
@@ -152,6 +153,7 @@ def summarize_sensitivity_validation(rows: pd.DataFrame) -> pd.DataFrame:
                 "n_iterations",
                 "nca_fit_sample_size",
                 "lambda_",
+                "quantile_guard",
                 "max_constraint_retries",
                 "calibrate_decoders",
                 "mean_nn_distance_ratio",
@@ -173,6 +175,8 @@ def summarize_sensitivity_validation(rows: pd.DataFrame) -> pd.DataFrame:
         rows["lambda_"] = pd.NA
     if "nca_fit_sample_size" not in rows:
         rows["nca_fit_sample_size"] = pd.NA
+    if "quantile_guard" not in rows:
+        rows["quantile_guard"] = pd.NA
     if "max_constraint_retries" not in rows:
         rows["max_constraint_retries"] = pd.NA
     if "calibrate_decoders" not in rows:
@@ -186,6 +190,7 @@ def summarize_sensitivity_validation(rows: pd.DataFrame) -> pd.DataFrame:
             "n_iterations",
             "nca_fit_sample_size",
             "lambda_",
+            "quantile_guard",
             "max_constraint_retries",
             "calibrate_decoders",
         ],
@@ -242,6 +247,7 @@ def _evaluate_variant(
             "n_components": sampler_config.get("n_components", pd.NA),
             "nca_fit_sample_size": sampler_config.get("nca_fit_sample_size", pd.NA),
             "lambda_": sampler_config.get("lambda_", pd.NA),
+            "quantile_guard": sampler_config.get("quantile_guard", pd.NA),
         }
     except Exception as exc:  # pragma: no cover - defensive row for long notebooks.
         return {
@@ -254,6 +260,7 @@ def _evaluate_variant(
             "n_iterations": setup.n_iterations,
             "nca_fit_sample_size": sampler_config.get("nca_fit_sample_size", pd.NA),
             "lambda_": sampler_config.get("lambda_", pd.NA),
+            "quantile_guard": sampler_config.get("quantile_guard", pd.NA),
             "max_constraint_retries": setup.max_constraint_retries,
             "calibrate_decoders": setup.calibrate_decoders,
             "n_train": len(dataframe),
@@ -299,6 +306,7 @@ def _row_from_summary(
         "n_iterations": setup.n_iterations,
         "nca_fit_sample_size": summary.get("nca_fit_sample_size", pd.NA),
         "lambda_": pd.NA,
+        "quantile_guard": setup.quantile_guard,
         "max_constraint_retries": setup.max_constraint_retries,
         "calibrate_decoders": setup.calibrate_decoders,
         "n_train": summary["n_real"],
@@ -367,6 +375,7 @@ def _evaluate_variant_config(
             "n_iterations": sampler_config.get("n_iterations", pd.NA),
             "nca_fit_sample_size": sampler_config.get("nca_fit_sample_size", pd.NA),
             "lambda_": sampler_config.get("lambda_", pd.NA),
+            "quantile_guard": sampler_config.get("quantile_guard", pd.NA),
             "max_constraint_retries": sampler_config.get("max_constraint_retries", pd.NA),
             "calibrate_decoders": sampler_config.get("calibrate_decoders", False),
         }
@@ -381,6 +390,7 @@ def _evaluate_variant_config(
             "n_iterations": sampler_config.get("n_iterations", pd.NA),
             "nca_fit_sample_size": sampler_config.get("nca_fit_sample_size", pd.NA),
             "lambda_": sampler_config.get("lambda_", pd.NA),
+            "quantile_guard": sampler_config.get("quantile_guard", pd.NA),
             "max_constraint_retries": sampler_config.get("max_constraint_retries", pd.NA),
             "calibrate_decoders": sampler_config.get("calibrate_decoders", False),
             "n_train": len(dataframe),

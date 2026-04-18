@@ -11,8 +11,19 @@ from sklearn.preprocessing import StandardScaler
 
 from dataframe_sampler import DataFrameSampler
 
+from .baselines import SdvCtganBaseline, simple_baselines
 from .datasets import DatasetExperimentConfig
 from .workflow import sampler_config_with_random_state
+
+
+NUMERIC_PROJECTION_METHOD_LABELS = {
+    "dataframe_sampler": "DataFrameSampler",
+    "row_bootstrap": "Row bootstrap",
+    "independent_columns": "Independent columns",
+    "gaussian_copula_empirical": "Gaussian copula",
+    "stratified_columns": "Stratified columns",
+    "ctgan": "CTGAN",
+}
 
 
 def numeric_view(dataframe, sampler) -> pd.DataFrame:
@@ -120,6 +131,108 @@ def plot_numeric_projection_triptych(
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(output_path, bbox_inches="tight")
     return fig
+
+
+def plot_numeric_projection_triptychs_for_methods(
+    dataframe: pd.DataFrame,
+    config: DatasetExperimentConfig,
+    *,
+    n_samples: int | None = None,
+    methods: list[str] | None = None,
+    include_ctgan: bool = False,
+    reducer: str = "pca",
+    random_state: int | None = None,
+    figures_dir: str | Path | None = None,
+) -> tuple[dict[str, plt.Figure], pd.DataFrame]:
+    """Plot original/generated triptychs for DataFrameSampler and baselines.
+
+    A single fitted DataFrameSampler defines the numeric view for all methods.
+    Baselines generate mixed-type rows, and those rows are projected through the
+    same fitted sampler before plotting so the triptychs are visually comparable.
+    """
+    if dataframe.empty:
+        raise ValueError("dataframe must contain at least one row.")
+    random_state = config.random_state if random_state is None else random_state
+    n_samples = n_samples or min(config.n_generated, len(dataframe))
+    selected_methods = methods or _default_numeric_projection_methods(
+        target_column=config.target_column,
+        include_ctgan=include_ctgan,
+    )
+    projection_sampler = DataFrameSampler(
+        **sampler_config_with_random_state(config.sampler_config, random_state)
+    ).fit(dataframe)
+    generators = _numeric_projection_generators(
+        selected_methods,
+        target_column=config.target_column,
+        random_state=random_state,
+    )
+    figures: dict[str, plt.Figure] = {}
+    rows = []
+    for method_name, generator in generators.items():
+        try:
+            if method_name == "dataframe_sampler":
+                generated = projection_sampler.generate(n_samples=n_samples)
+            else:
+                generated = generator.fit(dataframe, target_column=config.target_column).sample(n_samples)
+            label = NUMERIC_PROJECTION_METHOD_LABELS.get(method_name, method_name)
+            output_path = None
+            if figures_dir is not None:
+                output_path = Path(figures_dir) / f"{config.dataset_name}_{method_name}_numeric_projection.pdf"
+            figures[method_name] = plot_numeric_projection_triptych(
+                projection_sampler,
+                dataframe,
+                generated,
+                target_column=config.target_column,
+                title=f"{config.title} - {label}",
+                reducer=reducer,
+                random_state=random_state,
+                output_path=output_path,
+            )
+            rows.append(
+                {
+                    "method": method_name,
+                    "method_label": label,
+                    "n_rows": len(generated),
+                    "status": "ok",
+                    "reason": "",
+                }
+            )
+        except Exception as exc:  # pragma: no cover - notebook diagnostic path
+            rows.append(
+                {
+                    "method": method_name,
+                    "method_label": NUMERIC_PROJECTION_METHOD_LABELS.get(method_name, method_name),
+                    "n_rows": 0,
+                    "status": "failed",
+                    "reason": str(exc),
+                }
+            )
+    return figures, pd.DataFrame(rows)
+
+
+def _default_numeric_projection_methods(*, target_column: str | None, include_ctgan: bool) -> list[str]:
+    methods = ["dataframe_sampler", "row_bootstrap", "independent_columns", "gaussian_copula_empirical"]
+    if target_column is not None:
+        methods.append("stratified_columns")
+    if include_ctgan:
+        methods.append("ctgan")
+    return methods
+
+
+def _numeric_projection_generators(
+    methods: list[str],
+    *,
+    target_column: str | None,
+    random_state: int,
+) -> dict[str, object]:
+    available = {spec.name: spec.estimator for spec in simple_baselines(target_column, random_state=random_state)}
+    available["dataframe_sampler"] = None
+    if "ctgan" in methods:
+        available["ctgan"] = SdvCtganBaseline(random_state=random_state)
+    missing = [method for method in methods if method not in available]
+    if missing:
+        raise ValueError(f"Unknown numeric projection method(s): {missing}")
+    return {method: available[method] for method in methods}
 
 
 def _fit_project(values: np.ndarray, *, reducer: str, random_state: int) -> tuple[np.ndarray, str]:

@@ -6,10 +6,10 @@
 \toprule
 Method & Package & Family & Mixed & Setup & Inspect. & Optional deps \\
 \midrule
-DataFrameSampler fast & DataFrameSampler & Proposed setup: n\_iter=0, k=1, sample=0.5, lambda=0.25, retries=0, calibration=no & Yes & Low & High & None \\
-DataFrameSampler default & DataFrameSampler & Proposed setup: n\_iter=0, k=1, sample=0.5, lambda=0.25, retries=5, calibration=no & Yes & Low & High & None \\
-DataFrameSampler accurate & DataFrameSampler & Proposed setup: n\_iter=2, k=1, sample=0.5, lambda=0.25, retries=20, calibration=yes & Yes & Medium & High & None \\
-DataFrameSampler & DataFrameSampler & Default comparison setup: n\_iter=0, k=1, sample=0.5, lambda=0.25, retries=5 & Yes & Low & High & None \\
+DataFrameSampler fast & DataFrameSampler & Proposed setup: n\_iter=0, k=1, sample=0.5, lambda=0.25, q=0.1, retries=0, calibration=no & Yes & Low & High & None \\
+DataFrameSampler default & DataFrameSampler & Proposed setup: n\_iter=0, k=1, sample=0.5, lambda=0.25, q=0.1, retries=5, calibration=no & Yes & Low & High & None \\
+DataFrameSampler accurate & DataFrameSampler & Proposed setup: n\_iter=2, k=1, sample=0.5, lambda=0.25, q=0.1, retries=20, calibration=yes & Yes & Medium & High & None \\
+DataFrameSampler & DataFrameSampler & Default comparison setup: n\_iter=0, k=1, sample=0.5, lambda=0.25, q=0.1, retries=5 & Yes & Low & High & None \\
 Row bootstrap & Experiment helper & Resampling & Yes & Low & Medium & None \\
 Independent columns & Experiment helper & Empirical marginals & Yes & Low & Medium & None \\
 Gaussian copula & Experiment helper & Copula + empirical categorical & Yes & Low & Medium & None \\

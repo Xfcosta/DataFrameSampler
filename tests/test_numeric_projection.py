@@ -8,6 +8,7 @@ from experiments.numeric_projection import (
     numeric_view,
     numeric_view_from_config,
     plot_numeric_projection_triptych,
+    plot_numeric_projection_triptychs_for_methods,
     project_numeric_views,
 )
 
@@ -154,3 +155,37 @@ def test_plot_numeric_projection_triptych_uses_regression_target_sizes():
     assert sizes.max() > sizes.min()
     assert len(fig.axes[2].collections) == 2
     plt.close(fig)
+
+
+def test_plot_numeric_projection_triptychs_for_methods_returns_figures_and_status():
+    df = make_mixed_dataframe()
+    df["target"] = [0, 1] * 6
+    config = DatasetExperimentConfig(
+        dataset_name="toy",
+        title="Toy",
+        data_filename="toy.csv",
+        target_column="target",
+        random_state=3,
+        n_generated=5,
+        sampler_config={
+            "n_iterations": 0,
+            "n_components": 1,
+            "n_neighbours": 3,
+            "knn_backend": "sklearn",
+            "decoder_kwargs": {"n_estimators": 5, "n_jobs": 1},
+        },
+    )
+
+    figures, status = plot_numeric_projection_triptychs_for_methods(
+        df,
+        config,
+        n_samples=5,
+        methods=["dataframe_sampler", "row_bootstrap", "independent_columns"],
+        reducer="pca",
+    )
+
+    assert set(figures) == {"dataframe_sampler", "row_bootstrap", "independent_columns"}
+    assert set(status["status"]) == {"ok"}
+    assert all(len(fig.axes) == 3 for fig in figures.values())
+    for fig in figures.values():
+        plt.close(fig)

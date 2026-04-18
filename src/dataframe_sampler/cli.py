@@ -91,32 +91,23 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
     help="Calibrate categorical decoder probabilities when feasible.",
 )
 @click.option(
-    "--enforce_min_max_constraints/--no_enforce_min_max_constraints",
-    default=True,
+    "--quantile_guard",
+    type=click.FloatRange(min=0, max=0.5, max_open=True),
+    default=0.1,
     show_default=True,
-    help="Reject and retry latent candidates outside fitted columnwise min/max ranges.",
-)
-@click.option(
-    "--enforce_numeric_std_constraints/--no_enforce_numeric_std_constraints",
-    default=True,
-    show_default=True,
-    help="Reject and retry latent candidates with improbable fitted numeric-column z-scores.",
-)
-@click.option(
-    "--numeric_std_threshold",
-    type=click.FloatRange(min=0, min_open=True),
-    default=3.0,
-    show_default=True,
-    help="Maximum absolute fitted numeric-column z-score before retrying a generated candidate.",
+    help=(
+        "Reject and retry generated candidates whose numeric latent coordinates "
+        "fall outside [q, 1-q] fitted quantiles. Use 0 for min/max."
+    ),
 )
 @click.option(
     "--max_constraint_retries",
     type=click.IntRange(min=0, max_open=True, clamp=True),
     default=5,
     show_default=True,
-    help="Retries per generated row before accepting an out-of-range latent candidate.",
+    help="Retries per generated row before accepting an out-of-quantile latent candidate.",
 )
-@click.version_option("2.0.0", "--version", "-v")
+@click.version_option("2.0.1", "--version", "-v")
 def dataframe_sampler_main(
     input_filename,
     output_filename,
@@ -132,9 +123,7 @@ def dataframe_sampler_main(
     knn_backend,
     knn_backend_kwargs_filename,
     calibrate_decoders,
-    enforce_min_max_constraints,
-    enforce_numeric_std_constraints,
-    numeric_std_threshold,
+    quantile_guard,
     max_constraint_retries,
 ):
     """
@@ -159,9 +148,7 @@ def dataframe_sampler_main(
             knn_backend=knn_backend,
             knn_backend_kwargs=knn_backend_kwargs,
             calibrate_decoders=calibrate_decoders,
-            enforce_min_max_constraints=enforce_min_max_constraints,
-            enforce_numeric_std_constraints=enforce_numeric_std_constraints,
-            numeric_std_threshold=numeric_std_threshold,
+            quantile_guard=quantile_guard,
             max_constraint_retries=max_constraint_retries,
         )
 

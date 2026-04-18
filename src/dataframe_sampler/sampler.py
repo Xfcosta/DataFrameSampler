@@ -29,34 +29,36 @@ class NearestMutualNeighboursSampler(object):
         probability_estimator=None,
         interpolation_factor=1,
         min_interpolation_factor=1,
-        use_min_max_constraints=True,
-        use_numeric_std_constraints=True,
-        numeric_std_threshold=3.0,
-        numeric_constraint_indices=None,
+        quantile_guard=0.1,
+        quantile_constraint_indices=None,
         max_constraint_retries=5,
         random_state=None,
         max_attempts_factor=20,
     ):
         if interpolation_factor < min_interpolation_factor:
             raise ValueError("interpolation_factor must be >= min_interpolation_factor.")
-        if numeric_std_threshold <= 0:
-            raise ValueError("numeric_std_threshold must be positive.")
+        self._validate_quantile_guard(quantile_guard)
         if max_constraint_retries < 0:
             raise ValueError("max_constraint_retries must be non-negative.")
         self.nearest_mutual_neighbours_estimator = nearest_mutual_neighbours_estimator
         self.probability_estimator = probability_estimator
         self.interpolation_factor = interpolation_factor
         self.min_interpolation_factor = min_interpolation_factor
-        self.use_min_max_constraints = use_min_max_constraints
-        self.use_numeric_std_constraints = use_numeric_std_constraints
-        self.numeric_std_threshold = numeric_std_threshold
-        self.numeric_constraint_indices = (
-            None if numeric_constraint_indices is None else np.asarray(numeric_constraint_indices, dtype=int)
+        self.quantile_guard = quantile_guard
+        self.quantile_constraint_indices = (
+            None if quantile_constraint_indices is None else np.asarray(quantile_constraint_indices, dtype=int)
         )
         self.max_constraint_retries = max_constraint_retries
         self.random_state = random_state
         self.rng = make_random_state(random_state)
         self.max_attempts_factor = max_attempts_factor
+
+    @staticmethod
+    def _validate_quantile_guard(quantile_guard):
+        if quantile_guard is None:
+            return
+        if not 0 <= quantile_guard < 0.5:
+            raise ValueError("quantile_guard must be None or a value in [0, 0.5).")
 
     def fit(self, X, y=None):
         X = np.asarray(X, dtype=float)
@@ -66,9 +68,7 @@ class NearestMutualNeighboursSampler(object):
             raise ValueError("At least two rows are required for neighbour sampling.")
 
         self.data_mtx = X.copy()
-        self.data_min_ = np.min(X, axis=0)
-        self.data_max_ = np.max(X, axis=0)
-        self._fit_numeric_std_constraints(X)
+        self._fit_quantile_constraints(X)
         self.targets = None if y is None else np.asarray(y).copy()
         self.sampling_probability = self.probability_estimator.fit_predict_proba(X, y)
         self.k_nearest_mutual_neighbours = self.nearest_mutual_neighbours_estimator.fit_predict(X, y)
@@ -88,10 +88,10 @@ class NearestMutualNeighboursSampler(object):
         return random_choice(self.rng, self.valid_anchor_indices, p=eligible_probabilities)
 
     def generate(self, data_mtx, k_nearest_mutual_neighbours, sampling_probability, interpolation_factor, min_interpolation_factor):
-        idx1 = self._sample_anchor_index(sampling_probability)
         candidate = None
         retries = self.max_constraint_retries if self._uses_rejection_constraints() else 0
         for attempt in range(retries + 1):
+            idx1 = self._sample_anchor_index(sampling_probability)
             candidate = self._generate_from_anchor(
                 idx1,
                 data_mtx,
@@ -124,38 +124,28 @@ class NearestMutualNeighboursSampler(object):
         return data_mtx[idx1] + alpha * (data_mtx[idx3] - data_mtx[idx2])
 
     def _uses_rejection_constraints(self):
-        return bool(
-            self.use_min_max_constraints
-            or (self.use_numeric_std_constraints and self.numeric_constraint_indices is not None)
-        )
+        return self.quantile_guard is not None and self.quantile_constraint_indices is not None
 
     def _satisfies_rejection_constraints(self, candidate):
-        if self.use_min_max_constraints and not self._satisfies_min_max_constraints(candidate):
-            return False
-        if self.use_numeric_std_constraints and not self._satisfies_numeric_std_constraints(candidate):
-            return False
-        return True
+        guarded = candidate[self.quantile_constraint_indices]
+        return bool(np.all(guarded >= self.quantile_guard_lower_) and np.all(guarded <= self.quantile_guard_upper_))
 
-    def _satisfies_min_max_constraints(self, candidate):
-        return bool(np.all(candidate >= self.data_min_) and np.all(candidate <= self.data_max_))
-
-    def _fit_numeric_std_constraints(self, X):
-        if self.numeric_constraint_indices is None or len(self.numeric_constraint_indices) == 0:
-            self.numeric_constraint_indices = None
-            self.numeric_constraint_mean_ = None
-            self.numeric_constraint_std_ = None
+    def _fit_quantile_constraints(self, X):
+        if self.quantile_guard is None:
+            self.quantile_constraint_indices = None
+            self.quantile_guard_lower_ = None
+            self.quantile_guard_upper_ = None
             return
-        numeric = X[:, self.numeric_constraint_indices]
-        self.numeric_constraint_mean_ = np.mean(numeric, axis=0)
-        std = np.std(numeric, axis=0)
-        self.numeric_constraint_std_ = np.where(std > 0, std, 1.0)
-
-    def _satisfies_numeric_std_constraints(self, candidate):
-        if self.numeric_constraint_indices is None:
-            return True
-        numeric = candidate[self.numeric_constraint_indices]
-        z_scores = np.abs((numeric - self.numeric_constraint_mean_) / self.numeric_constraint_std_)
-        return bool(np.all(z_scores <= self.numeric_std_threshold))
+        if self.quantile_constraint_indices is None:
+            self.quantile_constraint_indices = np.arange(X.shape[1], dtype=int)
+        if len(self.quantile_constraint_indices) == 0:
+            self.quantile_constraint_indices = None
+            self.quantile_guard_lower_ = None
+            self.quantile_guard_upper_ = None
+            return
+        guarded = X[:, self.quantile_constraint_indices]
+        self.quantile_guard_lower_ = np.quantile(guarded, self.quantile_guard, axis=0)
+        self.quantile_guard_upper_ = np.quantile(guarded, 1 - self.quantile_guard, axis=0)
 
     def sample(self, n_samples, target=None):
         if not hasattr(self, "data_mtx"):
@@ -215,10 +205,8 @@ def ConcreteNearestMutualNeighboursSampler(
     interpolation_factor=1,
     min_interpolation_factor=1,
     metric="euclidean",
-    use_min_max_constraints=True,
-    use_numeric_std_constraints=True,
-    numeric_std_threshold=3.0,
-    numeric_constraint_indices=None,
+    quantile_guard=0.1,
+    quantile_constraint_indices=None,
     max_constraint_retries=5,
     random_state=None,
     knn_backend="sklearn",
@@ -251,10 +239,8 @@ def ConcreteNearestMutualNeighboursSampler(
         probability_estimator,
         interpolation_factor=interpolation_factor,
         min_interpolation_factor=min_interpolation_factor,
-        use_min_max_constraints=use_min_max_constraints,
-        use_numeric_std_constraints=use_numeric_std_constraints,
-        numeric_std_threshold=numeric_std_threshold,
-        numeric_constraint_indices=numeric_constraint_indices,
+        quantile_guard=quantile_guard,
+        quantile_constraint_indices=quantile_constraint_indices,
         max_constraint_retries=max_constraint_retries,
         random_state=random_state,
     )
@@ -342,9 +328,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         decoder_kwargs=None,
         calibrate_decoders=False,
         calibration_kwargs=None,
-        enforce_min_max_constraints=True,
-        enforce_numeric_std_constraints=True,
-        numeric_std_threshold=3.0,
+        quantile_guard=0.1,
         max_constraint_retries=5,
     ):
         if isinstance(n_components, int) and n_components < 1:
@@ -354,8 +338,9 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         if n_neighbours < 1:
             raise ValueError("n_neighbours must be at least 1.")
         self._validate_nca_fit_sample_size(nca_fit_sample_size)
-        if numeric_std_threshold <= 0:
-            raise ValueError("numeric_std_threshold must be positive.")
+        NearestMutualNeighboursSampler._validate_quantile_guard(quantile_guard)
+        if max_constraint_retries < 0:
+            raise ValueError("max_constraint_retries must be non-negative.")
         self.n_components = n_components
         self.n_iterations = n_iterations
         self.n_neighbours = n_neighbours
@@ -368,9 +353,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         self.decoder_kwargs = dict(decoder_kwargs or {})
         self.calibrate_decoders = calibrate_decoders
         self.calibration_kwargs = dict(calibration_kwargs or {})
-        self.enforce_min_max_constraints = enforce_min_max_constraints
-        self.enforce_numeric_std_constraints = enforce_numeric_std_constraints
-        self.numeric_std_threshold = numeric_std_threshold
+        self.quantile_guard = quantile_guard
         self.max_constraint_retries = max_constraint_retries
         self.rng = make_random_state(random_state)
 
@@ -654,12 +637,10 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
             interpolation_factor=self.lambda_,
             min_interpolation_factor=self.lambda_,
             metric="euclidean",
-            use_min_max_constraints=self.enforce_min_max_constraints,
-            use_numeric_std_constraints=self.enforce_numeric_std_constraints,
-            numeric_std_threshold=self.numeric_std_threshold,
-            numeric_constraint_indices=np.arange(len(self.numeric_columns_), dtype=int)
+            quantile_guard=self.quantile_guard,
+            quantile_constraint_indices=np.arange(len(self.numeric_columns_), dtype=int)
             if self.numeric_columns_
-            else None,
+            else np.array([], dtype=int),
             max_constraint_retries=self.max_constraint_retries,
             random_state=self.random_state,
             knn_backend=self.knn_backend,

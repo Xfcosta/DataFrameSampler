@@ -40,6 +40,7 @@ METHOD_METADATA = [
             "family": (
                 f"Proposed setup: n_iter={setup.n_iterations}, "
                 "k=1, sample=0.5, lambda=0.25, "
+                f"q={setup.quantile_guard}, "
                 f"retries={setup.max_constraint_retries}, "
                 f"calibration={'yes' if setup.calibrate_decoders else 'no'}"
             ),
@@ -53,7 +54,7 @@ METHOD_METADATA = [
     {
         "method": "DataFrameSampler",
         "package": "DataFrameSampler",
-        "family": "Default comparison setup: n_iter=0, k=1, sample=0.5, lambda=0.25, retries=5",
+        "family": "Default comparison setup: n_iter=0, k=1, sample=0.5, lambda=0.25, q=0.1, retries=5",
         "mixed": "Yes",
         "setup": "Low",
         "inspectability": "High",
@@ -865,6 +866,7 @@ def write_sensitivity_validation_table(
             "n_iterations",
             "nca_fit_sample_size",
             "lambda_",
+            "quantile_guard",
             "max_constraint_retries",
             "calibrate_decoders",
             "datasets_evaluated",
@@ -885,7 +887,7 @@ def write_sensitivity_validation_table(
     df["_parameter_order"] = df["parameter"].map(parameter_order).fillna(99)
     df["_setup_order"] = df["setup_label"].map(setup_order).fillna(99)
     df = df.sort_values(["_parameter_order", "_setup_order", "parameter", "value"]).drop(columns=["_parameter_order", "_setup_order"])
-    for column in ["n_components", "nca_fit_sample_size", "lambda_"]:
+    for column in ["n_components", "nca_fit_sample_size", "lambda_", "quantile_guard"]:
         df[column] = df[column].where(df[column].notna(), "")
     df = df.rename(
         columns={
@@ -896,6 +898,7 @@ def write_sensitivity_validation_table(
             "n_iterations": "NCA iter.",
             "nca_fit_sample_size": "NCA sample",
             "lambda_": "Lambda",
+            "quantile_guard": "Quantile guard",
             "max_constraint_retries": "Retries",
             "calibrate_decoders": "Calibration",
             "datasets_evaluated": "Datasets",

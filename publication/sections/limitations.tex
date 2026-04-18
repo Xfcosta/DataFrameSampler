@@ -16,9 +16,9 @@ should be preprocessed deliberately rather than treated as ordinary categories.
 Generation remains a local linear transport heuristic. It can produce
 implausible rows when the learned latent space is poorly conditioned, when
 categorical decoders are uncertain, or when real-world constraints span
-multiple columns. Fitted min/max and numeric standard-deviation checks reduce
-some obvious numeric failures by rejection and retry, however they are not a
-general constraint solver. NCA-block ablations, decoder probability diagnostics,
+multiple columns. Fitted numeric quantile guards reduce some obvious numeric
+failures by rejection and retry, however they are not a general constraint
+solver. NCA-block ablations, decoder probability diagnostics,
 and manifold stress therefore provide evidence about observed behaviour, not
 proofs of causal mechanism quality.
 

@@ -61,8 +61,8 @@ we define an iterative per-categorical-column NCA latent construction for
 mixed-type dataframes, with binary variables treated as categorical targets
 rather than continuous coordinates. Third, we use a local mutual-neighbour
 transport rule in the learned space as an inspectable analogy operator,
-including rejection-and-retry constraints for fitted numeric ranges and
-standardised numeric outliers. Each generated row can therefore be described by
+including rejection-and-retry constraints based on fitted numeric quantiles.
+Each generated row can therefore be described by
 the concrete anchor and observed displacement that produced it. Fourth, we organise the empirical section around
 claim-specific evidence: distributional similarity, downstream utility,
 neighbour-distance behaviour, NCA-block mechanism evidence, decoder probability

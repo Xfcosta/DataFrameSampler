@@ -44,11 +44,11 @@ blocks when `n_iterations = 0`.
 
 Recommended empirical setups used by the paper:
 
-| Setup | `n_components` | `nca_fit_sample_size` | `lambda_` | `n_iterations` | `max_constraint_retries` | `calibrate_decoders` | Use |
-| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
-| Fast | 1 | 0.5 | 0.25 | 0 | 0 | `False` | Smoke tests, previews, and cheap notebook checks. |
-| Default | 1 | 0.5 | 0.25 | 0 | 5 | `False` | General example-data workflows. |
-| Accurate | 1 | 0.5 | 0.25 | 2 | 20 | `True` | Slower diagnostic runs where calibrated probabilities matter. |
+| Setup | `n_components` | `nca_fit_sample_size` | `lambda_` | `n_iterations` | `quantile_guard` | `max_constraint_retries` | `calibrate_decoders` | Use |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| Fast | 1 | 0.5 | 0.25 | 0 | 0.1 | 0 | `False` | Smoke tests, previews, and cheap notebook checks. |
+| Default | 1 | 0.5 | 0.25 | 0 | 0.1 | 5 | `False` | General example-data workflows. |
+| Accurate | 1 | 0.5 | 0.25 | 2 | 0.1 | 20 | `True` | Slower diagnostic runs where calibrated probabilities matter. |
 
 Generation uses the fitted latent matrix. For each synthetic row it picks an
 anchor row `A`, a mutual neighbor `B`, and a mutual neighbor `C` of `B`, then
@@ -62,10 +62,11 @@ A' = A + lambda_ * (C - B)
 Categorical columns are sampled from the decoder's predicted class
 probabilities.
 
-Generated latent candidates are checked against fitted numeric constraints by
-default. The sampler retries candidates that fall outside fitted latent min/max
-ranges or whose standardized numeric columns exceed the configured z-score
-threshold.
+Generated latent candidates are checked against fitted numeric quantiles by
+default. With `quantile_guard=0.1`, a candidate is retried when any guarded
+numeric latent coordinate falls outside the fitted 10th--90th percentile
+interval. Each retry starts from a newly sampled anchor row. If the retry budget
+is exhausted, the final candidate is accepted as-is rather than clipped.
 
 This neighbor transport step is a heuristic. It assumes the learned latent space
 is locally linear enough for transferred displacements to stay near the
@@ -173,16 +174,12 @@ Constructor arguments:
   `CalibratedClassifierCV` when feasible. Defaults to `False`.
 - `calibration_kwargs`: optional keyword arguments for
   `CalibratedClassifierCV`.
-- `enforce_min_max_constraints`: whether generated latent candidates that fall
-  outside the fitted columnwise latent min/max range should be rejected and
-  resampled when possible. Defaults to `True`.
-- `enforce_numeric_std_constraints`: whether generated latent candidates whose
-  numeric columns are improbable under the fitted numeric mean/std should be
-  rejected and resampled when possible. Defaults to `True`.
-- `numeric_std_threshold`: maximum absolute fitted numeric-column z-score before
-  retrying a generated candidate. Defaults to `3.0`.
+- `quantile_guard`: optional fitted quantile guard for generated numeric latent
+  coordinates. A value of `0.1` accepts candidates inside the fitted
+  10th--90th percentile interval; `0.0` gives a min/max guard; `None` disables
+  rejection. Defaults to `0.1`.
 - `max_constraint_retries`: number of neighbour-chain retries before accepting
-  an out-of-range latent candidate as-is. Defaults to `5`.
+  a quantile-violating candidate as-is. Defaults to `5`.
 
 High-cardinality categorical columns are not dropped automatically.
 DataFrameSampler warns and proceeds, assuming such columns have been
@@ -222,19 +219,12 @@ Options:
   --calibrate_decoders / --no_calibrate_decoders
                                   Calibrate categorical decoder probabilities
                                   when feasible.
-  --enforce_min_max_constraints / --no_enforce_min_max_constraints
-                                  Reject and retry latent candidates outside
-                                  fitted columnwise min/max ranges.
-  --enforce_numeric_std_constraints / --no_enforce_numeric_std_constraints
-                                  Reject and retry latent candidates with
-                                  improbable fitted numeric-column z-scores.
-  --numeric_std_threshold FLOAT RANGE
-                                  Maximum absolute fitted numeric-column
-                                  z-score before retrying a generated
-                                  candidate.
+  --quantile_guard FLOAT RANGE    Reject and retry generated candidates whose
+                                  numeric latent coordinates fall outside [q,
+                                  1-q] fitted quantiles. Use 0 for min/max.
   --max_constraint_retries INTEGER RANGE
                                   Retries per generated row before accepting an
-                                  out-of-range latent candidate.
+                                  out-of-quantile latent candidate.
   -h, --help                      Show this message and exit.
 ```
 
