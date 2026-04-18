@@ -6,34 +6,37 @@
 \toprule
 Dataset & Method & $\rightarrow$ NN ratio & $\downarrow$ NN close rate & $\rightarrow$ Disc. acc. & $\uparrow$ Disc. privacy & $\uparrow$ Utility lift & $\uparrow$ Hist. overlap & $\downarrow$ Cat. JSD \\
 \midrule
-adult & DataFrameSampler & 1.766 & 0.001 & 0.863 & 0.274 & 0.000 & 0.814 & 0.035 \\
-adult & Independent columns & 1.467 & 0.003 & 0.867 & 0.267 & -0.012 & 0.969 & 0.002 \\
-adult & Row bootstrap & 0.000 & 1.000 & 0.696 & 0.608 & 0.014 & 0.974 & 0.002 \\
-bank\_marketing & DataFrameSampler & 1.731 & 0.014 & 0.892 & 0.215 & -0.003 & 0.791 & 0.012 \\
+adult & DataFrameSampler & 0.678 & 0.108 & 0.710 & 0.579 & 0.002 & 0.943 & 0.003 \\
+adult & Independent columns & 1.694 & 0.002 & 0.883 & 0.234 & -0.015 & 0.966 & 0.002 \\
+adult & Row bootstrap & 0.000 & 1.000 & 0.704 & 0.592 & 0.013 & 0.976 & 0.002 \\
+bank\_marketing & DataFrameSampler & 0.806 & 0.160 & 0.759 & 0.482 & -0.007 & 0.951 & 0.001 \\
 bank\_marketing & Independent columns & 1.861 & 0.000 & 0.985 & 0.030 & -0.032 & 0.976 & 0.001 \\
 bank\_marketing & Row bootstrap & 0.000 & 1.000 & 0.731 & 0.538 & 0.021 & 0.978 & 0.001 \\
-breast\_cancer & DataFrameSampler & 1.197 & 0.014 & 0.751 & 0.497 & -0.006 & 0.904 & 0.000 \\
+breast\_cancer & DataFrameSampler & 0.238 & 0.982 & 0.433 & 0.865 & 0.006 & 0.923 & 0.000 \\
 breast\_cancer & Independent columns & 2.029 & 0.000 & 1.000 & 0.000 & -0.000 & 0.943 & 0.000 \\
 breast\_cancer & Row bootstrap & 0.000 & 1.000 & 0.351 & 0.702 & 0.017 & 0.946 & 0.000 \\
-heart\_disease & DataFrameSampler & 1.204 & 0.046 & 0.643 & 0.714 & -0.022 & 0.814 & 0.004 \\
+covertype & DataFrameSampler & 0.634 & 0.504 & 0.577 & 0.845 & -0.000 & 0.934 & 0.003 \\
+covertype & Independent columns & 1.965 & 0.000 & 0.912 & 0.176 & -0.026 & 0.953 & 0.003 \\
+covertype & Row bootstrap & 0.000 & 1.000 & 0.428 & 0.856 & 0.078 & 0.955 & 0.004 \\
+heart\_disease & DataFrameSampler & 0.683 & 0.300 & 0.473 & 0.945 & 0.011 & 0.837 & 0.002 \\
 heart\_disease & Independent columns & 1.151 & 0.007 & 0.632 & 0.736 & -0.022 & 0.934 & 0.001 \\
 heart\_disease & Row bootstrap & 0.000 & 1.000 & 0.352 & 0.703 & 0.066 & 0.937 & 0.001 \\
-pima\_diabetes & DataFrameSampler & 1.441 & 0.010 & 0.792 & 0.416 & 0.012 & 0.818 & 0.000 \\
+pima\_diabetes & DataFrameSampler & 0.303 & 0.975 & 0.557 & 0.885 & 0.028 & 0.850 & 0.000 \\
 pima\_diabetes & Independent columns & 1.196 & 0.020 & 0.711 & 0.577 & 0.027 & 0.950 & 0.001 \\
 pima\_diabetes & Row bootstrap & 0.000 & 1.000 & 0.388 & 0.777 & 0.163 & 0.948 & 0.000 \\
-synthetic\_correlated\_helpers & DataFrameSampler & 1.533 & 0.048 & 0.600 & 0.800 & 0.006 & 0.923 & 0.001 \\
+synthetic\_correlated\_helpers & DataFrameSampler & 0.476 & 0.528 & 0.424 & 0.848 & 0.022 & 0.945 & 0.001 \\
 synthetic\_correlated\_helpers & Independent columns & 6.328 & 0.006 & 0.918 & 0.164 & -0.000 & 0.944 & 0.001 \\
 synthetic\_correlated\_helpers & Row bootstrap & 0.000 & 1.000 & 0.424 & 0.848 & 0.028 & 0.944 & 0.000 \\
-synthetic\_high\_cardinality & DataFrameSampler & 1.231 & 0.052 & 0.591 & 0.818 & -0.017 & 0.902 & 0.016 \\
+synthetic\_high\_cardinality & DataFrameSampler & 0.615 & 0.392 & 0.467 & 0.933 & 0.006 & 0.938 & 0.012 \\
 synthetic\_high\_cardinality & Independent columns & 1.799 & 0.004 & 0.815 & 0.370 & -0.006 & 0.947 & 0.012 \\
 synthetic\_high\_cardinality & Row bootstrap & 0.000 & 1.000 & 0.436 & 0.873 & 0.006 & 0.960 & 0.007 \\
-synthetic\_rare\_categories & DataFrameSampler & 1.825 & 0.038 & 0.709 & 0.582 & -0.045 & 0.791 & 0.013 \\
+synthetic\_rare\_categories & DataFrameSampler & 0.550 & 0.300 & 0.485 & 0.970 & 0.039 & 0.944 & 0.002 \\
 synthetic\_rare\_categories & Independent columns & 2.213 & 0.038 & 0.724 & 0.552 & -0.073 & 0.950 & 0.001 \\
 synthetic\_rare\_categories & Row bootstrap & 0.000 & 1.000 & 0.403 & 0.806 & 0.072 & 0.951 & 0.002 \\
-synthetic\_sensitive\_identifier & DataFrameSampler & 1.043 & 0.056 & 0.555 & 0.891 & 0.013 & 0.854 & 0.093 \\
+synthetic\_sensitive\_identifier & DataFrameSampler & 0.705 & 0.498 & 0.545 & 0.909 & 0.124 & 0.932 & 0.102 \\
 synthetic\_sensitive\_identifier & Independent columns & 1.007 & 0.056 & 0.545 & 0.909 & 0.000 & 0.954 & 0.100 \\
 synthetic\_sensitive\_identifier & Row bootstrap & 0.000 & 1.000 & 0.545 & 0.909 & 0.153 & 0.946 & 0.100 \\
-titanic & DataFrameSampler & 1.231 & 0.000 & 0.549 & 0.901 & 0.034 & 0.958 & 0.002 \\
+titanic & DataFrameSampler & 0.602 & 0.000 & 0.526 & 0.947 & 0.059 & 0.959 & 0.001 \\
 titanic & Independent columns & 4.695 & 0.000 & 0.954 & 0.092 & 0.018 & 0.976 & 0.001 \\
 titanic & Row bootstrap & 0.000 & 0.000 & 0.438 & 0.877 & 0.072 & 0.972 & 0.001 \\
 \bottomrule

@@ -36,10 +36,12 @@ or called through the file-oriented command-line interface for CSV and Parquet
 workflows.
 
 For routine use, the paper names three operating points rather than asking
-users to treat every parameter as a tuning axis. The fast setup
-(\texttt{n\_iterations=0}, no retries, no decoder calibration) is meant for
-smoke tests and quick previews. The default setup
-(\texttt{n\_iterations=1}, five retries, no decoder calibration) is the
+users to treat every parameter as a tuning axis. All three use the empirical
+settings \texttt{n\_components=1},
+\texttt{nca\_fit\_sample\_size=0.5}, and \texttt{lambda\_=0.25}. The fast
+setup (\texttt{n\_iterations=0}, no retries, no decoder calibration) is meant
+for smoke tests and quick previews. The default setup
+(\texttt{n\_iterations=0}, five retries, no decoder calibration) is the
 standard example-data workflow. The accurate setup
 (\texttt{n\_iterations=2}, twenty retries, calibrated decoders) is slower and
 intended for diagnostic runs where probability quality and stricter candidate

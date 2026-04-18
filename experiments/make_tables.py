@@ -39,6 +39,7 @@ METHOD_METADATA = [
             "package": "DataFrameSampler",
             "family": (
                 f"Proposed setup: n_iter={setup.n_iterations}, "
+                "k=1, sample=0.5, lambda=0.25, "
                 f"retries={setup.max_constraint_retries}, "
                 f"calibration={'yes' if setup.calibrate_decoders else 'no'}"
             ),
@@ -52,7 +53,7 @@ METHOD_METADATA = [
     {
         "method": "DataFrameSampler",
         "package": "DataFrameSampler",
-        "family": "Default setup used in baseline comparisons",
+        "family": "Default comparison setup: n_iter=0, k=1, sample=0.5, lambda=0.25, retries=5",
         "mixed": "Yes",
         "setup": "Low",
         "inspectability": "High",
@@ -586,7 +587,7 @@ def write_runtime_table(comparisons: pd.DataFrame, *, tables_dir: str | Path = T
         ]
     ].copy()
     setup_steps = {
-        "DataFrameSampler": "NCA config",
+        "DataFrameSampler": "Fixed sampler config",
         "Row bootstrap": "None",
         "Independent columns": "None",
         "Gaussian copula": "None",

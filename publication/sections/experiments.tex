@@ -52,10 +52,12 @@ larger public source table with continuous terrain measurements and categorical
 terrain context. The controlled datasets isolate high cardinality, rare
 categories, dependency structure, and identifier-like columns. Repeated
 diagnostics use deterministic row caps so notebook execution remains practical.
-The configured DataFrameSampler runs fit NCA blocks on a deterministic 25\%
-row sample and then apply the learned projections to all rows; this is the
-starting scalability setting used for the experiments rather than a tuned
-dataset-specific choice.
+Following the Adult parameter-sensitivity study, the configured
+DataFrameSampler runs use the same empirical default on all datasets:
+$k=1$, \texttt{nca\_fit\_sample\_size}$=0.5$, $\lambda=0.25$, and
+\texttt{n\_iterations}$=0$. The NCA fit fraction is therefore active for
+NCA-enabled sensitivity and accurate runs, while the default comparison keeps
+the initial one-hot categorical blocks in the latent space.
 
 Current comparisons include DataFrameSampler plus row bootstrap, independent
 columns, Gaussian-copula empirical sampling, and target-stratified column
@@ -71,10 +73,12 @@ This block prevents the failure in which a method appears simple in prose but
 requires extensive tuning, hidden dependencies, or impractical runtime before
 it becomes useful. The instruments are the public API, CLI, runtime table, and
 the capped Adult setup comparison. The three named DataFrameSampler setups are
-predeclared operating points: fast uses no NCA refinement, no retry budget, and
-no calibration; default uses one refinement iteration and a small retry budget;
-accurate uses two refinement iterations, a larger retry budget, and calibrated
-decoders. They are not treated as three methods to rank across every dataset.
+predeclared operating points sharing $k=1$,
+\texttt{nca\_fit\_sample\_size}$=0.5$, and $\lambda=0.25$: fast uses no NCA
+refinement, no retry budget, and no calibration; default keeps zero refinement
+iterations but adds a small retry budget; accurate uses two refinement
+iterations, a larger retry budget, and calibrated decoders. They are not
+treated as three methods to rank across every dataset.
 
 \IfFileExists{../experiments/figures/sensitivity_validation.pdf}{
 \begin{figure}[t]
@@ -102,9 +106,13 @@ The current evidence supports a limited setup claim, not a full
 hyperparameter-optimization claim. We do not report equal-budget tuning curves
 against all baselines, and therefore we do not conclude that the method is
 best under arbitrary tuning budgets. The allowable conclusion is narrower:
-under the predeclared default configuration and observed parameter sensitivity,
-the method remains usable enough for the intended notebook and example-data
-workflow.
+under the predeclared empirical default and observed parameter sensitivity, the
+method remains usable enough for the intended notebook and example-data
+workflow. The refreshed runtime table also shows the main practical cost of
+this default: removing NCA iterations avoids the quadratic NCA fitting phase,
+but the one-hot latent context and per-column random-forest decoders can still
+make fit and generation noticeably slower than empirical baselines on
+categorical datasets such as Adult and Titanic.
 
 \subsection{Data Fidelity and Utility: Primary Evidence}
 
@@ -141,6 +149,13 @@ sampling can preserve simple marginals while weakening dependence. DataFrameSamp
 is therefore preferred only where the multi-metric pattern avoids these
 degenerate alternatives. Where utility lift is weak or negative, the practical
 augmentation claim is correspondingly not supported for that dataset.
+Under the empirical default, the strongest positive pattern is on the
+controlled and small mixed-type cases: Titanic and the rare-category and
+sensitive-identifier controlled datasets show useful lift while keeping
+real-versus-synthetic discrimination close to chance. Adult, Bank Marketing,
+and Covertype are more cautious results: distributional scores remain high, but
+utility lift is near zero or negative and discrimination can remain high. These
+cases are treated as scope boundaries rather than failures to be hidden.
 
 \IfFileExists{tables/primary_uncertainty.tex}{\input{tables/primary_uncertainty}}{}
 

@@ -40,7 +40,7 @@ For larger datasets, the NCA fit can be estimated on a deterministic row
 subsample and then applied to all rows. In the implementation this is controlled
 by \texttt{nca\_fit\_sample\_size}: an integer gives a row cap, while a value in
 $(0,1]$ gives a fraction of the fitted rows. The paper experiments use a
-fraction of $0.25$ as the initial practical setting.
+fraction of $0.5$ for NCA-enabled runs.
 
 \subsection{Algorithms}
 
@@ -98,13 +98,14 @@ reproducibility is part of the contribution.
 \end{algorithmic}
 \end{algorithm}
 
-We use three named configurations when discussing practical setup choices. The
-\emph{fast} setup uses no NCA refinement iteration, no rejection retries, and
-uncalibrated decoders. The \emph{default} setup uses one NCA iteration, five
-rejection retries, and uncalibrated decoders. The \emph{accurate} setup uses
-two NCA iterations, twenty rejection retries, and calibrated decoders. These
-are not separate methods; they are speed--accuracy operating points of the
-same estimator.
+We use three named configurations when discussing practical setup choices. All
+three share the empirical settings $k=1$,
+\texttt{nca\_fit\_sample\_size}$=0.5$, and $\lambda=0.25$. The \emph{fast}
+setup uses no NCA refinement iteration, no rejection retries, and uncalibrated
+decoders. The \emph{default} setup also uses no NCA refinement iteration, but
+adds five rejection retries. The \emph{accurate} setup uses two NCA iterations,
+twenty rejection retries, and calibrated decoders. These are not separate
+methods; they are speed--accuracy operating points of the same estimator.
 
 \subsection{Decoding}
 
@@ -169,8 +170,8 @@ for the NCA phase is therefore
   O\!\left(T q s^2 (p + h + \sum_j k_j)\right),
 \]
 up to optimizer constants and effective context widths. With no NCA subsampling,
-$s=n$; with a fractional setting such as \texttt{nca\_fit\_sample\_size=0.25},
-$s\approx 0.25n$, while the learned projection is still evaluated on all $n$
+$s=n$; with a fractional setting such as \texttt{nca\_fit\_sample\_size=0.5},
+$s\approx 0.5n$, while the learned projection is still evaluated on all $n$
 rows.
 
 Decoder fitting trains one random forest per categorical column and is

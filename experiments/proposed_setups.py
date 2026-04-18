@@ -34,7 +34,7 @@ PROPOSED_SAMPLER_SETUPS = [
     ProposedSamplerSetup(
         key="default",
         label="DataFrameSampler default",
-        n_iterations=1,
+        n_iterations=0,
         max_constraint_retries=5,
         calibrate_decoders=False,
         intended_use="General example-data workflow used by default",

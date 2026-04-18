@@ -50,14 +50,17 @@ def test_sensitivity_validation_reports_proposed_setup_rows():
         dataframe=make_sensitivity_dataframe(),
         dataset_name="toy",
         target_column="binary",
-        sampler_config={"n_iterations": 1, "n_neighbours": 2, "knn_backend": "sklearn"},
+        sampler_config={"n_components": 1, "n_iterations": 0, "nca_fit_sample_size": 0.5, "lambda_": 0.25, "n_neighbours": 2, "knn_backend": "sklearn"},
         n_samples=8,
         random_state=1,
     )
 
     assert set(report["parameter"]) == {"setup"}
     assert set(report["value"]) == {"fast", "default", "accurate"}
-    assert set(report["n_iterations"]) == {0, 1, 2}
+    assert set(report["n_iterations"]) == {0, 2}
+    assert set(report["n_components"]) == {1}
+    assert set(report["nca_fit_sample_size"]) == {0.5}
+    assert set(report["lambda_"]) == {0.25}
     assert set(report["max_constraint_retries"]) == {0, 5, 20}
     assert {"nn_distance_ratio", "discrimination_accuracy", "utility_lift", "reason"}.issubset(report.columns)
     assert (report["reason"] == "ok").all()
@@ -71,7 +74,10 @@ def test_sensitivity_summary_aggregates_by_parameter_and_value():
             "parameter": ["setup", "setup"],
             "value": ["default", "default"],
             "setup_label": ["DataFrameSampler default", "DataFrameSampler default"],
-            "n_iterations": [1, 1],
+            "n_iterations": [0, 0],
+            "n_components": [1, 1],
+            "nca_fit_sample_size": [0.5, 0.5],
+            "lambda_": [0.25, 0.25],
             "max_constraint_retries": [5, 5],
             "calibrate_decoders": [False, False],
             "nn_distance_ratio": [1.0, 1.4],
@@ -115,7 +121,10 @@ def test_sensitivity_table_and_figure_helpers_write_outputs(tmp_path):
                 "DataFrameSampler default",
                 "DataFrameSampler accurate",
             ],
-            "n_iterations": [0, 1, 2],
+            "n_iterations": [0, 0, 2],
+            "n_components": [1, 1, 1],
+            "nca_fit_sample_size": [0.5, 0.5, 0.5],
+            "lambda_": [0.25, 0.25, 0.25],
             "max_constraint_retries": [0, 5, 20],
             "calibrate_decoders": [False, False, True],
             "nn_distance_ratio": [1.0, 1.1, 1.2],

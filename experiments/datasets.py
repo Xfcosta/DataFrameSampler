@@ -4,7 +4,10 @@ from dataclasses import dataclass
 from typing import Any
 
 DEFAULT_SAMPLER_CONFIG = {
-    "nca_fit_sample_size": 0.25,
+    "n_components": 1,
+    "n_iterations": 0,
+    "nca_fit_sample_size": 0.5,
+    "lambda_": 0.25,
 }
 
 

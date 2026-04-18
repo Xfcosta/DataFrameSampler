@@ -42,13 +42,13 @@ Z = [standardized numeric columns | categorical block 1 | ...]
 Categorical blocks are learned NCA blocks when `n_iterations > 0`, and one-hot
 blocks when `n_iterations = 0`.
 
-Recommended sampler setups:
+Recommended empirical setups used by the paper:
 
-| Setup | `n_iterations` | `max_constraint_retries` | `calibrate_decoders` | Use |
-| --- | ---: | ---: | --- | --- |
-| Fast | 0 | 0 | `False` | Smoke tests, previews, and cheap notebook checks. |
-| Default | 1 | 5 | `False` | General example-data workflows. |
-| Accurate | 2 | 20 | `True` | Slower diagnostic runs where calibrated probabilities matter. |
+| Setup | `n_components` | `nca_fit_sample_size` | `lambda_` | `n_iterations` | `max_constraint_retries` | `calibrate_decoders` | Use |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| Fast | 1 | 0.5 | 0.25 | 0 | 0 | `False` | Smoke tests, previews, and cheap notebook checks. |
+| Default | 1 | 0.5 | 0.25 | 0 | 5 | `False` | General example-data workflows. |
+| Accurate | 1 | 0.5 | 0.25 | 2 | 20 | `True` | Slower diagnostic runs where calibrated probabilities matter. |
 
 Generation uses the fitted latent matrix. For each synthetic row it picks an
 anchor row `A`, a mutual neighbor `B`, and a mutual neighbor `C` of `B`, then
@@ -121,10 +121,11 @@ df = pd.DataFrame(
 )
 
 sampler = DataFrameSampler(
-    n_components=2,
-    n_iterations=1,
+    n_components=1,
+    n_iterations=0,
+    nca_fit_sample_size=0.5,
     n_neighbours=3,
-    lambda_=1.0,
+    lambda_=0.25,
     knn_backend="sklearn",
     random_state=42,
 )
@@ -243,9 +244,10 @@ dataframe-sampler \
   --input_filename input.csv \
   --output_filename generated.csv \
   --n_samples 100 \
-  --n_components 2 \
-  --n_iterations 1 \
-  --nca_fit_sample_size 0.25 \
+  --n_components 1 \
+  --n_iterations 0 \
+  --nca_fit_sample_size 0.5 \
+  --lambda 0.25 \
   --n_neighbours 5 \
   --knn_backend sklearn \
   --random_state 42

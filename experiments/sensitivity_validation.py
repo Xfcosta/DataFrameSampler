@@ -239,7 +239,9 @@ def _evaluate_variant(
                 decoder_calibration_enabled=bool(sampler_config.get("calibrate_decoders", False)),
                 reason="ok",
             ),
+            "n_components": sampler_config.get("n_components", pd.NA),
             "nca_fit_sample_size": sampler_config.get("nca_fit_sample_size", pd.NA),
+            "lambda_": sampler_config.get("lambda_", pd.NA),
         }
     except Exception as exc:  # pragma: no cover - defensive row for long notebooks.
         return {
@@ -408,15 +410,15 @@ def _default_parameter_variants(base_config: Mapping[str, Any]) -> list[tuple[st
     default = dict(base_config)
     default.update(PROPOSED_SAMPLER_SETUPS[1].sampler_config)
     variants = []
-    for value in [0.75, 1.25]:
+    for value in [0.1, 0.5]:
         config = dict(default)
         config["lambda_"] = value
         variants.append(("lambda", value, config))
-    for value in [1, 3]:
+    for value in [2, 3]:
         config = dict(default)
         config["n_components"] = value
         variants.append(("n_components", value, config))
-    for value in [0, 2]:
+    for value in [1, 2]:
         config = dict(default)
         config["n_iterations"] = value
         variants.append(("n_iterations", value, config))
