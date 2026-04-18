@@ -364,7 +364,7 @@ def write_method_table(*, tables_dir: str | Path = TABLES) -> Path:
     return write_latex(
         df,
         Path(tables_dir) / "methods.tex",
-        "Baseline and competitor method metadata. Takeaway: the comparisons emphasize low-setup, inspectable baselines that match the paper's practical-use claim.",
+        "Baseline and competitor method metadata. Takeaway: the comparisons emphasise low-setup, inspectable baselines that match the paper's practical-use claim.",
         "tab:methods",
         full_width=True,
     )
@@ -965,7 +965,7 @@ def write_imbalance_validation_table(
     return write_latex(
         df,
         Path(tables_dir) / "imbalance_validation.tex",
-        "Secondary class-rebalancing diagnostic on selected binary target datasets. DataFrameSampler is fit only on minority-class feature rows, then generated rows are labelled as the minority class to rebalance the real training split; SMOTE is used for numeric-only data and SMOTENC when categorical features are present. Takeaway: imbalance results are boundary evidence for a secondary augmentation use case, not a claim that the method is a general imbalance-learning optimizer.",
+        "Secondary class-rebalancing diagnostic on selected binary target datasets. DataFrameSampler is fit only on minority-class feature rows, then generated rows are labelled as the minority class to rebalance the real training split; SMOTE is used for numeric-only data and SMOTENC when categorical features are present. Takeaway: imbalance results are boundary evidence for a secondary augmentation use case, not a claim that the method is a general imbalance-learning optimiser.",
         "tab:imbalance-validation",
         float_format="%.3f",
         full_width=True,
@@ -1004,7 +1004,7 @@ def write_deep_reference_table(
     return write_latex(
         df,
         Path(tables_dir) / "deep_reference_comparison.tex",
-        "Adult high-capacity reference comparison. CTGAN is included as an optional SDV-based reference model with a global adversarial objective, not as a leaderboard target; DataFrameSampler and Gaussian copula rows are included from the same Adult baseline artifact for scale. Takeaway: the comparison locates DataFrameSampler against a modern deep generator while preserving the paper's emphasis on inspectability and setup cost.",
+        "Adult high-capacity reference comparison. CTGAN is included as an optional SDV-based reference model with a global adversarial objective, not as a leaderboard target; DataFrameSampler and Gaussian copula rows are included from the same Adult baseline artefact for scale. Takeaway: the comparison locates DataFrameSampler against a modern deep generator while preserving the paper's emphasis on inspectability and setup cost.",
         "tab:deep-reference-comparison",
         float_format="%.3f",
         full_width=True,

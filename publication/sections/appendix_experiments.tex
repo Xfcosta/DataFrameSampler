@@ -9,7 +9,7 @@ used, which baselines define the relevant failure modes, how the primary
 measures were computed, and where the diagnostic evidence should be read as
 supporting or boundary evidence rather than as proof.
 
-The organization follows the same logic as the main paper. We first specify the
+The organisation follows the same logic as the main paper. We first specify the
 datasets and baseline methods, because the scope of a practical-use claim is
 determined by the regimes in which it is tested. We then report the four primary
 measures for public and controlled datasets, because a single score would hide
@@ -31,7 +31,7 @@ workflow relevance, whereas controlled datasets make particular boundary
 conditions observable under known structure.
 
 The dataset selection is therefore structured to cover distinct failure modes
-rather than to maximize the number of benchmarks. Adult acts as the primary
+rather than to maximise the number of benchmarks. Adult acts as the primary
 running example because it is a familiar, moderately sized, mixed-type dataset
 with interpretable categorical and numerical dependencies. Titanic is used for
 small illustrative figures, while the medical, business, and controlled
@@ -44,7 +44,7 @@ into a domain-specific benchmark study.
 
 Table~\ref{tab:methods} records the comparison methods used throughout the
 experiments. The baselines are deliberately simple because the central claim is
-not that DataFrameSampler dominates specialized synthetic-data systems; it is
+not that DataFrameSampler dominates specialised synthetic-data systems; it is
 that an inspectable low-setup generator can be useful when ordinary example
 data are needed. Row bootstrap is included even though it is not a valid
 privacy-preserving generator, because it exposes the misleading behaviour of
@@ -123,7 +123,7 @@ predictive task under the fixed evaluator; they do not imply general
 downstream usefulness.
 
 \paragraph{Distributional similarity.}
-For a numeric column, histogram overlap is computed from normalized histograms
+For a numeric column, histogram overlap is computed from normalised histograms
 $p_b$ and $\widetilde{p}_b$ over common bins:
 \[
   \mathrm{Overlap}=\sum_b \min(p_b,\widetilde{p}_b).
@@ -188,7 +188,7 @@ distribution.
 For a generated or held-out point $x$, let $g_i(x)$ be its graph-geodesic
 distance to training row $x_i$ after attaching $x$ to the frozen Isomap
 neighbourhood graph, and let $e_i(z)$ be its Euclidean distance to the embedded
-training point after out-of-sample Isomap transformation. The normalized
+training point after out-of-sample Isomap transformation. The normalised
 pointwise insertion stress is
 \[
   s(x)
@@ -198,10 +198,45 @@ pointwise insertion stress is
        {\sum_i e_i(z)^2}
   }.
 \]
-Convex-hull membership is tested in the sampler latent space by checking
-whether $x$ can be represented as a convex combination of training latent rows.
-The out-of-hull acceptance rate counts the fraction of out-of-hull generated
-points whose insertion stress is no larger than the held-out real 95th
+
+\paragraph{\textbf{Convex-hull membership.}}
+Convex-hull membership is tested in the fitted DataFrameSampler latent space,
+not in the raw mixed-type dataframe. Let
+$Z=\{z_i\}_{i=1}^n\subset\mathbb{R}^d$ be the training latent rows and let
+$z\in\mathbb{R}^d$ be the latent representation of a generated row. The point
+$z$ is inside the convex hull of the training set if and only if it can be
+written as a convex combination of the training latent rows:
+\[
+  z = \sum_{i=1}^n \alpha_i z_i,
+  \qquad
+  \alpha_i\ge 0,
+  \qquad
+  \sum_{i=1}^n \alpha_i = 1.
+\]
+Operationally, the experiment asks whether there exists a vector of weights
+$\alpha=(\alpha_1,\ldots,\alpha_n)$ satisfying these linear constraints. This
+is a feasibility problem rather than an optimisation problem: the actual
+objective value is irrelevant, because any feasible set of non-negative weights
+summing to one proves that the point can be reconstructed as an average of
+observed latent rows. In implementation, the equality constraint
+$Z^\top\alpha=z$ is combined with the simplex constraint
+$\mathbf{1}^\top\alpha=1$ and non-negativity bounds $\alpha_i\ge0$, and passed
+to a linear-programming feasibility solver. If the solver finds feasible
+weights, the generated point is counted as in-hull. If no feasible weights are
+found, the point is counted as out-of-hull.
+
+Before solving this feasibility problem, the training latent matrix is reduced
+to its numerical rank with a deterministic singular-value decomposition. This
+rank reduction removes redundant directions caused by one-hot encodings,
+constant columns, or other linear dependencies, while preserving the affine
+convex-combination question in the span of the training data. The out-of-hull
+label is therefore relative to the learned latent representation and the fitted
+training rows: it does not mean that the decoded mixed-type row violates a raw
+feature range, nor does it certify semantic novelty. It only states that the
+latent generated point cannot be expressed as a convex average of the fitted
+training latent rows under the numerical feasibility tolerance. The out-of-hull
+acceptance rate then counts the fraction of these out-of-hull generated points
+whose frozen-Isomap insertion stress is no larger than the held-out real 95th
 percentile.
 
 \subsection{Primary Four-Measure Summary}
@@ -212,7 +247,7 @@ nearest-neighbour distance ratio and suspiciously-close rate are boundary
 checks for row reuse or pathological proximity; the discriminator is a
 two-sample proxy that asks whether synthetic rows are easily separated from real
 rows; utility lift asks whether generated rows improve a downstream held-out
-task; and histogram or categorical similarity measures summarize marginal
+task; and histogram or categorical similarity measures summarise marginal
 agreement. These measures are not interchangeable, and therefore disagreement
 between them is informative rather than a nuisance.
 
@@ -385,7 +420,7 @@ paper's practical-use claim remains about inspectable example-data generation.
 
 The setup diagnostics compare the fast, default, and accurate operating points
 on Adult Census Income under the same capped workflow. These runs are not
-hyperparameter optimization and are not repeated across every dataset. They
+hyperparameter optimisation and are not repeated across every dataset. They
 are boundary evidence about whether the named practical setups behave
 plausibly on a representative mixed-type benchmark.
 
@@ -472,7 +507,7 @@ not by themselves establish useful extrapolation.
 
 \subsection{Planned Extensions And Claim Boundaries}
 
-Table~\ref{tab:ablations} summarizes which mechanism checks are already
+Table~\ref{tab:ablations} summarises which mechanism checks are already
 implemented and which remain planned. This table is included in the appendix
 because it prevents a common interpretive error: a transparent mechanism is not
 the same thing as a validated mechanism. The current evidence can support

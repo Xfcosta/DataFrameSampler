@@ -245,6 +245,7 @@ def test_random_forest_decoders_are_uncalibrated_by_default_and_use_all_cores():
 
     default_sampler = DataFrameSampler(n_iterations=1, n_neighbours=3, random_state=17).fit(df)
     assert all(isinstance(decoder, RandomForestClassifier) for decoder in default_sampler.decoders_.values())
+    assert {decoder.n_estimators for decoder in default_sampler.decoders_.values()} == {100}
     assert {decoder.n_jobs for decoder in default_sampler.decoders_.values()} == {-1}
     assert set(default_sampler.decoder_calibration_status_.values()) == {"disabled"}
 
@@ -413,9 +414,15 @@ def test_exact_and_sklearn_knn_backends_return_neighbours_without_self():
 
     exact = find_nearest_neighbours(X, n_neighbours=1, backend="exact")
     sklearn = find_nearest_neighbours(X, n_neighbours=1, backend="sklearn")
+    default = find_nearest_neighbours(X, n_neighbours=1)
 
     assert exact.tolist() == [[1], [0], [3], [2]]
     assert sklearn.tolist() == [[1], [0], [3], [2]]
+    assert default.tolist() == sklearn.tolist()
+
+
+def test_dataframe_sampler_uses_sklearn_knn_backend_by_default():
+    assert DataFrameSampler().knn_backend == "sklearn"
 
 
 def test_unknown_knn_backend_is_rejected():
@@ -474,6 +481,7 @@ def test_cli_help_shows_new_flags_and_hides_removed_flags():
     assert "--no_enforce_numeric_std_constraints" in result.output
     assert "--numeric_std_threshold" in result.output
     assert "--max_constraint_retries" in result.output
+    assert "[default: sklearn]" in result.output
     assert "--n_bins" not in result.output
     assert "--embedding_method" not in result.output
     assert "--auto_config" not in result.output

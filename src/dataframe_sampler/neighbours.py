@@ -4,7 +4,7 @@ from .knn import find_nearest_neighbours
 
 
 class NearestMutualNeighboursEstimator(object):
-    def __init__(self, n_neighbours=10, metric="euclidean", knn_backend="exact", knn_backend_kwargs=None):
+    def __init__(self, n_neighbours=10, metric="euclidean", knn_backend="sklearn", knn_backend_kwargs=None):
         if n_neighbours < 1:
             raise ValueError("n_neighbours must be at least 1.")
         self.n_neighbours = n_neighbours
@@ -82,7 +82,7 @@ class NearestMutualNeighboursEstimator(object):
 
 
 class NearestMutualNeighboursProbabilityEstimator(object):
-    def __init__(self, n_neighbours=10, metric="euclidean", knn_backend="exact", knn_backend_kwargs=None):
+    def __init__(self, n_neighbours=10, metric="euclidean", knn_backend="sklearn", knn_backend_kwargs=None):
         self.nearest_mutual_neighbours_estimator = NearestMutualNeighboursEstimator(
             n_neighbours,
             metric,

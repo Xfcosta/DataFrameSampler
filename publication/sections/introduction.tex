@@ -21,7 +21,7 @@ oversampler, however these alternatives often introduce additional dependencies,
 implicit objectives, or claims that are stronger than the example-data workflow
 requires. The practical failure condition is therefore not simply poor benchmark
 performance; it is a mismatch between a small need, namely auditable example
-generation, and tools whose evidence or configuration surface is organized
+generation, and tools whose evidence or configuration surface is organised
 around stronger fidelity, augmentation, or release claims.
 
 \paragraph{HOW.}
@@ -39,7 +39,7 @@ After sampling, the real-valued proxies are mapped back to categories using a
 learned decoder.
 
 DataFrameSampler implements this idea with one explicit latent construction
-throughout. Non-binary numeric columns are median-imputed and standardized,
+throughout. Non-binary numeric columns are median-imputed and standardised,
 while every categorical column, including booleans and numeric two-valued
 columns such as $0/1$, is treated as a supervised target. For each categorical
 target the method learns a Neighborhood Components Analysis block from the
@@ -62,8 +62,8 @@ mixed-type dataframes, with binary variables treated as categorical targets
 rather than continuous coordinates. Third, we use a local mutual-neighbour
 transport rule in the learned space as an inspectable analogy operator,
 including rejection-and-retry constraints for fitted numeric ranges and
-standardized numeric outliers. Each generated row can therefore be described by
-the concrete anchor and observed displacement that produced it. Fourth, we organize the empirical section around
+standardised numeric outliers. Each generated row can therefore be described by
+the concrete anchor and observed displacement that produced it. Fourth, we organise the empirical section around
 claim-specific evidence: distributional similarity, downstream utility,
 neighbour-distance behaviour, NCA-block mechanism evidence, decoder probability
 diagnostics, and extrapolative manifold consistency are interpreted only within

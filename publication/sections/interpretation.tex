@@ -2,9 +2,9 @@
 \label{sec:interpretation}
 
 The method can be viewed as a composite metric-space generator. The continuous
-coordinates contribute standardized Euclidean directions, while each
+coordinates contribute standardised Euclidean directions, while each
 categorical coordinate contributes a supervised block whose neighbourhoods are
-optimized for predicting that categorical label from the remaining columns.
+optimised for predicting that categorical label from the remaining columns.
 The final distance is therefore not a universal dataframe metric. It is an
 empirical metric assembled from local prediction problems, and its validity
 must be judged through the diagnostics in Section~\ref{sec:evaluation-framework}.
@@ -68,7 +68,7 @@ $D=T(A;B,C)$ & Generated candidate & Anchor modified by the observed displacemen
 This analogy trace distinguishes the sampler from generators that expose only
 global fitted parameters or a sampled latent vector. The trace is not enough to
 prove realism, but it gives a user a concrete object to inspect when a row looks
-implausible: the issue can be localized to the anchor choice, the neighbour
+implausible: the issue can be localised to the anchor choice, the neighbour
 pair, the scale $\lambda$, the rejection constraints, or the decoder
 probabilities.
 
@@ -132,7 +132,7 @@ samples displacements that preserve observed local neighbour-chain statistics
 in that same fitted metric space. In this sense, the pipeline approximates the
 preservation of local neighbourhood structure under a composite supervised
 metric. The mechanism evidence in the experiments tests each part of this
-proxy interpretation rather than treating it as an optimized objective.
+proxy interpretation rather than treating it as an optimised objective.
 
 Two lightweight sanity expectations follow from this interpretation. First,
 when NCA improves class separation for a categorical column, the corresponding

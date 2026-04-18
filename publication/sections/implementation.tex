@@ -7,10 +7,10 @@ accepts pandas dataframes in \texttt{fit} and \texttt{transform};
 accepts a NumPy matrix and returns a dataframe; and \texttt{generate} returns a
 synthetic dataframe. This interface is intentionally close to the scikit-learn
 transformer convention, because the main implementation constraint is not to
-expose several competing vectorization modes, but to make one explicit latent
+expose several competing vectorisation modes, but to make one explicit latent
 construction easy to fit, inspect, persist, and reuse.
 
-The implementation is organized around five small modules: 1) \texttt{sampler.py}
+The implementation is organised around five small modules: 1) \texttt{sampler.py}
 contains NCA latent learning, decoding, model persistence, and
 neighbour-transport generation; 2) \texttt{neighbours.py} contains
 mutual-neighbour estimation and sampling probabilities; 3) \texttt{knn.py}

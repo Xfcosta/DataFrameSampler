@@ -157,7 +157,7 @@ Constructor arguments:
 - `n_neighbours`: nearest-neighbor count used for mutual-neighbor generation.
 - `lambda_`: multiplier for the transferred neighbor displacement.
 - `knn_backend`: one of `exact`, `sklearn`, `pynndescent`, `hnswlib`, or
-  `annoy`.
+  `annoy`. Defaults to `sklearn`.
 - `knn_backend_kwargs`: optional backend-specific options.
 - `random_state`: optional seed.
 - `nca_kwargs`: optional keyword arguments for
@@ -167,7 +167,8 @@ Constructor arguments:
   of fitted rows, so `0.1` means 10%. The learned NCA projections are still
   applied to all rows.
 - `decoder_kwargs`: optional keyword arguments for `RandomForestClassifier`.
-  Decoders default to `n_jobs=-1` to use all available cores.
+  Decoders default to at least `n_estimators=100` and `n_jobs=-1` to use all
+  available cores.
 - `calibrate_decoders`: whether to wrap categorical decoders with
   `CalibratedClassifierCV` when feasible. Defaults to `False`.
 - `calibration_kwargs`: optional keyword arguments for

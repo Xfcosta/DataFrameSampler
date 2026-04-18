@@ -221,7 +221,7 @@ def ConcreteNearestMutualNeighboursSampler(
     numeric_constraint_indices=None,
     max_constraint_retries=5,
     random_state=None,
-    knn_backend="exact",
+    knn_backend="sklearn",
     knn_backend_kwargs=None,
 ):
     knn_backend_kwargs = dict(knn_backend_kwargs or {})
@@ -334,7 +334,7 @@ class DataFrameSampler(BaseEstimator, TransformerMixin):
         n_iterations=1,
         n_neighbours=10,
         lambda_=1.0,
-        knn_backend="exact",
+        knn_backend="sklearn",
         knn_backend_kwargs=None,
         random_state=None,
         nca_kwargs=None,

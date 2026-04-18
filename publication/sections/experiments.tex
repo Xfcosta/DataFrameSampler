@@ -1,7 +1,7 @@
 \section{Experiments}
 \label{sec:experiments}
 
-The experiments are organized as a claim-specific argument rather than as a
+The experiments are organised as a claim-specific argument rather than as a
 leaderboard. The binding primary claim is practical: DataFrameSampler is
 intended to be preferable for low-setup, inspectable synthetic tabular example
 generation under limited tuning and moderate data sizes. The binding secondary
@@ -14,7 +14,7 @@ meaningful. These claims determine the evidence structure.
 \paragraph{Primary claim: practical use.}
 The method is preferable for low-setup, inspectable synthetic tabular data
 generation when the workflow values a small estimator, visible mechanisms, and
-moderate runtime over fully optimized synthetic-data fidelity.
+moderate runtime over fully optimised synthetic-data fidelity.
 
 \paragraph{Secondary claim: mechanism.}
 The supervised categorical latent blocks improve local categorical structure,
@@ -26,7 +26,7 @@ geometric rule directly to one-hot or raw mixed-type columns.
 \caption{Claim-to-evidence structure used in the experiments. Each block names
 the failure it is meant to prevent, the instrument used to detect that failure,
 and the strongest conclusion the block can support. Takeaway: the empirical
-section is organized by allowable conclusions rather than by post hoc metric
+section is organised by allowable conclusions rather than by post hoc metric
 selection.}
 \label{tab:experiment-claim-blocks}
 \small
@@ -85,7 +85,7 @@ treated as three methods to rank across every dataset.
 \centering
 \includegraphics[width=\textwidth]{sensitivity_validation.pdf}
 \caption{Capped comparison of the fast, default, and accurate DataFrameSampler
-setups on Adult Census Income. The panels summarize distributional score,
+setups on Adult Census Income. The panels summarise distributional score,
 utility lift, and discrimination accuracy for three predeclared operating
 points. Takeaway: setup choice is a practical speed--accuracy tradeoff
 illustration, not evidence of global hyperparameter optimality.}
@@ -98,12 +98,12 @@ illustration, not evidence of global hyperparameter optimality.}
 \paragraph{Sensitivity to default parameters.}
 We vary $\lambda$, NCA dimension $k$, and iteration count $T$ around the default
 configuration and report the corresponding changes in distribution score,
-utility lift, and discrimination accuracy. The goal is not to optimize
+utility lift, and discrimination accuracy. The goal is not to optimise
 performance, but to test whether the default configuration is stable under
 small perturbations.
 
 The current evidence supports a limited setup claim, not a full
-hyperparameter-optimization claim. We do not report equal-budget tuning curves
+hyperparameter-optimisation claim. We do not report equal-budget tuning curves
 against all baselines, and therefore we do not conclude that the method is
 best under arbitrary tuning budgets. The allowable conclusion is narrower:
 under the predeclared empirical default and observed parameter sensitivity, the
@@ -315,7 +315,7 @@ calibration diagnostics. Frozen-Isomap and convex-hull results are diagnostic
 evidence for extrapolative consistency, not a guarantee of manifold
 preservation. Class-rebalancing results show that traceable minority examples
 can help under a fixed protocol on some datasets, not that the method is a
-general imbalance optimizer.
+general imbalance optimiser.
 
 The paper does not support claims of formal privacy, calibrated probabilistic
 modelling by default, large-scale optimality, or guaranteed constraint

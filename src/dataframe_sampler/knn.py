@@ -5,7 +5,7 @@ from scipy.spatial.distance import cdist, pdist, squareform
 SUPPORTED_KNN_BACKENDS = ("exact", "sklearn", "pynndescent", "hnswlib", "annoy")
 
 
-def find_nearest_neighbours(X, n_neighbours=10, metric="euclidean", backend="exact", backend_kwargs=None):
+def find_nearest_neighbours(X, n_neighbours=10, metric="euclidean", backend="sklearn", backend_kwargs=None):
     """
     Return nearest-neighbor indexes excluding each row itself.
 

@@ -75,7 +75,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option(
     "--knn_backend",
     type=click.Choice(["exact", "sklearn", "pynndescent", "hnswlib", "annoy"], case_sensitive=False),
-    default="exact",
+    default="sklearn",
     show_default=True,
     help="KNN backend used for neighbour search.",
 )
